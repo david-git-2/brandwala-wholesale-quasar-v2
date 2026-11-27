@@ -100,11 +100,17 @@ GRANT ALL ON SEQUENCE "public"."pp_order_lines_id_seq" TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."create_pp_purchase_request_draft"(bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."get_pp_purchase_request"(bigint, bigint) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."list_pp_purchase_requests"(bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."list_pp_purchase_requests_for_customer"(bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."list_pp_order_lines_for_request"(bigint, bigint) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."list_pp_order_lines"(bigint) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."list_pp_order_lines_for_customer"(bigint) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."_pp_order_line_to_json"("public"."pp_order_lines", "text") TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."add_pp_order_line"(bigint, bigint, text, numeric, text) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."update_pp_order_line"(bigint, bigint, bigint, text, numeric, text) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."delete_pp_order_line"(bigint, bigint, bigint) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."update_pp_order_line_staff"(bigint, bigint, text, numeric, text, text, text, numeric, bigint, bigint, boolean, text, numeric, text) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."delete_pp_order_line_staff"(bigint, bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."update_pp_purchase_request_instructions"(bigint, bigint, text) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."post_pp_purchase_request"(bigint, bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."delete_pp_purchase_request_draft"(bigint, bigint) TO "anon", "authenticated", "service_role";

@@ -17,7 +17,7 @@
             <div class="col min-width-0">
               <div class="tf-page-toolbar__title ellipsis">{{ requestHeadline }}</div>
               <div v-if="requestStatus" class="pp-request-create-page__meta ellipsis">
-                {{ isDraft ? 'Draft' : 'Posted' }}
+                {{ isDraft ? 'Draft' : 'Requested' }}
               </div>
             </div>
           </div>

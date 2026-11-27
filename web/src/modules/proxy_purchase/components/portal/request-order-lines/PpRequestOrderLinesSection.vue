@@ -30,7 +30,7 @@
       @delete="$emit('delete-line', $event)"
     />
 
-    <PpCustomerPostedOrderLinesList
+    <PpOrderLineList
       v-else-if="viewKey === 'customer_posted'"
       :lines="lines"
     />
@@ -47,8 +47,8 @@
 <script setup lang="ts">
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
+import PpOrderLineList from '../../order-lines/PpOrderLineList.vue';
 import PpCustomerDraftOrderLinesList from './PpCustomerDraftOrderLinesList.vue';
-import PpCustomerPostedOrderLinesList from './PpCustomerPostedOrderLinesList.vue';
 import type { PpOrderLine } from '../../../types/ppPurchaseRequest';
 import type { PpRequestOrderLinesViewKey } from '../../../types/ppRequestOrderLinesView';
 

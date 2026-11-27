@@ -672,6 +672,83 @@ $$;
 
 ALTER FUNCTION "public"."list_pp_purchase_requests_for_customer"("p_tenant_id" bigint) OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."list_pp_purchase_requests"("p_tenant_id" bigint)
+RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    STABLE
+    SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF NOT "public"."has_active_tenant_membership"("p_tenant_id") THEN
+    RAISE EXCEPTION 'Not allowed for tenant %', "p_tenant_id" USING ERRCODE = '42501';
+  END IF;
+
+  RETURN (
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', req.id,
+          'request_number', req.request_number,
+          'status', req.status,
+          'created_at', req.created_at,
+          'updated_at', req.updated_at,
+          'people_group_id', req.people_group_id,
+          'people_group_name', g.name,
+          'line_count', (
+            SELECT count(*)::bigint
+            FROM public.pp_order_lines l
+            WHERE l.tenant_id = p_tenant_id
+              AND l.purchase_request_id = req.id
+              AND l.deleted_at IS NULL
+          )
+        )
+        ORDER BY req.created_at DESC, req.id DESC
+      ),
+      '[]'::jsonb
+    )
+    FROM public.pp_purchase_requests req
+    INNER JOIN public.pp_people_group g ON g.id = req.people_group_id AND g.deleted_at IS NULL
+    WHERE req.tenant_id = p_tenant_id
+      AND req.deleted_at IS NULL
+      AND req.status = 'requested'
+  );
+END;
+$$;
+
+ALTER FUNCTION "public"."list_pp_purchase_requests"("p_tenant_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."_pp_order_line_to_json"(
+    "l" "public"."pp_order_lines",
+    "p_shipment_status" "text" DEFAULT NULL::"text"
+) RETURNS "jsonb"
+    LANGUAGE "sql"
+    IMMUTABLE
+    AS $$
+  SELECT jsonb_build_object(
+    'id', l.id,
+    'purchase_request_id', l.purchase_request_id,
+    'pp_customer_group_id', l.pp_customer_group_id,
+    'url', l.url,
+    'needed_qty', l.needed_qty,
+    'description', l.description,
+    'product_name', l.product_name,
+    'image_url', l.image_url,
+    'unit_price', l.unit_price,
+    'pp_supplier_group_id', l.pp_supplier_group_id,
+    'shipment_id', l.shipment_id,
+    'shipment_status', p_shipment_status,
+    'is_added_to_cart', l.is_added_to_cart,
+    'added_to_cart_at', l.added_to_cart_at,
+    'placement_status', l.placement_status,
+    'placed_qty', l.placed_qty,
+    'status', l.status,
+    'created_at', l.created_at
+  );
+$$;
+
+ALTER FUNCTION "public"."_pp_order_line_to_json"("public"."pp_order_lines", "text") OWNER TO "postgres";
+
 CREATE OR REPLACE FUNCTION "public"."list_pp_order_lines_for_request"("p_tenant_id" bigint, "p_request_id" bigint)
 RETURNS "jsonb"
     LANGUAGE "plpgsql"
@@ -685,20 +762,13 @@ BEGIN
   RETURN (
     SELECT COALESCE(
       jsonb_agg(
-        jsonb_build_object(
-          'id', l.id,
-          'purchase_request_id', l.purchase_request_id,
-          'url', l.url,
-          'needed_qty', l.needed_qty,
-          'description', l.description,
-          'status', l.status,
-          'created_at', l.created_at
-        )
+        public._pp_order_line_to_json(l, s.status)
         ORDER BY l.created_at ASC, l.id ASC
       ),
       '[]'::jsonb
     )
     FROM public.pp_order_lines l
+    LEFT JOIN public.pp_shipment s ON s.id = l.shipment_id AND s.deleted_at IS NULL
     WHERE l.tenant_id = p_tenant_id
       AND l.purchase_request_id = p_request_id
       AND l.deleted_at IS NULL
@@ -707,6 +777,84 @@ END;
 $$;
 
 ALTER FUNCTION "public"."list_pp_order_lines_for_request"("p_tenant_id" bigint, "p_request_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."list_pp_order_lines_for_customer"("p_tenant_id" bigint)
+RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    STABLE
+    SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_group_id bigint;
+BEGIN
+  SELECT r.people_group_id INTO v_group_id
+  FROM public._pp_resolve_proxy_customer_member(p_tenant_id) r
+  LIMIT 1;
+
+  IF v_group_id IS NULL THEN
+    RAISE EXCEPTION 'Proxy customer membership required' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN (
+    SELECT COALESCE(
+      jsonb_agg(
+        public._pp_order_line_to_json(l, s.status)
+        ORDER BY l.created_at DESC, l.id DESC
+      ),
+      '[]'::jsonb
+    )
+    FROM public.pp_order_lines l
+    LEFT JOIN public.pp_shipment s ON s.id = l.shipment_id AND s.deleted_at IS NULL
+    WHERE l.tenant_id = p_tenant_id
+      AND l.pp_customer_group_id = v_group_id
+      AND l.deleted_at IS NULL
+  );
+END;
+$$;
+
+ALTER FUNCTION "public"."list_pp_order_lines_for_customer"("p_tenant_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."list_pp_order_lines"("p_tenant_id" bigint)
+RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    STABLE
+    SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF NOT "public"."has_active_tenant_membership"("p_tenant_id") THEN
+    RAISE EXCEPTION 'Not allowed for tenant %', "p_tenant_id" USING ERRCODE = '42501';
+  END IF;
+
+  RETURN (
+    SELECT COALESCE(
+      jsonb_agg(
+        public._pp_order_line_to_json(l, s.status)
+        || jsonb_build_object(
+          'customer_group_name', cg.name,
+          'supplier_group_name', sg.name,
+          'request_number', req.request_number
+        )
+        ORDER BY l.created_at DESC, l.id DESC
+      ),
+      '[]'::jsonb
+    )
+    FROM public.pp_order_lines l
+    LEFT JOIN public.pp_shipment s ON s.id = l.shipment_id AND s.deleted_at IS NULL
+    LEFT JOIN public.pp_people_group cg ON cg.id = l.pp_customer_group_id AND cg.deleted_at IS NULL
+    LEFT JOIN public.pp_people_group sg ON sg.id = l.pp_supplier_group_id AND sg.deleted_at IS NULL
+    LEFT JOIN public.pp_purchase_requests req
+      ON req.id = l.purchase_request_id
+      AND req.tenant_id = p_tenant_id
+      AND req.deleted_at IS NULL
+    WHERE l.tenant_id = p_tenant_id
+      AND l.deleted_at IS NULL
+  );
+END;
+$$;
+
+ALTER FUNCTION "public"."list_pp_order_lines"("p_tenant_id" bigint) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."add_pp_order_line"(
     "p_tenant_id" bigint,
@@ -721,12 +869,13 @@ CREATE OR REPLACE FUNCTION "public"."add_pp_order_line"(
     AS $$
 DECLARE
   v_status text;
+  v_group_id bigint;
   v_url text := trim(coalesce(p_url, ''));
   v_desc text := nullif(trim(coalesce(p_description, '')), '');
   v_qty numeric := p_needed_qty;
   v_row public.pp_order_lines%ROWTYPE;
 BEGIN
-  SELECT a.request_status INTO v_status
+  SELECT a.request_status, a.people_group_id INTO v_status, v_group_id
   FROM public._pp_assert_customer_request_access(p_tenant_id, p_request_id) a
   LIMIT 1;
 
@@ -743,21 +892,20 @@ BEGIN
   END IF;
 
   INSERT INTO public.pp_order_lines (
-    tenant_id, purchase_request_id, url, needed_qty, description, status
+    tenant_id,
+    purchase_request_id,
+    pp_customer_group_id,
+    url,
+    needed_qty,
+    description,
+    status,
+    placement_status
   ) VALUES (
-    p_tenant_id, p_request_id, v_url, v_qty, v_desc, 'draft'
+    p_tenant_id, p_request_id, v_group_id, v_url, v_qty, v_desc, 'draft', 'none'
   )
   RETURNING * INTO v_row;
 
-  RETURN jsonb_build_object(
-    'id', v_row.id,
-    'purchase_request_id', v_row.purchase_request_id,
-    'url', v_row.url,
-    'needed_qty', v_row.needed_qty,
-    'description', v_row.description,
-    'status', v_row.status,
-    'created_at', v_row.created_at
-  );
+  RETURN public._pp_order_line_to_json(v_row, NULL);
 END;
 $$;
 
@@ -813,15 +961,7 @@ BEGIN
     RAISE EXCEPTION 'Order line not found' USING ERRCODE = 'P0002';
   END IF;
 
-  RETURN jsonb_build_object(
-    'id', v_row.id,
-    'purchase_request_id', v_row.purchase_request_id,
-    'url', v_row.url,
-    'needed_qty', v_row.needed_qty,
-    'description', v_row.description,
-    'status', v_row.status,
-    'created_at', v_row.created_at
-  );
+  RETURN public._pp_order_line_to_json(v_row, NULL);
 END;
 $$;
 
@@ -864,6 +1004,149 @@ END;
 $$;
 
 ALTER FUNCTION "public"."delete_pp_order_line"("p_tenant_id" bigint, "p_request_id" bigint, "p_line_id" bigint) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."update_pp_order_line_staff"(
+    "p_tenant_id" bigint,
+    "p_line_id" bigint,
+    "p_url" "text",
+    "p_needed_qty" numeric,
+    "p_description" "text" DEFAULT NULL::"text",
+    "p_product_name" "text" DEFAULT NULL::"text",
+    "p_image_url" "text" DEFAULT NULL::"text",
+    "p_unit_price" numeric DEFAULT NULL::numeric,
+    "p_pp_supplier_group_id" bigint DEFAULT NULL::bigint,
+    "p_shipment_id" bigint DEFAULT NULL::bigint,
+    "p_is_added_to_cart" boolean DEFAULT NULL::boolean,
+    "p_placement_status" "text" DEFAULT NULL::"text",
+    "p_placed_qty" numeric DEFAULT NULL::numeric,
+    "p_status" "text" DEFAULT NULL::"text"
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_url text := trim(coalesce(p_url, ''));
+  v_desc text := nullif(trim(coalesce(p_description, '')), '');
+  v_product_name text := nullif(trim(coalesce(p_product_name, '')), '');
+  v_image_url text := nullif(trim(coalesce(p_image_url, '')), '');
+  v_qty numeric := p_needed_qty;
+  v_row public.pp_order_lines%ROWTYPE;
+  v_shipment_status text;
+  v_placement text := lower(trim(coalesce(p_placement_status, '')));
+  v_status text := lower(trim(coalesce(p_status, '')));
+BEGIN
+  IF NOT "public"."has_active_tenant_membership"("p_tenant_id") THEN
+    RAISE EXCEPTION 'Not allowed for tenant %', "p_tenant_id" USING ERRCODE = '42501';
+  END IF;
+
+  IF length(v_url) = 0 THEN
+    RAISE EXCEPTION 'URL is required' USING ERRCODE = '22023';
+  END IF;
+
+  IF v_qty IS NULL OR v_qty <= 0 THEN
+    RAISE EXCEPTION 'Quantity must be positive' USING ERRCODE = '22023';
+  END IF;
+
+  IF v_placement <> '' AND v_placement NOT IN ('none', 'order_placed', 'not_available') THEN
+    RAISE EXCEPTION 'Invalid placement status: %', p_placement_status USING ERRCODE = '22023';
+  END IF;
+
+  IF v_status <> '' AND v_status NOT IN ('draft', 'requested', 'processing', 'done', 'cancelled') THEN
+    RAISE EXCEPTION 'Invalid line status: %', p_status USING ERRCODE = '22023';
+  END IF;
+
+  IF p_pp_supplier_group_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.pp_people_group g
+    WHERE g.id = p_pp_supplier_group_id
+      AND g.tenant_id = p_tenant_id
+      AND g.type = 'supplier'
+      AND g.deleted_at IS NULL;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Invalid supplier group' USING ERRCODE = '22023';
+    END IF;
+  END IF;
+
+  IF p_shipment_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.pp_shipment sh
+    WHERE sh.id = p_shipment_id
+      AND sh.tenant_id = p_tenant_id
+      AND sh.deleted_at IS NULL;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Invalid shipment' USING ERRCODE = '22023';
+    END IF;
+  END IF;
+
+  UPDATE public.pp_order_lines l
+  SET url = v_url,
+      needed_qty = v_qty,
+      description = v_desc,
+      product_name = v_product_name,
+      image_url = v_image_url,
+      unit_price = p_unit_price,
+      pp_supplier_group_id = p_pp_supplier_group_id,
+      shipment_id = p_shipment_id,
+      is_added_to_cart = coalesce(p_is_added_to_cart, l.is_added_to_cart),
+      added_to_cart_at = CASE
+        WHEN p_is_added_to_cart IS TRUE AND NOT l.is_added_to_cart THEN now()
+        WHEN p_is_added_to_cart IS FALSE THEN NULL
+        ELSE l.added_to_cart_at
+      END,
+      placement_status = CASE WHEN v_placement = '' THEN l.placement_status ELSE v_placement END,
+      placed_qty = p_placed_qty,
+      status = CASE WHEN v_status = '' THEN l.status ELSE v_status END,
+      updated_at = now()
+  WHERE l.id = p_line_id
+    AND l.tenant_id = p_tenant_id
+    AND l.deleted_at IS NULL
+  RETURNING * INTO v_row;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order line not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  SELECT s.status INTO v_shipment_status
+  FROM public.pp_shipment s
+  WHERE s.id = v_row.shipment_id
+    AND s.deleted_at IS NULL;
+
+  RETURN public._pp_order_line_to_json(v_row, v_shipment_status);
+END;
+$$;
+
+ALTER FUNCTION "public"."update_pp_order_line_staff"("p_tenant_id" bigint, "p_line_id" bigint, "p_url" "text", "p_needed_qty" numeric, "p_description" "text", "p_product_name" "text", "p_image_url" "text", "p_unit_price" numeric, "p_pp_supplier_group_id" bigint, "p_shipment_id" bigint, "p_is_added_to_cart" boolean, "p_placement_status" "text", "p_placed_qty" numeric, "p_status" "text") OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."delete_pp_order_line_staff"(
+    "p_tenant_id" bigint,
+    "p_line_id" bigint
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF NOT "public"."has_active_tenant_membership"("p_tenant_id") THEN
+    RAISE EXCEPTION 'Not allowed for tenant %', "p_tenant_id" USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.pp_order_lines l
+  SET deleted_at = now(),
+      updated_at = now()
+  WHERE l.id = p_line_id
+    AND l.tenant_id = p_tenant_id
+    AND l.deleted_at IS NULL;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order line not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  RETURN jsonb_build_object('id', p_line_id, 'deleted', true);
+END;
+$$;
+
+ALTER FUNCTION "public"."delete_pp_order_line_staff"("p_tenant_id" bigint, "p_line_id" bigint) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."update_pp_purchase_request_instructions"(
     "p_tenant_id" bigint,
@@ -952,7 +1235,7 @@ BEGIN
   END IF;
 
   UPDATE public.pp_purchase_requests r
-  SET status = 'post',
+  SET status = 'requested',
       request_number = v_number,
       updated_at = now()
   WHERE r.id = p_request_id
@@ -961,11 +1244,12 @@ BEGIN
   RETURNING * INTO v_row;
 
   UPDATE public.pp_order_lines l
-  SET status = 'pending_review',
+  SET status = 'requested',
       updated_at = now()
   WHERE l.tenant_id = p_tenant_id
     AND l.purchase_request_id = p_request_id
-    AND l.deleted_at IS NULL;
+    AND l.deleted_at IS NULL
+    AND l.status = 'draft';
 
   RETURN jsonb_build_object(
     'id', v_row.id,

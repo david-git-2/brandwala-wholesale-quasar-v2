@@ -20,7 +20,7 @@ export function resolvePpRequestOrderLinesView(
     return 'customer_draft';
   }
 
-  if (requestStatus === 'post') {
+  if (requestStatus === 'requested') {
     return 'customer_posted';
   }
 

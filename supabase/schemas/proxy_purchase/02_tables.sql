@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS "public"."pp_purchase_requests" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "deleted_at" timestamp with time zone,
-    CONSTRAINT "pp_purchase_requests_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'post'::"text"]))),
+    CONSTRAINT "pp_purchase_requests_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'requested'::"text"]))),
     CONSTRAINT "pp_purchase_requests_request_number_not_blank" CHECK (("request_number" IS NULL OR "length"(TRIM(BOTH FROM "request_number")) > 0))
 );
 
@@ -184,16 +184,27 @@ CREATE TABLE IF NOT EXISTS "public"."pp_order_lines" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
     "purchase_request_id" bigint NOT NULL,
+    "pp_customer_group_id" bigint NOT NULL,
     "url" "text" NOT NULL,
     "needed_qty" numeric NOT NULL,
     "description" "text",
+    "product_name" "text",
+    "image_url" "text",
+    "unit_price" numeric,
+    "pp_supplier_group_id" bigint,
+    "shipment_id" bigint,
+    "is_added_to_cart" boolean DEFAULT false NOT NULL,
+    "added_to_cart_at" timestamp with time zone,
+    "placement_status" "text" DEFAULT 'none'::"text" NOT NULL,
+    "placed_qty" numeric,
     "status" "text" DEFAULT 'draft'::"text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "deleted_at" timestamp with time zone,
     CONSTRAINT "pp_order_lines_url_not_blank" CHECK (("length"(TRIM(BOTH FROM "url")) > 0)),
     CONSTRAINT "pp_order_lines_needed_qty_positive" CHECK (("needed_qty" > (0)::numeric)),
-    CONSTRAINT "pp_order_lines_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'pending_review'::"text"])))
+    CONSTRAINT "pp_order_lines_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'requested'::"text", 'processing'::"text", 'done'::"text", 'cancelled'::"text"]))),
+    CONSTRAINT "pp_order_lines_placement_status_check" CHECK (("placement_status" = ANY (ARRAY['none'::"text", 'order_placed'::"text", 'not_available'::"text"])))
 );
 
 ALTER TABLE "public"."pp_order_lines" OWNER TO "postgres";
@@ -214,8 +225,21 @@ ALTER TABLE ONLY "public"."pp_order_lines"
 ALTER TABLE ONLY "public"."pp_order_lines"
     ADD CONSTRAINT "pp_order_lines_purchase_request_id_fkey" FOREIGN KEY ("purchase_request_id") REFERENCES "public"."pp_purchase_requests"("id") ON DELETE CASCADE;
 
+ALTER TABLE ONLY "public"."pp_order_lines"
+    ADD CONSTRAINT "pp_order_lines_pp_customer_group_id_fkey" FOREIGN KEY ("pp_customer_group_id") REFERENCES "public"."pp_people_group"("id") ON DELETE RESTRICT;
+
+ALTER TABLE ONLY "public"."pp_order_lines"
+    ADD CONSTRAINT "pp_order_lines_pp_supplier_group_id_fkey" FOREIGN KEY ("pp_supplier_group_id") REFERENCES "public"."pp_people_group"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."pp_order_lines"
+    ADD CONSTRAINT "pp_order_lines_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."pp_shipment"("id") ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS "pp_order_lines_request_active_idx"
     ON "public"."pp_order_lines" ("purchase_request_id", "created_at" ASC)
+    WHERE ("deleted_at" IS NULL);
+
+CREATE INDEX IF NOT EXISTS "pp_order_lines_customer_group_active_idx"
+    ON "public"."pp_order_lines" ("pp_customer_group_id", "created_at" DESC)
     WHERE ("deleted_at" IS NULL);
 
 CREATE OR REPLACE TRIGGER "trg_pp_purchase_requests_updated_at"

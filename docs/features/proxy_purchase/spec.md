@@ -74,12 +74,12 @@ flowchart LR
 
 | Stage | Actor | Line status | Main fields |
 | :--- | :--- | :--- | :--- |
-| 1 Create | Customer | `pending_review` | `url`, `needed_qty`, `description`; header `bucket_*` |
-| 2 Bag & price | App | `bag_confirmed` → `assigned` | `product_name`, `image_url`, `unit_price`, `brand`, bag flags, `pp_supplier_group_id` |
-| 3 Pay & place | Supplier | `order_placed` | `placed_qty`, payment + `origin_order_*` |
-| 4 Ship & bill | App | `in_shipment` → `delivered` | `shipment_id`; bill group → `bill_id` |
+| 1 Create | Customer | `draft` → post → `requested` | `url`, `needed_qty`, `description`; `pp_customer_group_id`; header `bucket_*` |
+| 2 Bag & price | App | `processing` + cart flag | `product_name`, `image_url`, `unit_price`, `is_added_to_cart`, `pp_supplier_group_id` |
+| 3 Pay & place | Supplier | `placement_status` | `placed_qty`, payment + `origin_order_*` (later) |
+| 4 Ship & bill | App | `pp_shipment.status` → `done` | `shipment_id`; bill group → `bill_id` (later) |
 
-Also: `out_of_stock`, `cancelled`. Parent request header: **v1 customer compose** stores `draft` \| `post` (`request_number` via `proxy_purchase_request` numbering on draft create; lines are `draft` on the request until post, then `pending_review`). **Later:** derived `open` \| `in_progress` \| `completed` \| `cancelled` from lines.
+Line **lifecycle** `status`: `draft` \| `requested` \| `processing` \| `done` \| `cancelled`. **Placement:** `none` \| `order_placed` \| `not_available`. Partial place = `order_placed` + `placed_qty < needed_qty`. Warehouse/transit labels from `pp_shipment` via `shipment_id`. Parent request header: `draft` \| `requested`.
 
 **Supplier bulk place:** one RPC stamps the same payment / origin fields on selected lines.
 
@@ -135,11 +135,12 @@ Also: `out_of_stock`, `cancelled`. Parent request header: **v1 customer compose*
 ### US-2: Customer dashboard (proxy)
 - **Requests | Order lines** tabs (customer): list all group purchase requests; open request page; **Add request**.
   - [x] Requests tab + list RPC; empty state links to create page.
-  - [ ] Order lines tab (placeholder); line list, group, sort (later).
+  - [x] Order lines tab: group line list via `list_pp_order_lines_for_customer` + shared list UI.
+  - [ ] Group / sort on order lines tab (later).
 
 ### US-3: Create purchase request page (proxy)
 - Route `/:slug/proxy/requests/:id`: draft RPC → add lines + bucket instructions → **Post** to admin.
-  - [x] Allocates `request_number` on draft create; post sets header `post` and lines → `pending_review`.
+  - [x] Allocates `request_number` on draft create; post sets header and lines → `requested`.
 
 ### US-4: App line list and enrich
 - Same list; filter by customer group; set name, image URL, price, brand, bag, supplier, status.

@@ -60,20 +60,46 @@
                 <span v-if="row.line_count > 0"> · {{ row.line_count }} item{{ row.line_count === 1 ? '' : 's' }}</span>
               </template>
               <template #aside>
-                <TfStatusBadge :status="row.status" :label="statusLabel(row.status)" />
+                <div class="row items-center no-wrap q-gutter-xs">
+                  <TfBtn
+                    v-if="row.status === 'draft'"
+                    variant="icon"
+                    icon="ph ph-trash"
+                    color="negative"
+                    aria-label="Delete draft request"
+                    :loading="deleteDraft.isPending.value && draftRequestId === row.id"
+                    @click.stop="confirmDeleteRequest(row.id)"
+                  />
+                  <TfStatusBadge :status="row.status" :label="statusLabel(row.status)" />
+                </div>
               </template>
             </TfEntityListRow>
           </TfEntityListShell>
         </template>
 
-        <TfEmptyState
-          v-else
-          title="Order lines"
-          message="A line list for your group will appear here in a later step."
-          icon="ph ph-link"
-        />
+        <template v-else>
+          <TfSkeletonRows v-if="orderLinesQuery.isPending.value" :rows="6" :cols="1" />
+          <TfEmptyState
+            v-else-if="!orderLines.length"
+            title="No order lines"
+            message="Add items to a purchase request to see them here."
+            icon="ph ph-link"
+          />
+          <PpOrderLineList v-else :lines="orderLines" />
+        </template>
       </template>
     </div>
+
+    <TfConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Delete draft request?"
+      message="This cannot be undone. The request and its items will be removed."
+      confirm-label="Delete"
+      destructive
+      :confirm-loading="deleteDraft.isPending.value"
+      @confirm="onConfirmDeleteRequest"
+      @cancel="draftRequestId = null"
+    />
   </q-page>
 </template>
 
@@ -82,6 +108,7 @@ import { date } from 'quasar';
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfConfirmDialog from 'src/components/ui/TfConfirmDialog.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
 import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
@@ -89,7 +116,9 @@ import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import PpOrderLineList from '../../components/order-lines/PpOrderLineList.vue';
 import { usePpCustomerDashboardQuery } from '../../composables/usePpCustomerDashboardQuery';
+import { usePpCustomerOrderLinesQuery } from '../../composables/usePpCustomerOrderLinesQuery';
 import { usePpPurchaseRequestMutations } from '../../composables/usePpPurchaseRequestMutations';
 import type { PpPurchaseRequestListItem, PpPurchaseRequestStatus } from '../../types/ppPurchaseRequest';
 
@@ -100,6 +129,7 @@ const authStore = useAuthStore();
 type DashboardTab = 'requests' | 'lines';
 
 const activeTab = ref<DashboardTab>('requests');
+const showDeleteConfirm = ref(false);
 
 const tabOptions = [
   { name: 'requests', label: 'Requests' },
@@ -111,21 +141,28 @@ const isCustomerRole = computed(() => {
   return role === 'proxy_customer_admin' || role === 'proxy_customer_staff';
 });
 
-const customerQueryEnabled = computed(
+const customerRequestsQueryEnabled = computed(
   () => isCustomerRole.value && activeTab.value === 'requests',
 );
 
-const requestsQuery = usePpCustomerDashboardQuery(customerQueryEnabled);
+const customerOrderLinesQueryEnabled = computed(
+  () => isCustomerRole.value && activeTab.value === 'lines',
+);
+
+const requestsQuery = usePpCustomerDashboardQuery(customerRequestsQueryEnabled);
 const requests = computed(() => requestsQuery.data.value ?? []);
 
+const orderLinesQuery = usePpCustomerOrderLinesQuery(customerOrderLinesQueryEnabled);
+const orderLines = computed(() => orderLinesQuery.data.value ?? []);
+
 const draftRequestId = ref<number | null>(null);
-const { createDraft } = usePpPurchaseRequestMutations(draftRequestId);
+const { createDraft, deleteDraft } = usePpPurchaseRequestMutations(draftRequestId);
 
 const requestLabel = (row: PpPurchaseRequestListItem) =>
   row.request_number?.trim() || `Request #${row.id}`;
 
 const statusLabel = (status: PpPurchaseRequestStatus) =>
-  status === 'post' ? 'Posted' : 'Draft';
+  status === 'requested' ? 'Requested' : 'Draft';
 
 const formatDate = (value: string) => date.formatDate(value, 'D MMM YYYY');
 
@@ -144,6 +181,21 @@ const openRequest = (requestId: number) => {
     name: 'proxy-purchase-request-page',
     params: { tenantSlug, requestId: String(requestId) },
   });
+};
+
+const confirmDeleteRequest = (requestId: number) => {
+  draftRequestId.value = requestId;
+  showDeleteConfirm.value = true;
+};
+
+const onConfirmDeleteRequest = async () => {
+  try {
+    await deleteDraft.mutateAsync();
+    showDeleteConfirm.value = false;
+    draftRequestId.value = null;
+  } catch {
+    /* error toast handled in mutation */
+  }
 };
 </script>
 

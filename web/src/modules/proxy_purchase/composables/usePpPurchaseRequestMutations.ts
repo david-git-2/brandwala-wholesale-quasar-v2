@@ -17,6 +17,12 @@ export function usePpPurchaseRequestMutations(requestId: Ref<number | null>) {
     });
   };
 
+  const invalidateCustomerOrderLines = () => {
+    void queryClient.invalidateQueries({
+      queryKey: ppPurchaseQueryKeys.customerOrderLines(tenantId.value),
+    });
+  };
+
   const invalidate = () => {
     void queryClient.invalidateQueries({
       queryKey: ppPurchaseQueryKeys.request(tenantId.value, requestId.value),
@@ -25,6 +31,7 @@ export function usePpPurchaseRequestMutations(requestId: Ref<number | null>) {
       queryKey: ppPurchaseQueryKeys.requestLines(tenantId.value, requestId.value),
     });
     invalidateCustomerRequests();
+    invalidateCustomerOrderLines();
   };
 
   const createDraft = useMutation({
@@ -150,7 +157,7 @@ export function usePpPurchaseRequestMutations(requestId: Ref<number | null>) {
             prev
               ? {
                   ...prev,
-                  status: 'post',
+                  status: 'requested',
                   request_number: posted.request_number ?? prev.request_number,
                   bucket_description: posted.bucket_description ?? prev.bucket_description,
                   updated_at: posted.updated_at || prev.updated_at,
