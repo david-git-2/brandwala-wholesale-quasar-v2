@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bump patch in root + web package.json; print new semver on stdout.
+# Bump patch (0-9) in root + web package.json; rollover bump middle. Major is manual.
+# Print new semver on stdout.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 node - "${ROOT_DIR}" <<'NODE'
@@ -16,6 +17,10 @@ const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
 const parts = String(rootPkg.version || '0.0.0').trim().split('.').map((n) => Number.parseInt(n, 10) || 0);
 while (parts.length < 3) parts.push(0);
 parts[2] += 1;
+if (parts[2] > 9) {
+  parts[2] = 0;
+  parts[1] += 1;
+}
 const next = parts.join('.');
 rootPkg.version = next;
 fs.writeFileSync(rootPkgPath, `${JSON.stringify(rootPkg, null, 2)}\n`);

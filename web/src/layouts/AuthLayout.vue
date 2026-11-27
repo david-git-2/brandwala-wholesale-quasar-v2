@@ -82,11 +82,12 @@
 import { computed, provide, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
-import authSceneBg from 'src/assets/shop-login-bg.png';
 import { SHOP_TYPE_AUTH_GHOST_LABEL } from 'src/modules/tenant/composables/useShopEntryShopType';
 import { getShopTypePathFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
 
 type AuthLayoutScope = 'platform' | 'app' | 'shop' | 'investor';
+
+const authSceneBg = '/brand/login-bg.webp';
 
 const route = useRoute();
 

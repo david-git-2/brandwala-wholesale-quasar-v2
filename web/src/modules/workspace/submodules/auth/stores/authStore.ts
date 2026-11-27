@@ -117,6 +117,14 @@ export const useAuthStore = defineStore('auth', () => {
   const snapshot = ref<StoredAuthAccess | null>(readStorage());
   const tenantStore = useTenantStore();
 
+  // Restore workspace selection before route guards (AppLayout hydrate is too late on reload).
+  if (snapshot.value?.tenant) {
+    tenantStore.hydrateSelectedTenantFromAuth({
+      id: snapshot.value.tenant.id,
+      slug: snapshot.value.tenant.slug,
+    });
+  }
+
   const FRESHNESS_STORAGE_KEY = 'brandwala.auth.freshness.timestamp';
   const FRESHNESS_TTL_MS = 300_000; // 5 minutes
 
@@ -139,9 +147,12 @@ export const useAuthStore = defineStore('auth', () => {
   const user = computed(() => snapshot.value?.user ?? null);
   const member = computed(() => snapshot.value?.member ?? null);
   const tenant = computed(() => snapshot.value?.tenant ?? null);
-  const selectedTenant = computed(() =>
-    snapshot.value?.scope === 'app' ? tenantStore.selectedTenant : (snapshot.value?.tenant ?? null),
-  );
+  const selectedTenant = computed(() => {
+    if (snapshot.value?.scope === 'app') {
+      return tenantStore.selectedTenant ?? snapshot.value.tenant ?? null;
+    }
+    return snapshot.value?.tenant ?? null;
+  });
   const availableAdminTenants = computed(() => tenantStore.availableAdminTenants);
   const customerGroup = computed(() => snapshot.value?.customerGroup ?? null);
   const activeModuleKeys = computed(() => snapshot.value?.activeModuleKeys ?? []);
@@ -186,6 +197,12 @@ export const useAuthStore = defineStore('auth', () => {
     };
     writeStorage(snapshot.value);
     writeFreshnessTimestamp(Date.now());
+    if (nextAccess.tenant) {
+      tenantStore.hydrateSelectedTenantFromAuth({
+        id: nextAccess.tenant.id,
+        slug: nextAccess.tenant.slug,
+      });
+    }
   };
 
   const silentRebootstrap = async () => {

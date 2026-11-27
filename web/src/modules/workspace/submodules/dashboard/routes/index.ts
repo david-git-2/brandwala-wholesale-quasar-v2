@@ -39,7 +39,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
           allowedRoles: ['admin', 'staff'],
           requireTenantContext: true,
           validateAccess: ({ authStore, to }) => {
-            if (!authStore.selectedTenant) {
+            if (!authStore.selectedTenant && !authStore.tenant) {
               return { name: 'admin-tenant-list' };
             }
             return validateAppRouteTenantSlug({ authStore, to });
