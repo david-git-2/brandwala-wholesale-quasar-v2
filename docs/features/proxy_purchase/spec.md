@@ -79,7 +79,7 @@ flowchart LR
 | 3 Pay & place | Supplier | `order_placed` | `placed_qty`, payment + `origin_order_*` |
 | 4 Ship & bill | App | `in_shipment` → `delivered` | `shipment_id`; bill group → `bill_id` |
 
-Also: `out_of_stock`, `cancelled`. Parent request: `open` \| `in_progress` \| `completed` \| `cancelled` (derived from lines).
+Also: `out_of_stock`, `cancelled`. Parent request header: **v1 customer compose** stores `draft` \| `post` (`request_number` via `proxy_purchase_request` numbering on draft create; lines are `draft` on the request until post, then `pending_review`). **Later:** derived `open` \| `in_progress` \| `completed` \| `cancelled` from lines.
 
 **Supplier bulk place:** one RPC stamps the same payment / origin fields on selected lines.
 
@@ -121,7 +121,7 @@ Also: `out_of_stock`, `cancelled`. Parent request: `open` \| `in_progress` \| `c
 | :--- | :--- |
 | `get_proxy_bootstrap_context` | Proxy login |
 | `list_pp_order_lines` | Shared list; filters: group, status, supplier, customer, unbilled |
-| `create_pp_purchase_request` | Create page submit + number |
+| `create_pp_purchase_request_draft` / `post_pp_purchase_request` | Draft create (allocates `request_number`) + customer **Post** |
 | `update_pp_order_line_*` | Enrich, assign, bulk place, ship, bill stamp |
 | `create_pp_shipment` | Ship number |
 | Bill create wrapper | Group lines → bill + set `bill_id` (detail at implement) |
@@ -133,12 +133,13 @@ Also: `out_of_stock`, `cancelled`. Parent request: `open` \| `in_progress` \| `c
   - [ ] Assign only to `type = supplier` groups.
 
 ### US-2: Customer dashboard (proxy)
-- Line list for own group; group by request or status; sort.
-  - [ ] Empty state links to create page.
+- **Requests | Order lines** tabs (customer): list all group purchase requests; open request page; **Add request**.
+  - [x] Requests tab + list RPC; empty state links to create page.
+  - [ ] Order lines tab (placeholder); line list, group, sort (later).
 
 ### US-3: Create purchase request page (proxy)
-- Separate route: lines + bucket extras → submit.
-  - [ ] Allocates `request_number`; lines `pending_review`.
+- Route `/:slug/proxy/requests/:id`: draft RPC → add lines + bucket instructions → **Post** to admin.
+  - [x] Allocates `request_number` on draft create; post sets header `post` and lines → `pending_review`.
 
 ### US-4: App line list and enrich
 - Same list; filter by customer group; set name, image URL, price, brand, bag, supplier, status.

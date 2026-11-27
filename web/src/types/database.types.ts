@@ -1795,6 +1795,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pp_order_lines": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"description": string | null,"id": number,"needed_qty": number,"purchase_request_id": number,"status": string,"tenant_id": number,"updated_at": string,"url": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"needed_qty": number,"purchase_request_id": number,"status"?: string,"tenant_id": number,"updated_at"?: string,"url": string
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"needed_qty"?: number,"purchase_request_id"?: number,"status"?: string,"tenant_id"?: number,"updated_at"?: string,"url"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_order_lines_purchase_request_id_fkey"
+      columns: ["purchase_request_id"]
+isOneToOne: false
+      referencedRelation: "pp_purchase_requests"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_order_lines_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"pp_people_group": {
                   Row: {
                     "created_at": string,"deleted_at": string | null,"id": number,"name": string,"tenant_id": number,"type": string,"updated_at": string
@@ -1835,6 +1861,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "pp_people_group_member_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pp_purchase_requests": {
+                  Row: {
+                    "bucket_description": string | null,"created_at": string,"created_by_member_id": number,"deleted_at": string | null,"id": number,"people_group_id": number,"request_number": string | null,"status": string,"tenant_id": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bucket_description"?: string | null,"created_at"?: string,"created_by_member_id": number,"deleted_at"?: string | null,"id"?: number,"people_group_id": number,"request_number"?: string | null,"status"?: string,"tenant_id": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "bucket_description"?: string | null,"created_at"?: string,"created_by_member_id"?: number,"deleted_at"?: string | null,"id"?: number,"people_group_id"?: number,"request_number"?: string | null,"status"?: string,"tenant_id"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_purchase_requests_created_by_member_id_fkey"
+      columns: ["created_by_member_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group_member"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_purchase_requests_people_group_id_fkey"
+      columns: ["people_group_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_purchase_requests_tenant_id_fkey"
       columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenants"
@@ -4707,6 +4765,16 @@ isOneToOne: false
               "available_atp": number,"global_stock_id": number,"location_name": string,"shipment_name": string
             }[]
                            },
+"_pp_assert_customer_request_access":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: {
+              "member_id": number,"people_group_id": number,"request_status": string
+            }[]
+                           },
+"_pp_resolve_proxy_customer_member":
+{ Args: { "p_tenant_id": number }; Returns: {
+              "member_id": number,"people_group_id": number
+            }[]
+                           },
 "_recompute_shop_order_item_fulfillment":
 { Args: { "p_order_item_id": number }; Returns: undefined
                            },
@@ -4965,6 +5033,9 @@ isOneToOne: false
                            },
 "add_pbc_backlog_to_file":
 { Args: { "p_backlog_ids": (number)[],"p_file_id": number }; Returns: (number)[]
+                           },
+"add_pp_order_line":
+{ Args: { "p_description"?: string,"p_needed_qty": number,"p_request_id": number,"p_tenant_id": number,"p_url": string }; Returns: Json
                            },
 "add_shipment_item_from_product":
 { Args: { "p_product_id": number,"p_quantity": number,"p_shipment_id": number }; Returns: {
@@ -5793,6 +5864,9 @@ isOneToOne: false
 "create_pp_people_group_member":
 { Args: { "p_email": string,"p_name": string,"p_people_group_id": number,"p_role": string,"p_tenant_id": number }; Returns: Json
                            },
+"create_pp_purchase_request_draft":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
 "create_pp_shipment":
 { Args: { "p_name": string,"p_tenant_id": number }; Returns: Json
                            },
@@ -6091,6 +6165,12 @@ isOneToOne: false
                            },
 "delete_my_push_subscription":
 { Args: { "p_fcm_token": string }; Returns: Json
+                           },
+"delete_pp_order_line":
+{ Args: { "p_line_id": number,"p_request_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"delete_pp_purchase_request_draft":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "delete_shipment":
 { Args: { "p_id": number }; Returns: undefined
@@ -6460,6 +6540,9 @@ isOneToOne: false
                            },
 "get_pending_order_qty":
 { Args: { "p_allocation_id": number }; Returns: number
+                           },
+"get_pp_purchase_request":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "get_procurement_dashboard_metrics":
 { Args: { "p_tenant_id": number }; Returns: Json
@@ -7278,11 +7361,17 @@ isOneToOne: false
 "list_pays_for_source":
 { Args: { "p_source_id": string,"p_source_type": string,"p_tenant_id": number }; Returns: Json
                            },
+"list_pp_order_lines_for_request":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
+                           },
 "list_pp_people_group_members":
 { Args: { "p_people_group_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "list_pp_people_groups":
 { Args: { "p_tenant_id": number,"p_type": string }; Returns: Json
+                           },
+"list_pp_purchase_requests_for_customer":
+{ Args: { "p_tenant_id": number }; Returns: Json
                            },
 "list_pp_shipments":
 { Args: { "p_tenant_id": number }; Returns: Json
@@ -8094,6 +8183,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"post_pp_purchase_request":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
+                           },
 "post_sales_invoice":
 { Args: { "p_invoice_id": number }; Returns: undefined
                            },
@@ -8842,6 +8934,12 @@ isOneToOne: false
                            },
 "update_payment_instrument_details":
 { Args: { "p_bd_bank_id"?: number,"p_cheque_date"?: string,"p_cheque_number"?: string,"p_instrument_id": number,"p_reference"?: string,"p_tenant_id": number }; Returns: Json
+                           },
+"update_pp_order_line":
+{ Args: { "p_description"?: string,"p_line_id": number,"p_needed_qty": number,"p_request_id": number,"p_tenant_id": number,"p_url": string }; Returns: Json
+                           },
+"update_pp_purchase_request_instructions":
+{ Args: { "p_bucket_description": string,"p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "update_product_based_costing_items":
 { Args: { "p_items": Json }; Returns: {

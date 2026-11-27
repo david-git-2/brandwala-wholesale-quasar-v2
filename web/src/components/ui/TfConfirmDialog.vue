@@ -11,10 +11,11 @@
         <p class="q-mt-xs q-mb-none tf-confirm-dialog__msg">{{ message }}</p>
         <slot />
       </q-card-section>
-      <q-card-actions align="right" class="q-px-md q-pb-sm">
-        <TfBtn variant="tertiary" :label="cancelLabel" @click="onCancel" />
+      <q-card-actions align="right" class="tf-confirm-dialog__actions row q-gutter-sm">
+        <TfBtn variant="tertiary" size="md" :label="cancelLabel" @click="onCancel" />
         <TfBtn
           :variant="confirmVariant"
+          size="md"
           :label="confirmLabel"
           :loading="confirmLoading"
           @click="onConfirm"
@@ -101,5 +102,9 @@ function onHide() {
 .tf-confirm-dialog__msg {
   font-size: 13px;
   color: var(--tf-neutral-muted);
+}
+
+.tf-confirm-dialog__actions {
+  padding: 8px 16px 16px;
 }
 </style>

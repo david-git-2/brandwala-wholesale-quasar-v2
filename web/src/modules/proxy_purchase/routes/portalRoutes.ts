@@ -46,6 +46,12 @@ const proxyPortalRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/portal/ProxyDashboardPage.vue'),
         meta: { authScope: 'proxy' },
       },
+      {
+        path: 'requests/:requestId',
+        name: 'proxy-purchase-request-page',
+        component: () => import('../pages/portal/ProxyPurchaseRequestCreatePage.vue'),
+        meta: { authScope: 'proxy' },
+      },
     ],
   },
 ];
