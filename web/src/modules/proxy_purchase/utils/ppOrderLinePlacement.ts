@@ -54,6 +54,20 @@ export const PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS = PP_ORDER_LINE_STAFF_PLACEME
   }),
 );
 
+/** Supplier portal list: hidden fulfillment values (passed to RPC exclude arg). */
+export const PP_SUPPLIER_LIST_EXCLUDE_PLACEMENT_STATUSES = [
+  'draft',
+  'processing',
+  'cancelled',
+] as const satisfies readonly PpOrderLinePlacementStatus[];
+
+const PP_SUPPLIER_EXCLUDE_SET = new Set<string>(PP_SUPPLIER_LIST_EXCLUDE_PLACEMENT_STATUSES);
+
+/** Fulfillment values suppliers can list and filter (excludes hidden statuses). */
+export const PP_SUPPLIER_FILTER_PLACEMENT_STATUSES = PP_ORDER_LINE_PLACEMENT_STATUSES.filter(
+  (value) => !PP_SUPPLIER_EXCLUDE_SET.has(value),
+);
+
 export function ppSupplierPlacementSelectOptions(current: PpOrderLinePlacementStatus) {
   if (current === 'added_to_cart') {
     return [

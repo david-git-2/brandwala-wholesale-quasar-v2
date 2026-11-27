@@ -89,19 +89,43 @@
       </template>
 
       <template v-else-if="isSupplierRole">
-        <header class="proxy-dashboard-page__head row items-center justify-between q-mb-sm">
-          <div>
+        <header class="proxy-dashboard-page__head row items-center justify-between q-mb-sm q-gutter-sm">
+          <div class="col min-width-0">
             <h1 class="text-h6 text-weight-medium q-my-none">Assigned order lines</h1>
             <p v-if="supplierGroupName" class="text-caption text-grey-7 q-mb-none q-mt-xs">
               {{ supplierGroupName }}
             </p>
           </div>
+          <q-btn
+            flat
+            round
+            dense
+            color="primary"
+            icon="ph ph-faders"
+            class="flex-shrink-0"
+            :ripple="false"
+            aria-label="Filter order lines"
+            @click="openSupplierLineFilterDrawer"
+          >
+            <q-badge
+              v-if="activeSupplierLineFilterCount > 0"
+              color="primary"
+              floating
+              rounded
+              :label="String(activeSupplierLineFilterCount)"
+            />
+            <q-tooltip>Filter</q-tooltip>
+          </q-btn>
         </header>
         <TfSkeletonRows v-if="supplierOrderLinesQuery.isPending.value" :rows="6" :cols="1" />
         <TfEmptyState
           v-else-if="!supplierOrderLines.length"
-          title="No order lines"
-          message="Lines assigned to your supplier group will appear here after app staff assigns them."
+          :title="activeSupplierLineFilterCount > 0 ? 'No matching order lines' : 'No order lines'"
+          :message="
+            activeSupplierLineFilterCount > 0
+              ? 'Try changing or clearing filters.'
+              : 'Lines assigned to your supplier group will appear here after app staff assigns them.'
+          "
           icon="ph ph-list-dashes"
         />
         <PpSupplierOrderLineList
@@ -110,6 +134,13 @@
           :lines="supplierOrderLines"
           :updating-line-id="supplierUpdatingLineId"
           @patch="onSupplierPatchLine"
+        />
+        <PpSupplierOrderLineFilterDrawer
+          v-model="supplierLineFilterDrawerOpen"
+          :draft="draftSupplierLineFilters"
+          @update:draft="draftSupplierLineFilters = $event"
+          @apply="applySupplierLineFilters"
+          @reset="resetSupplierLineFilters"
         />
       </template>
 
@@ -148,6 +179,7 @@ import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import PpCustomerOrderLineList from '../../components/order-lines/PpCustomerOrderLineList.vue';
+import PpSupplierOrderLineFilterDrawer from '../../components/order-lines/PpSupplierOrderLineFilterDrawer.vue';
 import PpSupplierOrderLineList from '../../components/order-lines/PpSupplierOrderLineList.vue';
 import { usePpCustomerDashboardQuery } from '../../composables/usePpCustomerDashboardQuery';
 import { usePpCustomerOrderLinesQuery } from '../../composables/usePpCustomerOrderLinesQuery';
@@ -159,6 +191,11 @@ import type {
   PpPurchaseRequestStatus,
   PpSupplierOrderLineUpdatePayload,
 } from '../../types/ppPurchaseRequest';
+import {
+  countActivePpSupplierOrderLineFilters,
+  emptyPpSupplierOrderLineListFilters,
+  type PpSupplierOrderLineListFilters,
+} from '../../types/ppSupplierOrderLineFilters';
 
 const route = useRoute();
 const router = useRouter();
@@ -185,7 +222,36 @@ const isSupplierRole = computed(() => {
 });
 
 const supplierOrderLinesQueryEnabled = computed(() => isSupplierRole.value);
-const supplierOrderLinesQuery = usePpSupplierOrderLinesQuery(supplierOrderLinesQueryEnabled);
+const appliedSupplierLineFilters = ref<PpSupplierOrderLineListFilters>(
+  emptyPpSupplierOrderLineListFilters(),
+);
+const draftSupplierLineFilters = ref<PpSupplierOrderLineListFilters>(
+  emptyPpSupplierOrderLineListFilters(),
+);
+const supplierLineFilterDrawerOpen = ref(false);
+
+const activeSupplierLineFilterCount = computed(() =>
+  countActivePpSupplierOrderLineFilters(appliedSupplierLineFilters.value),
+);
+
+const applySupplierLineFilters = () => {
+  appliedSupplierLineFilters.value = { ...draftSupplierLineFilters.value };
+};
+
+const resetSupplierLineFilters = () => {
+  draftSupplierLineFilters.value = emptyPpSupplierOrderLineListFilters();
+  appliedSupplierLineFilters.value = emptyPpSupplierOrderLineListFilters();
+};
+
+const openSupplierLineFilterDrawer = () => {
+  draftSupplierLineFilters.value = { ...appliedSupplierLineFilters.value };
+  supplierLineFilterDrawerOpen.value = true;
+};
+
+const supplierOrderLinesQuery = usePpSupplierOrderLinesQuery(
+  supplierOrderLinesQueryEnabled,
+  appliedSupplierLineFilters,
+);
 const supplierOrderLines = computed(() => supplierOrderLinesQuery.data.value ?? []);
 
 const supplierGroupName = computed(() => authStore.customerGroup?.name?.trim() || null);

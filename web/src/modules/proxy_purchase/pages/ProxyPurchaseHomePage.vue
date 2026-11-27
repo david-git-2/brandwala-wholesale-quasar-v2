@@ -137,9 +137,11 @@
             :lines="orderLines"
             :group-by="lineGroupBy"
             :updating-line-id="updatingLineId"
+            :bulk-pending="bulkLinePending"
             @edit="startEditLine"
             @patch="onPatchLine"
             @delete-selected="confirmDeleteSelected"
+            @bulk-update="onBulkUpdate"
           />
         </div>
       </template>
@@ -213,6 +215,7 @@ import type {
   PpOrderLine,
   PpPurchaseRequestStaffListItem,
   PpPurchaseRequestStatus,
+  PpStaffOrderLineBulkPatch,
   PpStaffOrderLineUpdatePayload,
   PpStaffOrderLineWritePayload,
 } from '../types/ppPurchaseRequest';
@@ -351,7 +354,11 @@ const viewLinesForRequest = (row: PpPurchaseRequestStaffListItem) => {
   activeTab.value = 'lines';
 };
 
-const { addLine, updateLine, deleteLines } = usePpStaffOrderLineMutations();
+const { addLine, updateLine, updateLines, deleteLines } = usePpStaffOrderLineMutations();
+
+const bulkLinePending = computed(
+  () => updateLines.isPending.value || deleteLines.isPending.value,
+);
 
 const showAddItemDialog = ref(false);
 const addItemRequestId = ref<number | null>(null);
@@ -421,6 +428,12 @@ const onConfirmDeleteSelected = async () => {
   await deleteLines.mutateAsync(ids);
   showDeleteSelectedConfirm.value = false;
   pendingDeleteIds.value = [];
+  orderLineListRef.value?.clearSelection();
+};
+
+const onBulkUpdate = async (payload: { ids: number[]; patch: PpStaffOrderLineBulkPatch }) => {
+  if (payload.ids.length === 0) return;
+  await updateLines.mutateAsync({ lineIds: payload.ids, patch: payload.patch });
   orderLineListRef.value?.clearSelection();
 };
 

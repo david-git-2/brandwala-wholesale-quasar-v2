@@ -2,16 +2,85 @@
   <div class="pp-app-order-line-table column no-wrap col min-h-0">
     <div
       v-if="selectedIds.length > 0"
-      class="pp-app-order-line-table__bulk row items-center justify-between q-mb-sm shrink-0"
+      class="pp-app-order-line-table__bulk column q-gutter-y-xs q-mb-sm shrink-0"
     >
-      <span class="text-body2">{{ selectedIds.length }} selected</span>
-      <TfBtn
-        variant="danger"
-        size="md"
-        icon="ph ph-trash"
-        label="Delete selected"
-        @click="emit('delete-selected', selectedIds.slice())"
-      />
+      <div class="row items-center justify-between wrap q-gutter-xs">
+        <span class="text-body2 text-weight-medium">{{ selectedIds.length }} selected</span>
+        <TfBtn
+          variant="danger"
+          size="md"
+          icon="ph ph-trash"
+          label="Delete selected"
+          :disable="bulkPending"
+          @click="emit('delete-selected', selectedIds.slice())"
+        />
+      </div>
+      <div class="row items-center wrap q-gutter-sm">
+        <q-select
+          v-model="bulkPlacementDraft"
+          class="pp-app-order-line-table__bulk-select"
+          dense
+          outlined
+          options-dense
+          emit-value
+          map-options
+          clearable
+          label="Fulfillment"
+          :options="placementOptions"
+          :disable="bulkPending"
+        />
+        <q-select
+          v-model="bulkSupplierDraft"
+          class="pp-app-order-line-table__bulk-select"
+          dense
+          outlined
+          options-dense
+          emit-value
+          map-options
+          clearable
+          label="Supplier"
+          :options="supplierOptions"
+          :loading="supplierGroupsQuery.isPending.value"
+          :disable="bulkPending"
+          @update:model-value="bulkSupplierTouched = true"
+        />
+        <q-select
+          v-model="bulkShipmentDraft"
+          class="pp-app-order-line-table__bulk-select"
+          dense
+          outlined
+          options-dense
+          emit-value
+          map-options
+          clearable
+          label="Shipment"
+          :options="shipmentOptions"
+          :loading="shipmentsQuery.isPending.value"
+          :disable="bulkPending"
+          @update:model-value="bulkShipmentTouched = true"
+        />
+        <q-checkbox
+          v-model="bulkSetPlacedFromNeeded"
+          dense
+          :disable="bulkPending"
+          label="Ordered = qty"
+        />
+        <q-checkbox
+          v-model="bulkSetReceivedFromPlaced"
+          dense
+          :disable="bulkPending"
+          label="Received = ordered"
+        />
+        <TfBtn
+          variant="primary"
+          size="sm"
+          icon="ph ph-lightning"
+          label="Bulk update"
+          :disable="bulkPending || !bulkPatchHasChanges"
+          :loading="bulkPending"
+          @click="applyBulkUpdate"
+        />
+      </div>
     </div>
 
     <div class="pp-app-order-line-table__card column col min-h-0 no-wrap overflow-hidden">
@@ -81,14 +150,21 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import '../../styles/ppOrderLinePlacementTones.css';
 import ExcelTableScrollFooter from 'src/components/ui/ExcelTableScrollFooter.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import { usePpPeopleGroupsQuery } from '../../composables/usePpPeopleGroupsQuery';
 import { usePpShipmentsQuery } from '../../composables/usePpShipmentsQuery';
 import { buildPpShipmentSelectOptions } from '../../types/ppShipment';
 import type { PpAppOrderLineGroupBy } from '../../types/ppAppOrderLineFilters';
-import type { PpOrderLine, PpStaffOrderLineUpdatePayload } from '../../types/ppPurchaseRequest';
+import type {
+  PpOrderLine,
+  PpOrderLinePlacementStatus,
+  PpStaffOrderLineUpdatePayload,
+} from '../../types/ppPurchaseRequest';
+import { PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS } from '../../utils/ppOrderLinePlacement';
 import { ppOrderLineHostLabel } from '../../utils/ppOrderLineUrl';
+import type { PpStaffOrderLineBulkPatch } from '../../types/ppPurchaseRequest';
 import PpAppOrderLineRow from './PpAppOrderLineRow.vue';
 
 const props = withDefaults(
@@ -96,10 +172,12 @@ const props = withDefaults(
     lines: PpOrderLine[];
     updatingLineId?: number | null;
     groupBy?: PpAppOrderLineGroupBy;
+    bulkPending?: boolean;
   }>(),
   {
     updatingLineId: null,
     groupBy: 'none',
+    bulkPending: false,
   },
 );
 
@@ -131,9 +209,19 @@ const emit = defineEmits<{
   edit: [line: PpOrderLine];
   patch: [payload: PpStaffOrderLineUpdatePayload];
   'delete-selected': [lineIds: number[]];
+  'bulk-update': [payload: { ids: number[]; patch: PpStaffOrderLineBulkPatch }];
 }>();
 
+const placementOptions = PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS;
+
 const selectedIds = ref<number[]>([]);
+const bulkPlacementDraft = ref<PpOrderLinePlacementStatus | null>(null);
+const bulkSupplierDraft = ref<number | null>(null);
+const bulkShipmentDraft = ref<number | null>(null);
+const bulkSupplierTouched = ref(false);
+const bulkShipmentTouched = ref(false);
+const bulkSetPlacedFromNeeded = ref(false);
+const bulkSetReceivedFromPlaced = ref(false);
 const selectedSet = computed(() => new Set(selectedIds.value));
 const tableScrollRef = ref<HTMLElement | null>(null);
 const scrollFooterRef = ref<InstanceType<typeof ExcelTableScrollFooter> | null>(null);
@@ -189,7 +277,61 @@ const toggleAll = (value: boolean | null) => {
   selectedIds.value = [];
 };
 
-defineExpose({ clearSelection: () => { selectedIds.value = []; } });
+const resetBulkDrafts = () => {
+  bulkPlacementDraft.value = null;
+  bulkSupplierDraft.value = null;
+  bulkShipmentDraft.value = null;
+  bulkSupplierTouched.value = false;
+  bulkShipmentTouched.value = false;
+  bulkSetPlacedFromNeeded.value = false;
+  bulkSetReceivedFromPlaced.value = false;
+};
+
+const bulkPatchDraft = computed((): PpStaffOrderLineBulkPatch => {
+  const patch: PpStaffOrderLineBulkPatch = {};
+  if (bulkPlacementDraft.value != null) {
+    patch.placement_status = bulkPlacementDraft.value;
+  }
+  if (bulkSupplierTouched.value) {
+    patch.pp_supplier_group_id = bulkSupplierDraft.value;
+  }
+  if (bulkShipmentTouched.value) {
+    patch.shipment_id = bulkShipmentDraft.value;
+  }
+  if (bulkSetPlacedFromNeeded.value) {
+    patch.set_placed_qty_from_needed = true;
+  }
+  if (bulkSetReceivedFromPlaced.value) {
+    patch.set_received_qty_from_placed = true;
+  }
+  return patch;
+});
+
+const bulkPatchHasChanges = computed(() => Object.keys(bulkPatchDraft.value).length > 0);
+
+watch(
+  () => selectedIds.value.length,
+  (count) => {
+    if (count === 0) resetBulkDrafts();
+  },
+);
+
+const selectedIdSlice = () => selectedIds.value.slice();
+
+const applyBulkUpdate = () => {
+  if (!bulkPatchHasChanges.value) return;
+  emit('bulk-update', {
+    ids: selectedIdSlice(),
+    patch: { ...bulkPatchDraft.value },
+  });
+};
+
+defineExpose({
+  clearSelection: () => {
+    selectedIds.value = [];
+    resetBulkDrafts();
+  },
+});
 </script>
 
 <style scoped>
@@ -217,10 +359,15 @@ defineExpose({ clearSelection: () => { selectedIds.value = []; } });
 }
 
 .pp-app-order-line-table__bulk {
-  padding: 0.35rem 0.5rem;
+  padding: 0.5rem 0.65rem;
   border: 1px solid var(--tf-neutral-border);
   border-radius: 8px;
   background: var(--tf-neutral-surface);
+}
+
+.pp-app-order-line-table__bulk-select {
+  min-width: 9.5rem;
+  max-width: 11rem;
 }
 
 .pp-app-order-line-table__card {

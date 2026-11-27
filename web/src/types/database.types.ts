@@ -5549,6 +5549,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"bulk_update_pp_order_lines_staff":
+{ Args: { "p_line_ids": (number)[],"p_patch": Json,"p_tenant_id": number }; Returns: Json
+                           },
 "bulk_update_thrift_stock_locations":
 { Args: { "p_box_id"?: number,"p_shelf_id"?: number,"p_stock_ids": (number)[],"p_tenant_id": number }; Returns: undefined
                            },
@@ -7409,7 +7412,7 @@ isOneToOne: false
 { Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "list_pp_order_lines_for_supplier":
-{ Args: { "p_people_group_member_id"?: number,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_exclude_placement_statuses"?: (string)[],"p_people_group_member_id"?: number,"p_placement_statuses"?: (string)[],"p_tenant_id": number }; Returns: Json
                            },
 "list_pp_order_lines_staff_filter_options":
 { Args: { "p_tenant_id": number }; Returns: Json

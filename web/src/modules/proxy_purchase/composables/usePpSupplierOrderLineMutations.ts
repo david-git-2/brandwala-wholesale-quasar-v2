@@ -3,21 +3,16 @@ import { computed } from 'vue';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { ppPurchaseRequestRepository } from '../repositories/ppPurchaseRequestRepository';
-import { ppPurchaseQueryKeys } from '../shared/queryKeys/ppPurchaseQueryKeys';
 import type { PpSupplierOrderLineUpdatePayload } from '../types/ppPurchaseRequest';
 
 export function usePpSupplierOrderLineMutations() {
   const queryClient = useQueryClient();
   const authStore = useAuthStore();
   const tenantId = computed(() => authStore.tenantId);
-  const peopleGroupMemberId = computed(() => authStore.customerGroupMemberId);
 
   const invalidateSupplierLines = () => {
     void queryClient.invalidateQueries({
-      queryKey: ppPurchaseQueryKeys.supplierOrderLines(
-        tenantId.value,
-        peopleGroupMemberId.value,
-      ),
+      queryKey: ['pp-purchase-supplier-order-lines', tenantId.value],
     });
   };
 

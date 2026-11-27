@@ -107,7 +107,7 @@ GRANT ALL ON FUNCTION "public"."list_pp_order_lines"(bigint, bigint, bigint, big
 GRANT ALL ON FUNCTION "public"."list_pp_order_lines_staff_filter_options"(bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."_pp_order_line_url_host"(text) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."list_pp_order_lines_for_customer"(bigint) TO "anon", "authenticated", "service_role";
-GRANT ALL ON FUNCTION "public"."list_pp_order_lines_for_supplier"(bigint, bigint) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."list_pp_order_lines_for_supplier"(bigint, bigint, text[], text[]) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."_pp_resolve_proxy_supplier_member"(bigint, bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."_pp_order_line_to_json"("public"."pp_order_lines", "text") TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."add_pp_order_line"(bigint, bigint, text, numeric, text) TO "anon", "authenticated", "service_role";

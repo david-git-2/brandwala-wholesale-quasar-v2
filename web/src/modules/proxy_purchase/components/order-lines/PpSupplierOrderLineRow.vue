@@ -54,12 +54,21 @@
       >
         <div class="pp-supplier-order-line-row__qty-tier">
           <span class="pp-supplier-order-line-row__qty-tier-label">Customer</span>
-          <span class="pp-supplier-order-line-row__qty-value">{{ line.needed_qty }}</span>
+          <q-input
+            :model-value="line.needed_qty"
+            type="number"
+            dense
+            borderless
+            hide-bottom-space
+            readonly
+            input-class="font-mono text-center excel-cell-input-native"
+            class="excel-cell-input excel-cell-input--qty-tint pp-supplier-order-line-row__qty-input"
+            disable
+          />
         </div>
         <div class="pp-supplier-order-line-row__qty-tier">
           <span class="pp-supplier-order-line-row__qty-tier-label">Ordered</span>
           <q-input
-            v-if="canEditPlacedQty"
             :model-value="placedQtyDisplay"
             type="number"
             min="0"
@@ -70,16 +79,26 @@
             placeholder="—"
             input-class="font-mono text-center excel-cell-input-native"
             class="excel-cell-input excel-cell-input--qty-tint pp-supplier-order-line-row__qty-input"
-            :disable="updating"
+            :disable="updating || !canEditPlacedQty"
             @update:model-value="onPlacedQtyInput"
             @blur="savePlacedQty"
             @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
           />
-          <span v-else class="pp-supplier-order-line-row__qty-value">{{ placedQtyLabel }}</span>
         </div>
         <div class="pp-supplier-order-line-row__qty-tier">
           <span class="pp-supplier-order-line-row__qty-tier-label">Received</span>
-          <span class="pp-supplier-order-line-row__qty-value">{{ receivedQtyLabel }}</span>
+          <q-input
+            :model-value="receivedQtyDisplay"
+            type="number"
+            dense
+            borderless
+            hide-bottom-space
+            placeholder="—"
+            readonly
+            input-class="font-mono text-center excel-cell-input-native"
+            class="excel-cell-input excel-cell-input--qty-tint pp-supplier-order-line-row__qty-input"
+            disable
+          />
         </div>
       </div>
 
@@ -104,38 +123,17 @@
 
       <div
         class="pp-supplier-order-line-row__cell pp-supplier-order-line-row__cell--center pp-supplier-order-line-row__cell--placement"
-        :class="placementCellClass"
         @click.stop
       >
-        <q-select
-          v-if="canChangePlacement"
+        <TfToneSelect
           :model-value="placementSelectValue"
-          dense
-          borderless
-          emit-value
-          map-options
-          options-dense
           :options="placementOptions"
+          :tone-class="placementCellClass"
           :disable="updating"
-          dropdown-icon="none"
-          class="pp-supplier-order-line-row__select pp-supplier-order-line-row__select--center"
+          :readonly="!canChangePlacement"
+          aria-label="Fulfillment status"
           @update:model-value="onPlacementChange"
         />
-        <span v-else class="pp-supplier-order-line-row__placement-text">{{ fulfillmentLabel }}</span>
-      </div>
-    </div>
-
-    <div
-      v-if="requestInstructionDisplays.length"
-      class="pp-supplier-order-line-row__instructions-band column q-gutter-y-xs"
-    >
-      <div
-        v-for="(item, idx) in requestInstructionDisplays"
-        :key="`${item.storeLabel}-${idx}`"
-        class="row no-wrap items-start q-gutter-x-sm min-width-0"
-      >
-        <span class="pp-supplier-order-line-row__instructions-label">{{ item.storeLabel }}</span>
-        <span class="pp-supplier-order-line-row__instructions-text">{{ item.description }}</span>
       </div>
     </div>
   </div>
@@ -144,8 +142,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfToneSelect from 'src/components/ui/TfToneSelect.vue';
 import { openPpOrderLineUrl, ppOrderLineHostLabel } from '../../utils/ppOrderLineUrl';
-import { ppOrderLineDisplayStatus } from '../../utils/ppOrderLineDisplayStatus';
 import {
   canSupplierChangePlacement,
   canSupplierEditPlacedQty,
@@ -153,7 +151,6 @@ import {
 } from '../../utils/ppOrderLinePlacement';
 import { ppPlacementCellClass } from '../../utils/ppOrderLineSelectTones';
 import { buildPpSupplierOrderLineUpdate } from '../../utils/ppSupplierOrderLineUpdate';
-import { ppBucketInstructionsForLine } from '../../utils/ppBucketInstructions';
 import type {
   PpOrderLine,
   PpOrderLinePlacementStatus,
@@ -218,16 +215,12 @@ const priceLabel = computed(() => {
 
 const customerDescription = computed(() => props.line.description?.trim() || '');
 
-const requestInstructionDisplays = computed(() =>
-  ppBucketInstructionsForLine(props.line.request_bucket_instructions, props.line.url),
-);
-
-const placedQtyLabel = computed(() =>
-  props.line.placed_qty == null ? '—' : String(props.line.placed_qty),
-);
-
 const placedQtyDisplay = computed(() =>
   placedQtyDraft.value == null ? '' : placedQtyDraft.value,
+);
+
+const receivedQtyDisplay = computed(() =>
+  props.line.received_qty == null ? '' : props.line.received_qty,
 );
 
 const parseOptionalQty = (value: string | number | null | undefined): number | null => {
@@ -251,20 +244,17 @@ const savePlacedQty = () => {
   emit('patch', buildPpSupplierOrderLineUpdate(props.line, { placed_qty: next }));
 };
 
-const onPlacementChange = (value: PpOrderLinePlacementStatus) => {
-  if (value === props.line.placement_status) return;
-  emit('patch', buildPpSupplierOrderLineUpdate(props.line, { placement_status: value }));
+const onPlacementChange = (value: string | number | null) => {
+  if (typeof value !== 'string') return;
+  const placement = value as PpOrderLinePlacementStatus;
+  if (placement === props.line.placement_status) return;
+  emit('patch', buildPpSupplierOrderLineUpdate(props.line, { placement_status: placement }));
 };
-
-const receivedQtyLabel = computed(() =>
-  props.line.received_qty == null ? '—' : String(props.line.received_qty),
-);
 
 const trackingUrl = computed(() => props.line.tracking_url?.trim() ?? '');
 const trackingLabel = computed(() => trackingUrl.value || '—');
 const trackingUrlOpenable = computed(() => trackingUrl.value.length > 0);
 
-const fulfillmentLabel = computed(() => ppOrderLineDisplayStatus(props.line));
 const placementCellClass = computed(() => ppPlacementCellClass(props.line.placement_status));
 </script>
 
@@ -365,31 +355,32 @@ const placementCellClass = computed(() => ppPlacementCellClass(props.line.placem
 
 .pp-supplier-order-line-row__qty-tier {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.1rem;
-}
-
-.pp-supplier-order-line-row__qty-tier + .pp-supplier-order-line-row__qty-tier {
-  margin-top: 0.35rem;
+  gap: 6px;
+  min-width: 0;
 }
 
 .pp-supplier-order-line-row__qty-tier-label {
+  flex: 0 0 4.5rem;
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--tf-neutral-muted);
-}
-
-.pp-supplier-order-line-row__qty-value {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12px;
+  text-align: left;
+  line-height: 1.2;
 }
 
 .pp-supplier-order-line-row__cell--quantities {
   flex-direction: column;
   justify-content: center;
+  align-items: stretch;
+  gap: 3px;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
 }
 
 .pp-supplier-order-line-row__tracking-row {
@@ -400,89 +391,9 @@ const placementCellClass = computed(() => ppPlacementCellClass(props.line.placem
   min-width: 0;
 }
 
-.pp-supplier-order-line-row__instructions-band {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.35rem 0.75rem;
-  border-top: 1px dashed var(--tf-neutral-border);
-  background: color-mix(in srgb, var(--tf-neutral-muted) 8%, transparent);
-  font-size: 11px;
-}
-
-.pp-supplier-order-line-row__instructions-label {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--tf-neutral-muted);
-  flex-shrink: 0;
-}
-
-.pp-supplier-order-line-row__instructions-text {
-  color: var(--tf-neutral-ink);
-  word-break: break-word;
-}
-
 .pp-supplier-order-line-row__cell--placement {
-  transition: background-color 0.15s ease, color 0.15s ease;
-  font-weight: 700;
-}
-
-.pp-supplier-order-line-row__cell--placement :deep(.q-field__control) {
-  background: transparent !important;
-}
-
-.pp-supplier-order-line-row__cell--placement :deep(.q-field__native),
-.pp-supplier-order-line-row__cell--placement :deep(.q-field__append) {
-  color: inherit;
-  font-weight: 700;
-}
-
-.pp-supplier-order-line-row__placement-text {
-  text-align: center;
-  font-weight: 700;
-}
-
-.pp-supplier-order-line-row__select {
-  width: 100%;
-}
-
-.pp-supplier-order-line-row__select :deep(.q-field__control) {
-  min-height: 28px;
-  height: auto;
-  padding: 2px 0;
-}
-
-.pp-supplier-order-line-row__select :deep(.q-field__native),
-.pp-supplier-order-line-row__select :deep(.q-field__input) {
-  min-height: 28px;
   padding: 0;
-  font-size: 11px;
-  line-height: 1.3;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.pp-supplier-order-line-row__select :deep(.q-select__dropdown-icon),
-.pp-supplier-order-line-row__select :deep(.q-field__append .q-icon.q-select__dropdown-icon) {
-  display: none !important;
-}
-
-.pp-supplier-order-line-row__select--center :deep(.q-field__control) {
-  justify-content: center;
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
-}
-
-.pp-supplier-order-line-row__select--center :deep(.q-field__control-container) {
-  justify-content: center;
-  flex: 1 1 auto;
-}
-
-.pp-supplier-order-line-row__select--center :deep(.q-field__native),
-.pp-supplier-order-line-row__select--center :deep(.q-field__input) {
-  text-align: center;
-  justify-content: center;
+  overflow: hidden;
 }
 
 .pp-supplier-order-line-row__qty-tier .pp-supplier-order-line-row__qty-input {
@@ -530,68 +441,5 @@ const placementCellClass = computed(() => ppPlacementCellClass(props.line.placem
   font-size: 12px;
   font-weight: 700;
   padding: 0 !important;
-}
-</style>
-
-<style>
-/* Cell-only fulfillment tones (matches app staff list) */
-.pp-order-line-tone--placement-none {
-  background: #e2e8f0;
-  color: #334155;
-}
-
-.pp-order-line-tone--placement-draft {
-  background: #cbd5e1;
-  color: #1e293b;
-}
-
-.pp-order-line-tone--placement-requested {
-  background: #fdba74;
-  color: #9a3412;
-}
-
-.pp-order-line-tone--placement-processing {
-  background: #93c5fd;
-  color: #1d4ed8;
-}
-
-.pp-order-line-tone--placement-cancelled {
-  background: #fca5a5;
-  color: #991b1b;
-}
-
-.pp-order-line-tone--placement-added_to_cart {
-  background: #fcd34d;
-  color: #92400e;
-}
-
-.pp-order-line-tone--placement-order_placed {
-  background: #7dd3fc;
-  color: #0c4a6e;
-}
-
-.pp-order-line-tone--placement-cargo_warehouse {
-  background: #a5b4fc;
-  color: #312e81;
-}
-
-.pp-order-line-tone--placement-in_flight {
-  background: #c4b5fd;
-  color: #4c1d95;
-}
-
-.pp-order-line-tone--placement-local_warehouse {
-  background: #86efac;
-  color: #14532d;
-}
-
-.pp-order-line-tone--placement-delivered {
-  background: #4ade80;
-  color: #14532d;
-}
-
-.pp-order-line-tone--placement-lost {
-  background: #fca5a5;
-  color: #7f1d1d;
 }
 </style>

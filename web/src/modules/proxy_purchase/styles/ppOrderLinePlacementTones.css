@@ -1,0 +1,60 @@
+/* Fulfillment / placement cell tones (staff + supplier order line tables) */
+.pp-order-line-tone--placement-none {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.pp-order-line-tone--placement-draft {
+  background: #cbd5e1;
+  color: #1e293b;
+}
+
+.pp-order-line-tone--placement-requested {
+  background: #fdba74;
+  color: #9a3412;
+}
+
+.pp-order-line-tone--placement-processing {
+  background: #93c5fd;
+  color: #1d4ed8;
+}
+
+.pp-order-line-tone--placement-cancelled {
+  background: #fca5a5;
+  color: #991b1b;
+}
+
+.pp-order-line-tone--placement-added_to_cart {
+  background: #fcd34d;
+  color: #92400e;
+}
+
+.pp-order-line-tone--placement-order_placed {
+  background: #7dd3fc;
+  color: #0c4a6e;
+}
+
+.pp-order-line-tone--placement-cargo_warehouse {
+  background: #a5b4fc;
+  color: #312e81;
+}
+
+.pp-order-line-tone--placement-in_flight {
+  background: #c4b5fd;
+  color: #4c1d95;
+}
+
+.pp-order-line-tone--placement-local_warehouse {
+  background: #86efac;
+  color: #14532d;
+}
+
+.pp-order-line-tone--placement-delivered {
+  background: #4ade80;
+  color: #14532d;
+}
+
+.pp-order-line-tone--placement-lost {
+  background: #fca5a5;
+  color: #7f1d1d;
+}

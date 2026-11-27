@@ -212,20 +212,14 @@
 
       <div
         class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--placement"
-        :class="placementCellClass"
         @click.stop
       >
-        <q-select
+        <TfToneSelect
           :model-value="placementSelectValue"
-          dense
-          borderless
-          emit-value
-          map-options
-          options-dense
           :options="placementOptions"
+          :tone-class="placementCellClass"
           :disable="updating"
-          dropdown-icon="none"
-          class="pp-app-order-line-row__select pp-app-order-line-row__select--center"
+          aria-label="Fulfillment status"
           @update:model-value="onPlacementChange"
         />
       </div>
@@ -306,6 +300,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
+import TfToneSelect from 'src/components/ui/TfToneSelect.vue';
 import {
   openPpOrderLineUrl,
   ppOrderLineHostLabel,
@@ -504,9 +499,11 @@ const saveTrackingUrl = () => {
   emit('patch', buildPpStaffOrderLineUpdate(props.line, { tracking_url: next }));
 };
 
-const onPlacementChange = (value: PpOrderLinePlacementStatus) => {
-  if (value === placementSelectValue.value) return;
-  emit('patch', buildPpStaffOrderLineUpdate(props.line, { placement_status: value }));
+const onPlacementChange = (value: string | number | null) => {
+  if (typeof value !== 'string') return;
+  const placement = value as PpOrderLinePlacementStatus;
+  if (placement === placementSelectValue.value) return;
+  emit('patch', buildPpStaffOrderLineUpdate(props.line, { placement_status: placement }));
 };
 
 const onSupplierChange = (value: number | null) => {
@@ -831,18 +828,8 @@ const onShipmentChange = (value: number | null) => {
 }
 
 .pp-app-order-line-row__cell--placement {
-  transition: background-color 0.15s ease, color 0.15s ease;
-  font-weight: 700;
-}
-
-.pp-app-order-line-row__cell--placement :deep(.q-field__control) {
-  background: transparent !important;
-}
-
-.pp-app-order-line-row__cell--placement :deep(.q-field__native),
-.pp-app-order-line-row__cell--placement :deep(.q-field__append) {
-  color: inherit;
-  font-weight: 700;
+  padding: 0;
+  overflow: hidden;
 }
 
 .pp-app-order-line-row__select {
@@ -999,67 +986,6 @@ const onShipmentChange = (value: number | null) => {
 </style>
 
 <style>
-/* Cell-only fulfillment tones (dropdown menus stay plain) */
-.pp-order-line-tone--placement-none {
-  background: #e2e8f0;
-  color: #334155;
-}
-
-.pp-order-line-tone--placement-draft {
-  background: #cbd5e1;
-  color: #1e293b;
-}
-
-.pp-order-line-tone--placement-requested {
-  background: #fdba74;
-  color: #9a3412;
-}
-
-.pp-order-line-tone--placement-processing {
-  background: #93c5fd;
-  color: #1d4ed8;
-}
-
-.pp-order-line-tone--placement-cancelled {
-  background: #fca5a5;
-  color: #991b1b;
-}
-
-.pp-order-line-tone--placement-added_to_cart {
-  background: #fcd34d;
-  color: #92400e;
-}
-
-.pp-order-line-tone--placement-order_placed {
-  background: #7dd3fc;
-  color: #0c4a6e;
-}
-
-.pp-order-line-tone--placement-cargo_warehouse {
-  background: #a5b4fc;
-  color: #312e81;
-}
-
-.pp-order-line-tone--placement-in_flight {
-  background: #c4b5fd;
-  color: #4c1d95;
-}
-
-.pp-order-line-tone--placement-local_warehouse {
-  background: #86efac;
-  color: #14532d;
-}
-
-.pp-order-line-tone--placement-delivered {
-  background: #4ade80;
-  color: #14532d;
-}
-
-.pp-order-line-tone--placement-lost {
-  background: #fca5a5;
-  color: #7f1d1d;
-}
-
 .pp-app-order-line-row__instructions-menu-panel {
   border: 1px solid var(--tf-neutral-border);
   border-radius: 8px;

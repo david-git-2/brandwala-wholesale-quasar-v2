@@ -1,3 +1,8 @@
+import { PP_SUPPLIER_LIST_EXCLUDE_PLACEMENT_STATUSES } from '../../utils/ppOrderLinePlacement';
+
+export const ppSupplierListExcludePlacementsCacheKey = () =>
+  [...PP_SUPPLIER_LIST_EXCLUDE_PLACEMENT_STATUSES].sort().join(',');
+
 export const ppPurchaseQueryKeys = {
   customerRequests: (tenantId: number | null | undefined) =>
     ['pp-purchase-customer-requests', tenantId] as const,
@@ -10,7 +15,16 @@ export const ppPurchaseQueryKeys = {
   supplierOrderLines: (
     tenantId: number | null | undefined,
     peopleGroupMemberId: number | null | undefined,
-  ) => ['pp-purchase-supplier-order-lines', tenantId, peopleGroupMemberId] as const,
+    excludePlacementsKey: string | null | undefined,
+    filtersKey: string | null | undefined,
+  ) =>
+    [
+      'pp-purchase-supplier-order-lines',
+      tenantId,
+      peopleGroupMemberId,
+      excludePlacementsKey ?? '',
+      filtersKey ?? '',
+    ] as const,
   staffRequests: (tenantId: number | null | undefined) =>
     ['pp-purchase-staff-requests', tenantId] as const,
   staffOrderLines: (

@@ -851,7 +851,9 @@ ALTER FUNCTION "public"."list_pp_order_lines_for_customer"("p_tenant_id" bigint)
 
 CREATE OR REPLACE FUNCTION "public"."list_pp_order_lines_for_supplier"(
     "p_tenant_id" bigint,
-    "p_people_group_member_id" bigint DEFAULT NULL::bigint
+    "p_people_group_member_id" bigint DEFAULT NULL::bigint,
+    "p_exclude_placement_statuses" "text"[] DEFAULT NULL::"text"[],
+    "p_placement_statuses" "text"[] DEFAULT NULL::"text"[]
 ) RETURNS "jsonb"
     LANGUAGE "plpgsql"
     STABLE
@@ -895,11 +897,21 @@ BEGIN
       AND l.pp_supplier_group_id IS NOT NULL
       AND l.pp_supplier_group_id = v_group_id
       AND l.deleted_at IS NULL
+      AND (
+        p_exclude_placement_statuses IS NULL
+        OR cardinality(p_exclude_placement_statuses) = 0
+        OR NOT (l.placement_status = ANY (p_exclude_placement_statuses))
+      )
+      AND (
+        p_placement_statuses IS NULL
+        OR cardinality(p_placement_statuses) = 0
+        OR l.placement_status = ANY (p_placement_statuses)
+      )
   );
 END;
 $$;
 
-ALTER FUNCTION "public"."list_pp_order_lines_for_supplier"("p_tenant_id" bigint, "p_people_group_member_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_pp_order_lines_for_supplier"("p_tenant_id" bigint, "p_people_group_member_id" bigint, "p_exclude_placement_statuses" "text"[], "p_placement_statuses" "text"[]) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."_pp_order_line_url_host"("p_url" "text")
 RETURNS "text"

@@ -2,9 +2,11 @@ import { supabase } from 'src/boot/supabase';
 import type {
   PpBucketInstruction,
   PpOrderLine,
+  PpOrderLinePlacementStatus,
   PpPurchaseRequest,
   PpPurchaseRequestListItem,
   PpPurchaseRequestStaffListItem,
+  PpStaffOrderLineBulkPatch,
   PpStaffOrderLineUpdatePayload,
   PpStaffOrderLineWritePayload,
   PpSupplierOrderLineUpdatePayload,
@@ -211,10 +213,20 @@ export const ppPurchaseRequestRepository = {
   async listLinesForSupplier(
     tenantId: number,
     peopleGroupMemberId: number,
+    options?: {
+      excludePlacementStatuses?: readonly PpOrderLinePlacementStatus[];
+      placementStatuses?: readonly PpOrderLinePlacementStatus[];
+    },
   ): Promise<PpOrderLine[]> {
     const { data, error } = await supabase.rpc('list_pp_order_lines_for_supplier', {
       p_tenant_id: tenantId,
       p_people_group_member_id: peopleGroupMemberId,
+      p_exclude_placement_statuses: options?.excludePlacementStatuses?.length
+        ? [...options.excludePlacementStatuses]
+        : undefined,
+      p_placement_statuses: options?.placementStatuses?.length
+        ? [...options.placementStatuses]
+        : undefined,
     });
     if (error) throw error;
     return parseLines(data);
@@ -280,6 +292,40 @@ export const ppPurchaseRequestRepository = {
     const parsed = parseLineRow(data as Record<string, unknown>);
     if (!parsed) throw new Error('Invalid order line response.');
     return parsed;
+  },
+
+  async bulkUpdateLinesForStaff(
+    tenantId: number,
+    lineIds: number[],
+    patch: PpStaffOrderLineBulkPatch,
+  ): Promise<{ updated_count: number }> {
+    const uniqueIds = [...new Set(lineIds.filter((id) => Number.isFinite(id) && id > 0))];
+    const pPatch: Record<string, unknown> = {};
+    if (patch.placement_status !== undefined) {
+      pPatch.placement_status = patch.placement_status;
+    }
+    if (patch.pp_supplier_group_id !== undefined) {
+      pPatch.pp_supplier_group_id = patch.pp_supplier_group_id;
+    }
+    if (patch.shipment_id !== undefined) {
+      pPatch.shipment_id = patch.shipment_id;
+    }
+    if (patch.set_placed_qty_from_needed) {
+      pPatch.set_placed_qty_from_needed = true;
+    }
+    if (patch.set_received_qty_from_placed) {
+      pPatch.set_received_qty_from_placed = true;
+    }
+    const { data, error } = await supabase.rpc('bulk_update_pp_order_lines_staff', {
+      p_tenant_id: tenantId,
+      p_line_ids: uniqueIds,
+      p_patch: pPatch,
+    });
+    if (error) throw error;
+    const row = data as Record<string, unknown> | null;
+    const updated_count =
+      row != null && row.updated_count != null ? Number(row.updated_count) : uniqueIds.length;
+    return { updated_count: Number.isFinite(updated_count) ? updated_count : 0 };
   },
 
   async updateLineForStaff(

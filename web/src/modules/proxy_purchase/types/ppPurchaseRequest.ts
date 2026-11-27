@@ -101,3 +101,12 @@ export type PpStaffOrderLineWritePayload = {
 export type PpStaffOrderLineUpdatePayload = PpStaffOrderLineWritePayload & {
   lineId: number;
 };
+
+/** Shared patch applied to all selected lines (staff bulk bar). */
+export type PpStaffOrderLineBulkPatch = {
+  placement_status?: PpOrderLinePlacementStatus;
+  pp_supplier_group_id?: number | null;
+  shipment_id?: number | null;
+  set_placed_qty_from_needed?: boolean;
+  set_received_qty_from_placed?: boolean;
+};

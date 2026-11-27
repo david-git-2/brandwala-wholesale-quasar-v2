@@ -15,17 +15,22 @@
             <span class="text-center">Tracking</span>
             <span class="text-center">Fulfillment</span>
           </div>
-          <div
-            v-for="line in lines"
-            :key="line.id"
-            class="pp-supplier-order-line-table__body-row"
-          >
-            <PpSupplierOrderLineRow
-              :line="line"
-              :updating="updatingLineId === line.id"
-              @patch="emit('patch', $event)"
-            />
-          </div>
+          <template v-for="block in lineBlocks" :key="block.key">
+            <div class="pp-supplier-order-line-table__group-head">
+              {{ block.label }}
+            </div>
+            <div
+              v-for="line in block.lines"
+              :key="line.id"
+              class="pp-supplier-order-line-table__body-row"
+            >
+              <PpSupplierOrderLineRow
+                :line="line"
+                :updating="updatingLineId === line.id"
+                @patch="emit('patch', $event)"
+              />
+            </div>
+          </template>
         </div>
       </div>
       <ExcelTableScrollFooter
@@ -38,9 +43,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import '../../styles/ppOrderLinePlacementTones.css';
 import ExcelTableScrollFooter from 'src/components/ui/ExcelTableScrollFooter.vue';
 import type { PpOrderLine, PpSupplierOrderLineUpdatePayload } from '../../types/ppPurchaseRequest';
+import { groupPpOrderLinesByStoreHost } from '../../utils/ppOrderLineGrouping';
 import PpSupplierOrderLineRow from './PpSupplierOrderLineRow.vue';
 
 const props = defineProps<{
@@ -51,6 +58,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   patch: [payload: PpSupplierOrderLineUpdatePayload];
 }>();
+
+const lineBlocks = computed(() => groupPpOrderLinesByStoreHost(props.lines));
 
 const tableScrollRef = ref<HTMLElement | null>(null);
 const scrollFooterRef = ref<InstanceType<typeof ExcelTableScrollFooter> | null>(null);
@@ -143,6 +152,20 @@ watch(
 
 .pp-supplier-order-line-table__head > span:last-child {
   border-right: none;
+}
+
+.pp-supplier-order-line-table__group-head {
+  position: sticky;
+  top: 2.25rem;
+  z-index: 1;
+  padding: 0.4rem 0.75rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-neutral-muted);
+  background: color-mix(in srgb, var(--tf-disabled-bg) 92%, var(--tf-neutral-surface));
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 
 .pp-supplier-order-line-table__body-row {

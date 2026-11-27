@@ -5,6 +5,7 @@ import { showErrorNotification, showSuccessNotification } from 'src/utils/appFee
 import { ppPurchaseRequestRepository } from '../repositories/ppPurchaseRequestRepository';
 import { ppPurchaseQueryKeys } from '../shared/queryKeys/ppPurchaseQueryKeys';
 import type {
+  PpStaffOrderLineBulkPatch,
   PpStaffOrderLineUpdatePayload,
   PpStaffOrderLineWritePayload,
 } from '../types/ppPurchaseRequest';
@@ -96,5 +97,27 @@ export function usePpStaffOrderLineMutations() {
     },
   });
 
-  return { addLine, updateLine, deleteLine, deleteLines };
+  const updateLines = useMutation({
+    mutationFn: async (payload: { lineIds: number[]; patch: PpStaffOrderLineBulkPatch }) => {
+      const tid = tenantId.value;
+      if (!tid) throw new Error('Tenant not ready.');
+      return ppPurchaseRequestRepository.bulkUpdateLinesForStaff(
+        tid,
+        payload.lineIds,
+        payload.patch,
+      );
+    },
+    onSuccess: (result) => {
+      const count = result.updated_count;
+      showSuccessNotification(count === 1 ? 'Item updated.' : `${count} items updated.`);
+      invalidateStaffLines();
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Could not update items.';
+      showErrorNotification(message);
+      invalidateStaffLines();
+    },
+  });
+
+  return { addLine, updateLine, updateLines, deleteLine, deleteLines };
 }
