@@ -4,14 +4,22 @@
       v-if="shops.length > 1"
       flat
       no-caps
+      dense
       unelevated
-      class="catalog-header-shop__trigger shop-banner-font"
+      :ripple="false"
+      class="catalog-header-shop__trigger"
       dropdown-icon="ph ph-caret-down"
-      :label="shopName"
       content-class="catalog-shop-switcher__menu"
       data-test="catalog-shop-switcher"
       :aria-label="$t('shop.switch_shop')"
     >
+      <template #label>
+        <span class="catalog-header-shop__label">
+          <q-icon name="ph ph-storefront" size="15px" class="catalog-header-shop__icon" />
+          <span class="catalog-header-shop__name">{{ shopName }}</span>
+        </span>
+      </template>
+
       <q-list>
         <q-item
           v-for="shop in shops"
@@ -29,8 +37,9 @@
       </q-list>
     </q-btn-dropdown>
 
-    <div v-else class="catalog-header-shop__static shop-banner-font ellipsis">
-      {{ shopName }}
+    <div v-else class="catalog-header-shop__static">
+      <q-icon name="ph ph-storefront" size="15px" class="catalog-header-shop__icon" />
+      <span class="catalog-header-shop__name">{{ shopName }}</span>
     </div>
   </div>
 </template>
@@ -50,43 +59,70 @@ defineEmits<{
 <style scoped>
 .catalog-header-shop {
   display: flex;
-  justify-content: center;
+  align-items: center;
   min-width: 0;
   max-width: 100%;
 }
 
 .catalog-header-shop__static,
 .catalog-header-shop__trigger {
-  font-size: clamp(0.95rem, 3.2vw, 1.45rem);
-  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   max-width: 100%;
-}
-
-.catalog-header-shop__static {
-  text-align: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--tf-radius-md, 8px);
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
+  color: var(--tf-neutral-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .catalog-header-shop__trigger {
-  border-radius: 8px;
-  padding: 0.1rem 0.25rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.catalog-header-shop__trigger:hover,
+.catalog-header-shop__trigger:focus-visible {
+  border-color: var(--tf-neutral-border-strong);
+  background: var(--tf-neutral-surface);
+}
+
+.catalog-header-shop__static {
+  gap: 0.35rem;
+}
+
+.catalog-header-shop__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
   max-width: 100%;
 }
 
-.catalog-header-shop__trigger :deep(.q-btn__content) {
-  gap: 0.25rem;
-  max-width: 100%;
+.catalog-header-shop__icon {
+  color: var(--tf-neutral-muted);
+  flex-shrink: 0;
 }
 
-.catalog-header-shop__trigger :deep(.q-btn__content .block) {
+.catalog-header-shop__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.catalog-header-shop__trigger :deep(.q-btn__content) {
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+
 .catalog-header-shop__trigger :deep(.q-btn-dropdown__arrow) {
-  font-size: 0.85rem;
-  margin-left: 0.05rem;
-  opacity: 0.72;
+  font-size: 0.78rem;
+  margin-left: 0.1rem;
+  color: var(--tf-neutral-muted);
   flex-shrink: 0;
 }
 </style>

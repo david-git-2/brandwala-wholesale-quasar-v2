@@ -6,10 +6,8 @@ import {
   tenantRepository,
 } from '../repositories/tenantRepository';
 import { tenantService } from '../services/tenantService';
-import {
-  filterCompanyTenants,
-  resolveCompanyTenant,
-} from '../utils/tenantHierarchy';
+import { readAdminWorkspaceTenant } from '../utils/adminWorkspacePreference';
+import { filterCompanyTenants } from '../utils/tenantHierarchy';
 import type {
   Tenant,
   TenantCreateInput,
@@ -23,8 +21,9 @@ type StoredTenantWorkspace = {
   availableAdminTenants: Tenant[];
   hierarchyChildRefs?: TenantStoreState['hierarchyChildRefs'];
   hierarchyChildRefsCacheKey?: string | null;
-  selectedTenantId: Tenant['id'] | null;
-  selectedTenantSlug: Tenant['slug'] | null;
+  /** Legacy workspace selection; no longer written (see membership preference). */
+  selectedTenantId?: Tenant['id'] | null;
+  selectedTenantSlug?: Tenant['slug'] | null;
 };
 
 const STORAGE_KEY = 'brandwala.tenant.workspace.v1';
@@ -70,16 +69,34 @@ export const clearTenantWorkspaceStorage = () => {
   writeStorage(null);
 };
 
+export const readLegacyWorkspaceSelection = (): { id: number; slug: string } | null => {
+  const stored = readStorage();
+  if (stored?.selectedTenantId == null || !Number.isFinite(stored.selectedTenantId)) {
+    return null;
+  }
+
+  const slug =
+    typeof stored.selectedTenantSlug === 'string' && stored.selectedTenantSlug.trim()
+      ? stored.selectedTenantSlug.trim()
+      : null;
+
+  if (!slug) {
+    return null;
+  }
+
+  return { id: stored.selectedTenantId, slug };
+};
+
 const storedWorkspace = readStorage();
 
 export const useTenantStore = defineStore('tenant', {
   state: (): TenantStoreState => ({
     items: [],
-    availableAdminTenants: filterCompanyTenants(storedWorkspace?.availableAdminTenants ?? []),
+    availableAdminTenants: storedWorkspace?.availableAdminTenants ?? [],
     hierarchyChildRefs: storedWorkspace?.hierarchyChildRefs ?? [],
     hierarchyChildRefsCacheKey: storedWorkspace?.hierarchyChildRefsCacheKey ?? null,
-    selectedTenantId: storedWorkspace?.selectedTenantId ?? null,
-    selectedTenantSlug: storedWorkspace?.selectedTenantSlug ?? null,
+    selectedTenantId: null,
+    selectedTenantSlug: null,
     loading: true,
     error: null,
   }),
@@ -140,13 +157,32 @@ export const useTenantStore = defineStore('tenant', {
         availableAdminTenants: this.availableAdminTenants,
         hierarchyChildRefs: this.hierarchyChildRefs,
         hierarchyChildRefsCacheKey: this.hierarchyChildRefsCacheKey,
-        selectedTenantId: this.selectedTenantId,
-        selectedTenantSlug: this.selectedTenantSlug,
       });
     },
 
+    applyWorkspaceFromPreference(preference: unknown): boolean {
+      const workspaceRef = readAdminWorkspaceTenant(preference);
+      if (!workspaceRef) {
+        return false;
+      }
+
+      const pool = [...this.availableAdminTenants, ...this.items] as Tenant[];
+      const matched =
+        pool.find((tenant) => tenant.id === workspaceRef.id) ??
+        (workspaceRef.slug
+          ? pool.find((tenant) => tenant.slug === workspaceRef.slug) ?? null
+          : null);
+
+      if (!matched) {
+        return false;
+      }
+
+      this.selectedTenantId = matched.id;
+      this.selectedTenantSlug = matched.slug;
+      return true;
+    },
+
     syncSelectedTenant() {
-      this.promoteSelectedTenantToCompany();
 
       if (this.selectedTenantId === null) {
         this.selectedTenantSlug = null;
@@ -178,30 +214,8 @@ export const useTenantStore = defineStore('tenant', {
       this.persistWorkspaceState();
     },
 
-    promoteSelectedTenantToCompany(membershipPool?: readonly Tenant[]) {
-      const pool = membershipPool ?? this.items;
-      if (this.selectedTenantId === null) {
-        return;
-      }
-
-      const selected =
-        pool.find((tenant) => tenant.id === this.selectedTenantId) ??
-        this.availableAdminTenants.find((tenant) => tenant.id === this.selectedTenantId) ??
-        null;
-
-      const company = resolveCompanyTenant(selected, pool);
-
-      if (!company || company.id === this.selectedTenantId) {
-        return;
-      }
-
-      this.selectedTenantId = company.id;
-      this.selectedTenantSlug = company.slug;
-    },
-
     setAvailableAdminTenants(tenants: Tenant[]) {
       this.availableAdminTenants = filterCompanyTenants(tenants);
-      this.promoteSelectedTenantToCompany(tenants);
       this.syncSelectedTenant();
     },
 

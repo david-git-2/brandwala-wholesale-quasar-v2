@@ -253,7 +253,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProcurementOpsListToolbar from 'src/modules/procurement_stock/components/ProcurementOpsListToolbar.vue';
-import type { CustomerProfile } from 'src/modules/sales_invoice/repositories/customerProfileRepository';
+import type { CustomerProfile } from 'src/modules/people/submodules/customer/repositories/customerProfileRepository';
 import type { StaffOrdersPageShop } from '../types';
 
 const props = withDefaults(
@@ -367,6 +367,7 @@ const statusOptions = computed(() => [
   { label: t('shop_admin.status_priced'), value: 'priced' },
   { label: t('shop_admin.status_countered'), value: 'countered' },
   { label: t('shop_admin.status_final_offered'), value: 'final_offered' },
+  { label: t('shop_admin.status_resell_discount_requested'), value: 'resell_discount_requested' },
   { label: t('shop_admin.status_confirmed'), value: 'confirmed' },
   { label: t('shop_admin.status_procuring'), value: 'procuring' },
   { label: t('shop_admin.status_packed'), value: 'packed' },

@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/tenant_auth/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/tenant_auth/spec.md` |
 | UI | `auth/`, `tenant/`, `membership/`, `access_control/` |
 | SQL | Stubs `tenants/`, `permissions/`; live mostly `public.sql` |
 | Access | Scopes `platform` \| `app` \| `shop` \| `investor`; `effectiveGrants` |
@@ -43,6 +43,7 @@ See [scopes](../../architecture/scopes.md).
 - Parent company + one-level child brands; books at company.
   - [x] `parent_id` null = company; brands point to company.
   - [x] Workspace switcher: companies only; `list_child_tenant_refs`.
+  - [x] Last chosen company stored in `memberships.preference` (`ui.admin.workspaceTenant`); `get_app_login_bundle` restores it on login.
 
 ### US-2: Four URL scopes
 - [x] `/platform/*` — superadmin (not `/superadmin/*`).

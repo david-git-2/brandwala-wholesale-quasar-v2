@@ -1,6 +1,6 @@
 import { ref, computed, watch, type Ref } from 'vue';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { thriftStockRepository, type ThriftStockPricingInput } from '../repositories/thriftStockRepository';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';

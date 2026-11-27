@@ -40,87 +40,16 @@
           />
         </q-tab-panel>
 
-        <q-tab-panel name="status" class="catalog-settings-tab-pane q-pa-md">
-          <div class="column q-gutter-y-md">
-            <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
-              <q-icon name="ph ph-traffic-signal" size="18px" color="primary" />
-              <span>Status</span>
-            </div>
-
-            <CatalogOrderProgressBar v-if="order" :order="order" variant="staff" />
-
-            <div class="q-pa-sm bg-grey-1 rounded-borders row items-center justify-between">
-              <div>
-                <div class="text-caption text-grey-6">Current status</div>
-                <div class="text-weight-bold text-subtitle2">{{ currentStatusLabel }}</div>
-              </div>
-              <q-badge
-                rounded
-                dense
-                class="text-weight-bold q-px-sm q-py-2xs text-caption"
-                :color="statusBadge.color"
-                :text-color="statusBadge.textColor"
-              >
-                {{ currentStatusLabel }}
-              </q-badge>
-            </div>
-
-            <CatalogOrderStatusWorkflowBar
-              v-if="order"
-              :status="order.status"
-              :is-negotiable="!!order.is_negotiable_snapshot"
-              :updating="statusUpdating"
-              :target-status="targetStatus"
-              @update-status="emit('update-status', $event)"
-            />
-
-            <CatalogOrderStaffActions
-              v-if="order"
-              variant="card"
-              :status="order.status"
-              :is-primary-loading="isPrimaryLoading"
-              :primary-disabled="primaryDisabled"
-              :primary-disabled-reason="primaryDisabledReason"
-              @primary-action="emit('primary-action', $event)"
-            />
-
-            <q-btn
-              flat
-              no-caps
-              color="grey-8"
-              icon="ph ph-arrows-clockwise"
-              label="Override status…"
-              class="rounded-sq-btn text-weight-medium"
-              @click="emit('override-status')"
-            />
-          </div>
-        </q-tab-panel>
-
         <q-tab-panel name="bills" class="catalog-settings-tab-pane q-pa-md">
           <CatalogOrderBillsPanel
             v-if="order"
-            :parent-tenant-id="billsParentTenantId ?? null"
+            :tenant-id="billsParentTenantId ?? null"
             :order-id="order.id"
-            :enabled="billsListEnabled"
+            :enabled="billsTabActive"
+            :can-create-bill="order?.shop_type_snapshot === 'vendor_catalog'"
+            :creating-bill="creatingBill"
             @open-bill="(bill) => emit('open-bill', bill)"
-          />
-        </q-tab-panel>
-
-        <q-tab-panel name="delivery" class="catalog-settings-tab-pane q-pa-md">
-          <div v-if="!showDeliveryPapers" class="text-body2 text-grey-7">
-            Delivery papers are available once the order is procuring or in fulfillment (dispatch,
-            delivered, or closed).
-          </div>
-          <DocumentDeliveryPaperChips
-            v-else-if="order"
-            layout="section"
-            document-type="shop_order"
-            :tenant-id="deliveryPaperTenantId"
-            :document-id="order.id"
-            :enabled="deliveryPapersEnabled"
-            :allow-create="allowCreateDeliveryPaper"
-            @open-paper="(id) => emit('open-delivery-paper', id)"
-            @created="(id) => emit('open-delivery-paper', id)"
+            @create-bill="emit('create-bill')"
           />
         </q-tab-panel>
 
@@ -207,32 +136,13 @@ import { computed, ref, watch } from 'vue';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
 import TfDrawerSectionTabsHeader from 'src/components/ui/TfDrawerSectionTabsHeader.vue';
 import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
-import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
-import CatalogOrderStatusWorkflowBar from './CatalogOrderStatusWorkflowBar.vue';
-import CatalogOrderStaffActions from './CatalogOrderStaffActions.vue';
-import DocumentDeliveryPaperChips from 'src/modules/procurement_stock/components/DocumentDeliveryPaperChips.vue';
 import CatalogOrderBillsPanel from './CatalogOrderBillsPanel.vue';
-import {
-  getStaffCatalogStatusLabel,
-  normalizeCatalogOrderStatus,
-  type StaffCatalogPrimaryAction,
-} from '../utils/catalogOrderStatus';
 import type { ShopOrder } from '../types';
 import type { ShopOrderBillListItem } from '../types/shopOrderBillList';
+import type { CostingTotalsSummary } from 'src/types/costingTotalsSummary';
+import { canShowCatalogOrderBillsTab } from '../utils/catalogOrderStatus';
 
-export type CatalogOrderSummaryTotals = {
-  totalQuantity: number;
-  totalWeightGm: number;
-  grandTotalPurchasePrice: number;
-  grandTotalLandedPurchase: number;
-  grandTotalLandedSell: number;
-  grandTotalFirstOffer: number;
-  overallFirstOfferMargin: number;
-  grandTotalCounterOffer: number;
-  overallCounterOfferMargin: number;
-  grandTotalFinalOffer: number;
-  overallFinalOfferMargin: number;
-};
+export type CatalogOrderSummaryTotals = CostingTotalsSummary;
 
 const props = defineProps<{
   modelValue: boolean;
@@ -242,59 +152,31 @@ const props = defineProps<{
   sellCurrencySymbol: string;
   conversionRate: number;
   cargoRate: number;
-  totals: CatalogOrderSummaryTotals;
+  totals: CostingTotalsSummary;
   showCancel?: boolean;
   isDeleting?: boolean;
   canDownloadExcel?: boolean;
-  statusUpdating?: boolean;
-  targetStatus?: string | null;
-  isPrimaryLoading?: boolean;
-  primaryDisabled?: boolean;
-  primaryDisabledReason?: string;
-  deliveryPaperTenantId?: number | null;
   billsParentTenantId?: number | null;
-  showDeliveryPapers?: boolean;
-  allowCreateDeliveryPaper?: boolean;
   hiddenFromCustomerSaving?: boolean;
+  creatingBill?: boolean;
 }>();
-
-const deliveryPapersEnabled = computed(
-  () =>
-    !!props.modelValue &&
-    !!props.showDeliveryPapers &&
-    props.deliveryPaperTenantId != null &&
-    !!props.order?.id,
-);
-
-const billsListEnabled = computed(
-  () =>
-    showBillsTab.value &&
-    !!props.modelValue &&
-    props.billsParentTenantId != null &&
-    !!props.order?.id,
-);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'download-excel', payload: { includeImages: boolean }): void;
-  (e: 'override-status'): void;
   (e: 'cancel-order'): void;
-  (e: 'update-status', status: string): void;
-  (e: 'primary-action', action: StaffCatalogPrimaryAction): void;
-  (e: 'open-delivery-paper', paperId: number): void;
   (e: 'open-bill', bill: ShopOrderBillListItem): void;
+  (e: 'create-bill'): void;
   (e: 'update-hidden-from-customer', hidden: boolean): void;
 }>();
 
 const settingsTabs = [
   { name: 'summary', label: 'Summary', icon: 'ph ph-chart-pie-slice' },
-  { name: 'status', label: 'Status', icon: 'ph ph-traffic-signal' },
   { name: 'bills', label: 'Bills', icon: 'ph ph-receipt' },
-  { name: 'delivery', label: 'Delivery', icon: 'ph ph-truck' },
   { name: 'actions', label: 'Actions', icon: 'ph ph-dots-three-outline' },
 ] as const;
 
-const showBillsTab = computed(() => !!props.showDeliveryPapers);
+const showBillsTab = computed(() => canShowCatalogOrderBillsTab(props.order?.status));
 
 const visibleSettingsTabs = computed(() =>
   settingsTabs.filter((tab) => tab.name !== 'bills' || showBillsTab.value),
@@ -302,26 +184,18 @@ const visibleSettingsTabs = computed(() =>
 
 const activeTab = ref<(typeof settingsTabs)[number]['name']>('summary');
 
+const billsTabActive = computed(
+  () =>
+    !!props.modelValue &&
+    activeTab.value === 'bills' &&
+    props.billsParentTenantId != null &&
+    !!props.order?.id,
+);
+
 watch(showBillsTab, (visible) => {
   if (!visible && activeTab.value === 'bills') {
     activeTab.value = 'summary';
   }
-});
-
-const currentStatusLabel = computed(() => getStaffCatalogStatusLabel(props.order?.status));
-
-const statusBadge = computed(() => {
-  const st = normalizeCatalogOrderStatus(props.order?.status);
-  if (st === 'confirmed' || st === 'dispatch' || st === 'delivered' || st === 'closed') {
-    return { color: 'green-1', textColor: 'green-9' };
-  }
-  if (st === 'priced' || st === 'final_offered' || st === 'procuring') {
-    return { color: 'blue-1', textColor: 'blue-9' };
-  }
-  if (st === 'cancelled') {
-    return { color: 'red-1', textColor: 'red-9' };
-  }
-  return { color: 'orange-1', textColor: 'orange-9' };
 });
 </script>
 

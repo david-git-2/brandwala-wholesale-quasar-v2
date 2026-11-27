@@ -64,6 +64,13 @@ AS $$
         AND pr.subject_id = p_entity_id
       LIMIT 1
     )
+    WHEN 'courier' THEN (
+      SELECT pr.id FROM public.profiles pr
+      WHERE pr.tenant_id = p_books_id
+        AND pr.profile_type = 'courier'::public.profile_party_type
+        AND pr.subject_id = p_entity_id
+      LIMIT 1
+    )
     WHEN 'investor' THEN (
       SELECT pr.id FROM public.profiles pr
       WHERE pr.tenant_id = p_books_id

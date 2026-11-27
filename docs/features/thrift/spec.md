@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/thrift/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/thrift/spec.md` |
 | UI | `web/src/modules/thrift/` |
 | SQL | Stub `supabase/schemas/thrift/`; live in `public.sql` |
 | State | Vue Query — do not copy into BW modules |

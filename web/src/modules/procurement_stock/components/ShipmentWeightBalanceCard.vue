@@ -447,7 +447,7 @@
 import { ref, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { computePackageWeightAdjustments } from '../utils/weightBalance';
@@ -622,7 +622,7 @@ const validationError = computed(() => {
 // Preview line items
 const previewItems = computed(() => {
   const adjs = adjustments.value;
-  if (adjs instanceof Error || !adjs.length) return [];
+  if (adjs instanceof Error || !Array.isArray(adjs) || !adjs.length) return [];
   return items.value
     .map((item) => {
       const adj = adjs.find((a) => a.itemId === item.id);
@@ -769,11 +769,11 @@ const addBox = async () => {
     const tenantStore = useTenantStore();
     const currentTenant =
       tenantStore.selectedTenant ?? tenantStore.items.find((t) => t.id === authStore.tenantId);
-    const parentTenantId = currentTenant?.parent_id ?? authStore.tenantId;
-    if (!parentTenantId) throw new Error('No tenant found');
+    const tenantId = currentTenant?.parent_id ?? authStore.tenantId;
+    if (!tenantId) throw new Error('No tenant found');
 
     await globalShipmentBoxRepository.create({
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       shipment_id: props.shipmentId,
       box_number: num,
       received_weight: recv ?? 0,

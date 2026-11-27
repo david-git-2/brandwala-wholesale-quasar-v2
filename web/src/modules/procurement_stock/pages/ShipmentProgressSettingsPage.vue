@@ -297,7 +297,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type { ShipmentProgressFlow, ShipmentProgressFlowStage } from '../repositories/globalShipmentRepository';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';

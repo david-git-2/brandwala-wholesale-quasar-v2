@@ -24,7 +24,7 @@
 - **One picture**: Open shipments, warehouse lots, shop orders, bills due, and cash in — with sales, cash, and COD defined the same way in reports.
 - **No re-keying**: Sell standard, negotiated, pre-order, and dropship flows without copying SKU and party into separate systems.
 - **Defensible cost**: Unit cost from inbound pays and locked shipment costs; gross profit from shipment P&L, not guessed invoice-line COGS.
-- **Faster close**: Confirmed demand to pick, ship, bill, and collect — including Delivery paper close for pre-orders.
+- **Faster close**: Confirmed demand to receive, deliver, bill, and collect via demand buy and money desk for catalog pre-orders.
 - **Self-serve shops**: Buyers use the right shop with the right prices and stock-backed availability.
 
 ## Products and services
@@ -39,7 +39,7 @@
 ## Pain relievers
 
 - **One warehouse quantity**: Shop holds and pick lines debit the same lots; server-side issue and pick RPCs enforce availability — no channel-by-channel stock books.
-- **Quote to demand**: PBC files and catalog negotiation lock confirmed qty into demand; Delivery paper close issues take or condition bills through the money kernel.
+- **Quote to demand**: PBC files and catalog negotiation lock confirmed qty into demand; wholesale bills issue from the money kernel when staff are ready (not auto from delivery record).
 - **Shipment statuses**: Draft through received; post-to-stock from sellable lines; demand and backlog tie to profiles before goods are on hand.
 - **Bills, pays, cashbook**: Merchant AR at ship, net remittance pay-in, leftover on profile cashbook; investor share on shipment investments, not a shadow ledger.
 - **Per-shop listings**: Markup rules, group hides, and dropship floor prices; staff catalog browse separate from the customer shop.

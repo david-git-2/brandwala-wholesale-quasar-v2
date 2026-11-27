@@ -49,7 +49,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useQuery } from '@tanstack/vue-query';
 import type { QTableColumn } from 'quasar';
 import { useThriftShipmentsQuery } from '../../shipment/composables/useThriftShipmentQuery';

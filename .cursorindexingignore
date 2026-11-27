@@ -11,7 +11,9 @@ web/src/types/database.types.ts
 web/src/types/supabase.ts
 supabase/schemas/public.sql
 
-# Not product truth / duplicate docs
+# Not product truth / duplicate docs / historical AI plans
 doc/brand-theme.md
 doc/BRAND_THEME_PLAN.md
 web/public/doc/
+docs/
+.cursor/plans/

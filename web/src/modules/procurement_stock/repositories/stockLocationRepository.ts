@@ -5,11 +5,11 @@ export type { StockLocation };
 const db = supabase as any;
 
 const listStockLocations = async (
-  parentTenantId: number,
+  tenantId: number,
   includeInactive = true,
 ): Promise<StockLocation[]> => {
   const { data, error } = await db.rpc('list_stock_locations', {
-    p_tenant_id: parentTenantId,
+    p_tenant_id: tenantId,
     p_include_inactive: includeInactive,
   });
   if (error) throw error;
@@ -17,11 +17,11 @@ const listStockLocations = async (
 };
 
 const upsertStockLocation = async (
-  parentTenantId: number,
+  tenantId: number,
   payload: UpsertStockLocationPayload,
 ): Promise<StockLocation> => {
   const { data, error } = await db.rpc('upsert_stock_location', {
-    p_tenant_id: parentTenantId,
+    p_tenant_id: tenantId,
     p_code: payload.code,
     p_name: payload.name,
     p_kind: payload.kind,

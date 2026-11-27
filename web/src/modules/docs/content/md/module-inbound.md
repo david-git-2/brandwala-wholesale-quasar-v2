@@ -10,7 +10,7 @@ Kernels: [Access](/docs/kernels#access-kernel) (app only) · [Warehouse](/docs/k
 
 | Surface | Inbound |
 | --- | --- |
-| **app** | Shipments, costs, receive, bins, movements, demand / delivery paper |
+| **app** | Shipments, costs, receive, bins, movements, demand buy |
 | **shop** | — |
 | **platform** | — |
 | **investor** | — |
@@ -26,7 +26,6 @@ Grant: `global_shipment` (and related procurement modules). Vendors: `vendor/` m
 | Shipment detail | `/:slug/app/procurement/shipment/:id` | Lines, costs, receive, outcomes |
 | Stock / bins | `/:slug/app/procurement/stock` | Warehouse tree, lot groups |
 | Demand | `/:slug/app/procurement/demand` | Pre-order demand lines |
-| Fulfill | `/:slug/app/procurement/fulfill` | **Delivery paper** pack-out |
 | AP on shipment | `.../shipment/:id/rates-invoices` | Bucket bills tied to shipment |
 
 Legacy redirects exist from `/app/global/shipment/*` → `/app/procurement/shipment/*`.
@@ -155,16 +154,13 @@ flowchart LR
 
 Pre-order ([PBC](/docs/modules/product-based-costing)) has **no** lot until receive on a shipment. Demand desk links confirmed qty to inbound.
 
-## Demand and delivery paper
+## Demand buy & customer delivery
 
-| Desk | Route | Closes into |
+| Desk | Route | Job |
 | --- | --- | --- |
-| Demand | `/app/procurement/demand` | Rows from shop + PBC |
-| Fulfill | `/app/procurement/fulfill` | Delivery paper pack-out |
+| Demand buy | `/app/procurement/demand` | Vendor placements on `preorder_demand` for shop + PBC lines |
 
-**Packed** close can issue **take** or **condition** bills (`source_type = delivery_close`) — that is money on confirmed pre-order, not the same screen as vendor AP on the shipment.
-
-Returns on delivery close go back to **sellable** warehouse without an AR bill.
+Catalog **customer delivery** is handled on the money desk and shop order workflows — not a procurement fulfill desk. Legacy `delivery_close` bills may still exist in history.
 
 ## Money pattern (inbound AP)
 

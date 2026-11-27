@@ -11,7 +11,8 @@ Same kernels as [wholesale](/docs/modules/wholesale): [warehouse](/docs/kernels#
 | **Supplier** | Logged-in tenant | Fulfills stock, issues B2B invoice |
 | **Dropshipper** | Shop customer / merchant profile | Buys at wholesale; profit after remittance |
 | **End customer** | Recipient on the order | Delivery + COD **face** only — not AR party |
-| **Customer invoice** | AR bill at **ship** | Supplier → dropshipper; amount = B2B total |
+| **Customer invoice** | AR bill at **ship** | Supplier → dropshipper; B2B total. **Target note:** amount they get after all payment |
+| **Courier receivable (target)** | AR bill at **ship** | Lines: **COD − rate − delivery** → net. Replaces courier AP. Design: `dropship-courier-ar-redesign.md` |
 | **Packing slip** | Ops paper | Not a `bills` row to the recipient |
 
 Code may still say `merchant`, `middleman`, `recipient_*` — UI uses the names above.
@@ -29,10 +30,10 @@ Code may still say `merchant`, `middleman`, `recipient_*` — UI uses the names 
 
 | Area | Route | Job |
 | --- | --- | --- |
-| Shop checkout | `/:slug/shop/dropship/review`, `.../delivery` | Cart → recipient details → submit order |
+| Shop checkout | `/:slug/shop/dropship/place-order` (`review`/`delivery` redirect into wizard) | Cart → 6-step wizard → submit order |
 | Dropship desk | `/:slug/app/shop/dropship` | Orders list (dropship shops) |
 | Order detail | `/:slug/app/shop/orders/:id` | Call confirm, pick, ship, deliver |
-| Management | `/:slug/app/shop/dropship-management` | Settlement table, mark delivered |
+| Management | `/:slug/app/shop/dropship-management` | Post-ship table; Bills **Dropshipper** / **Courier**; shipped deliver/return; **delivered** inline fees + Save (draft bills resync) |
 | Finance hub | `/:slug/app/shop/dropship/.../finance` | Courier remittance, merchant ledger |
 | Remittance (money) | `/:slug/app/finance/payments/collect?mode=courier` | Net bank in — same writer as settlement desk |
 
@@ -45,7 +46,7 @@ flowchart LR
   CART["Shop cart"]
   CONF["Confirmed\nrecipient call"]
   PROC["Processing\npick stock"]
-  SHIP["Ship +\nissue bills"]
+  SHIP["Ship +\ndraft bills"]
   DEL["Delivered\nCOD face"]
   REM["Remittance\npay in"]
   OUT["Merchant payout\noptional"]
@@ -57,9 +58,9 @@ flowchart LR
 | --- | --- | --- |
 | **Confirmed** | — | Staff verify recipient call before pick |
 | **Processing** | Pick lines → `shop_order_item_stock_picks` | Gifts / auto-gifts may add lines |
-| **Ship** | Packing slip | **Issued** merchant AR + **issued** courier AP |
-| **Delivered** | — | COD receivable on parcel; not tenant sales cash |
-| **Remittance** | — | Pay in **net** bank; alloc to merchant bill |
+| **Ship** | Packing slip | **Target:** **draft** merchant AR + **draft** courier AR (**net**). **As-built until SO-CA1:** **issued** merchant AR + courier AP |
+| **Delivered** | — | COD face with courier; not tenant sales cash |
+| **Remittance** | — | Pay in **net** bank; **target:** close courier AR + auto alloc merchant AR |
 | **Payout** | — | Pay out merchant **cashbook** leftover (profit) |
 
 Advance to `processing` is blocked until `recipient_verified_at` is set (US-4).
@@ -70,7 +71,7 @@ Advance to `processing` is blocked until `recipient_verified_at` is set (US-4).
 flowchart TB
   SHOP["Shop order\nsource_type shop_order"]
   WH["Warehouse\npick parent lots"]
-  MON["Money\nAR + AP at ship"]
+  MON["Money\ntwo ARs at ship (target)"]
   REM["Remittance +\npayout"]
 
   SHOP --> WH
@@ -83,18 +84,21 @@ flowchart TB
 | --- | --- |
 | **Access** | Shop buyer vs app staff grants; dropship shop type on tenant |
 | **Warehouse** | Same `global_stocks` as wholesale desk — no channel stock book |
-| **Money** | Merchant bill, courier AP, remittance, profile cashbook, payout |
+| **Money** | Merchant AR, courier AR (net) **target** / courier AP **as-built**, remittance, cashbook, payout |
 | **Landed cost** | Unit cost on picked lots — same as inbound stamp |
 
 Wholesale [compose](/docs/modules/wholesale) is **not** the dropship issue path — issue runs from `ship_dropship_order_and_issue_merchant_bill`.
 
 ## Money layers (do not mix)
 
+**Target (SO-CA1):** customer AR + courier AR (**net** remittance). **As-built:** customer AR + courier AP until that ships.
+
 | Layer | What staff/customer sees | In `bills`? |
 | --- | --- | --- |
 | Recipient **COD face** | e.g. 2,200 on delivery | **No** — order field only |
-| **Customer invoice** (merchant AR) | e.g. 1,500 B2B at ship | **Yes** — issued at ship |
-| **Courier AP** | Fee supplier owes courier | **Yes** — issued at ship |
+| **Customer invoice** (merchant AR) | e.g. 1,500 B2B; **note** e.g. get 620 after payment | **Yes** — **draft** at ship (issue later) |
+| **Courier AR (target)** | Lines COD − rate − delivery → net e.g. 2,120 | **Yes** — **draft** AR at ship |
+| **Courier AP (as-built)** | Fee we-owe e.g. 80 | **Yes** until SO-CA1 retires it |
 | **Remittance** | Net bank in e.g. 2,120 | **Pay** — `source = courier_remittance` |
 | **Merchant profit** | Remainder after alloc | **Cashbook** — pay out later, no second AR |
 
@@ -106,36 +110,37 @@ sequenceDiagram
   participant Cour as Courier
 
   Ops->>WH: pick at processing
-  Ops->>Mon: ship + issue merchant AR + courier AP
+  Ops->>Mon: ship + draft merchant AR + courier AR net
   Cour->>Ops: parcel delivered COD face
   Ops->>Mon: record remittance net in
-  Mon->>Mon: alloc to merchant bill
+  Mon->>Mon: close courier AR
+  Mon->>Mon: auto alloc merchant AR
   Mon->>Mon: leftover on dropshipper cashbook
   Ops->>Mon: payout profit later
 ```
 
-### Worked example
+### Worked example (target option B)
 
-Dropshipper bill **1,500**. Recipient COD **2,200**. Courier fee **80**. Bank **2,120**.
+Dropshipper bill **1,500**. Recipient COD **2,200**. Courier fee **80**. Expected net / bank **2,120**.
 
 | Step | Result |
 | --- | --- |
-| At ship | AR 1,500 due; AP ~80 we owe |
+| At ship | **Draft** customer AR 1,500 + note get **620** after payment; **draft** courier AR lines COD − rate − delivery = **2,120** |
 | Deliver | COD 2,200 is courier/parcel — **not** sales |
-| Remittance | Pay in 2,120; alloc 1,500 → merchant bill **paid** |
+| Remittance | Pay in 2,120; courier AR paid; auto alloc 1,500 → merchant bill **paid** |
 | Leftover | **+620** on dropshipper cashbook |
 | Later | Pay out 620 — cashbook only, no alloc |
 
-Detail: [Money kernel → Dropship pattern](/docs/kernels#money-kernel).
+Detail: [Money kernel → Dropship pattern](/docs/kernels#money-kernel). Full design: `docs/features/shop_order/dropship-courier-ar-redesign.md`.
 
 ## Ship and deliver rules
 
-- **One RPC at ship** issues merchant AR and courier AP (`source_type` shop order + `dropship_courier` for AP).
+- **Target:** mark shipped creates **draft** merchant AR + **draft** courier AR (**net**). **As-built:** **issued** merchant AR + courier AP (`dropship_courier`).
 - **Packing slip** ≠ customer invoice; recipient is not `to_profile` on the B2B bill.
-- After issue, charge changes vs settlement desk → **credit/debit notes** (`create_bill_adjustment`) — not silent edits to issued totals.
-- **Mark as delivered** may apply notes at deliver when settlement draft differs from issued paper.
+- After papers are issued, charge changes vs settlement → **credit/debit notes** (`create_bill_adjustment`) — not silent edits to issued totals.
+- **Mark as delivered** may apply notes when settlement differs from paper.
 
-Remittance requires the merchant bill **issued**. Use **Payments → Pay in → Courier** or settlement desk — same `record_dropship_courier_remittance` writer.
+Remittance requires papers **issued** (ship left them draft). Use **Payments → Pay in → Courier** or settlement desk — same `record_dropship_courier_remittance` writer. **Target:** remittance closes courier AR and auto-updates customer AR.
 
 ## Gifts and customer stock
 
@@ -152,7 +157,7 @@ Auto-gifts apply once when order enters `processing` from shop settings.
 - Listing visibility per customer group; display qty padding on storefront.
 - Pickup locations, couriers, merchant profiles — app dropship admin routes.
 
-Catalog **negotiation** shops share `shop_order` but close through **delivery paper** — not this ship/issue path. See [Sales models](/docs/models).
+Catalog **negotiation** shops share `shop_order` but bill on the money desk — not this ship/issue path. See [Sales models](/docs/models).
 
 ## What dropship is not
 

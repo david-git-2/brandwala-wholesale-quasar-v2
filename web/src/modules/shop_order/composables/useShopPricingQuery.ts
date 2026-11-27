@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useGlobalReferenceStore } from 'src/modules/global_reference/stores/globalReferenceStore';
+import { useGlobalReferenceStore } from 'src/modules/tenant/submodules/global_reference/stores/globalReferenceStore';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopPricingRepository } from '../repositories/shopPricingRepository';
 

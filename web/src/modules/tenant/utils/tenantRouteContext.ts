@@ -1,4 +1,9 @@
 import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router';
+import {
+  isShopTypePathSegment,
+  SHOP_TYPE_PATH_SEGMENTS,
+  type ShopTypePathSegment,
+} from 'src/modules/shop_order/utils/shopRouteTypes';
 
 type RouteLike = {
   fullPath?: string;
@@ -33,10 +38,23 @@ const isLocalHostname = (hostname: string | null) =>
 
 export const getTenantSlugFromPath = (path: string): string | null => {
   const normalizedPath = path.split('?')[0]?.split('#')[0] ?? path;
-  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
 
+  const shopReserved = new Set(['login', 'select-company', ...SHOP_TYPE_PATH_SEGMENTS]);
+  const shopTenantMatch = normalizedPath.match(/^\/shop\/([^/]+)(\/|$)/);
+  if (shopTenantMatch?.[1]) {
+    const shopCandidate = normalizeRouteToken(shopTenantMatch[1]);
+    if (shopCandidate && !shopReserved.has(shopCandidate)) {
+      return shopCandidate;
+    }
+  }
+
+  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor|proxy)(\/|$)/);
   if (scopedMatch?.[1]) {
-    return normalizeRouteToken(scopedMatch[1]);
+    const first = normalizeRouteToken(scopedMatch[1]);
+    if (first === 'app' || first === 'shop' || first === 'investor' || first === 'platform' || first === 'proxy') {
+      return null;
+    }
+    return first;
   }
 
   return null;
@@ -44,17 +62,18 @@ export const getTenantSlugFromPath = (path: string): string | null => {
 
 export const getScopeFromPath = (
   path: string,
-): 'platform' | 'app' | 'shop' | 'investor' | null => {
+): 'platform' | 'app' | 'shop' | 'investor' | 'proxy' | null => {
   const normalizedPath = path.split('?')[0]?.split('#')[0] ?? path;
 
   if (/^\/platform(\/|$)/.test(normalizedPath)) {
     return 'platform';
   }
 
-  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
+  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor|proxy)(\/|$)/);
   if (scopedMatch?.[2] === 'shop') return 'shop';
   if (scopedMatch?.[2] === 'investor') return 'investor';
   if (scopedMatch?.[2] === 'app') return 'app';
+  if (scopedMatch?.[2] === 'proxy') return 'proxy';
   if (/^\/shop(\/|$)/.test(normalizedPath)) return 'shop';
   if (/^\/investor(\/|$)/.test(normalizedPath)) return 'investor';
   if (/^\/app(\/|$)/.test(normalizedPath)) return 'app';
@@ -88,6 +107,54 @@ export const getTenantSlugFromRoute = (
 
   if (route.fullPath) {
     const fromFullPath = getTenantSlugFromPath(route.fullPath);
+    if (fromFullPath) {
+      return fromFullPath;
+    }
+  }
+
+  return null;
+};
+
+const shopTypeFromPathString = (path: string): ShopTypePathSegment | null => {
+  const normalizedPath = path.split('?')[0]?.split('#')[0] ?? path;
+  const match = normalizedPath.match(/^\/shop\/[^/]+\/(catalog|stock|dropship)(\/|$)/);
+  const candidate = normalizeRouteToken(match?.[1]);
+  if (candidate && isShopTypePathSegment(candidate)) {
+    return candidate;
+  }
+  return null;
+};
+
+export const getShopTypePathFromRoute = (
+  route: RouteLike,
+  shopTypeOverride?: string | null,
+): ShopTypePathSegment | null => {
+  const fromOverride = normalizeRouteToken(shopTypeOverride);
+  if (fromOverride && isShopTypePathSegment(fromOverride)) {
+    return fromOverride;
+  }
+
+  const fromParams = normalizeRouteToken(route.params?.shopType);
+  if (fromParams && isShopTypePathSegment(fromParams)) {
+    return fromParams;
+  }
+
+  const fromQuery = normalizeRouteToken(route.query?.shop_type);
+  if (fromQuery && isShopTypePathSegment(fromQuery)) {
+    return fromQuery;
+  }
+
+  const redirectPath =
+    typeof route.query?.redirect === 'string' ? route.query.redirect.trim() : '';
+  if (redirectPath) {
+    const fromRedirect = shopTypeFromPathString(redirectPath);
+    if (fromRedirect) {
+      return fromRedirect;
+    }
+  }
+
+  if (route.fullPath) {
+    const fromFullPath = shopTypeFromPathString(route.fullPath);
     if (fromFullPath) {
       return fromFullPath;
     }
@@ -141,15 +208,31 @@ export const getShopLoginRouteLocation = (
   route: RouteLike,
   extraQuery?: Record<string, string>,
   tenantSlugOverride?: string | null,
+  shopTypeOverride?: string | null,
 ): RouteLocationRaw => {
   const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
+  const shopType = getShopTypePathFromRoute(route, shopTypeOverride) ?? undefined;
+
+  if (!tenantSlug) {
+    return {
+      path: '/shop/login',
+      query: { ...extraQuery },
+    };
+  }
+
+  if (shopType) {
+    return {
+      name: 'customer-login-page',
+      params: { tenantSlug, shopType },
+      query: {
+        ...extraQuery,
+      },
+    };
+  }
 
   return {
-    name: 'customer-login-page',
-    params: tenantSlug ? { tenantSlug } : {},
-    query: {
-      ...extraQuery,
-    },
+    path: `/shop/${tenantSlug}/login`,
+    query: { ...extraQuery },
   };
 };
 
@@ -157,41 +240,49 @@ export const getShopSelectCompanyRouteLocation = (
   route: RouteLike,
   extraQuery?: Record<string, string>,
   tenantSlugOverride?: string | null,
+  shopTypeOverride?: string | null,
 ): RouteLocationRaw => {
   const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
+  const shopType = getShopTypePathFromRoute(route, shopTypeOverride) ?? undefined;
+
+  if (tenantSlug && shopType) {
+    return {
+      name: 'shop-select-company-page',
+      params: { tenantSlug, shopType },
+      query: {
+        ...extraQuery,
+      },
+    };
+  }
 
   return {
-    name: 'shop-select-company-page',
-    params: tenantSlug ? { tenantSlug } : {},
-    query: {
-      ...extraQuery,
-    },
+    path: `/shop/${tenantSlug ?? ''}/select-company`,
+    query: { ...extraQuery },
   };
 };
 
 export const getShopDashboardRouteLocation = (
   route: RouteLike,
   tenantSlugOverride?: string | null,
+  shopTypeOverride?: string | null,
 ): RouteLocationRaw => {
   const tenantSlug =
-    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? undefined;
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? '';
+  const shopType = getShopTypePathFromRoute(route, shopTypeOverride) ?? 'catalog';
 
   return {
     name: 'customer-dashboard',
-    params: tenantSlug ? { tenantSlug } : {},
+    params: { tenantSlug, shopType },
   };
 };
 
 export const getInvestorLoginRouteLocation = (
-  route: RouteLike,
+  _route: RouteLike,
   extraQuery?: Record<string, string>,
-  tenantSlugOverride?: string | null,
+  _tenantSlugOverride?: string | null,
 ): RouteLocationRaw => {
-  const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
-
   return {
     name: 'investor-login-page',
-    params: tenantSlug ? { tenantSlug } : {},
     query: {
       ...extraQuery,
     },
@@ -199,30 +290,100 @@ export const getInvestorLoginRouteLocation = (
 };
 
 export const getInvestorDashboardRouteLocation = (
+  _route: RouteLike,
+  _tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  return {
+    name: 'investor-dashboard-page',
+  };
+};
+
+export const getProxyLoginRouteLocation = (
+  route: RouteLike,
+  extraQuery?: Record<string, string>,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug =
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? '';
+
+  if (tenantSlug) {
+    return {
+      name: 'proxy-login-page',
+      params: { tenantSlug },
+      query: { ...extraQuery },
+    };
+  }
+
+  return {
+    path: '/proxy/login',
+    query: { ...extraQuery },
+  };
+};
+
+export const getProxySelectGroupRouteLocation = (
+  route: RouteLike,
+  extraQuery?: Record<string, string>,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug =
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? '';
+
+  if (tenantSlug) {
+    return {
+      name: 'proxy-select-group-page',
+      params: { tenantSlug },
+      query: { ...extraQuery },
+    };
+  }
+
+  return {
+    path: '/proxy/select-group',
+    query: { ...extraQuery },
+  };
+};
+
+export const getProxyDashboardRouteLocation = (
   route: RouteLike,
   tenantSlugOverride?: string | null,
 ): RouteLocationRaw => {
   const tenantSlug =
-    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? undefined;
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? '';
+
+  if (tenantSlug) {
+    return {
+      name: 'proxy-dashboard-page',
+      params: { tenantSlug },
+    };
+  }
 
   return {
-    name: 'investor-dashboard-page',
-    params: tenantSlug ? { tenantSlug } : {},
+    path: '/proxy',
   };
 };
 
 export const getAppRouteLocation = (
   route: RouteLike,
-  selectedTenantSlug: string | null | undefined,
+  _selectedTenantSlug?: string | null | undefined,
 ): RouteLocationRaw => {
-  const tenantSlug = selectedTenantSlug ?? undefined;
+  const params = { ...(route.params ?? {}) };
+  delete params.tenantSlug;
 
   return {
     name: typeof route.name === 'string' ? route.name : undefined,
-    params: {
-      ...(route.params ?? {}),
-      ...(tenantSlug ? { tenantSlug } : {}),
-    },
+    params: params as Record<string, string | number | (string | number)[]>,
     query: route.query ?? {},
   };
+};
+
+/** App desk: session/header is tenant truth; missing URL slug is OK. */
+export const validateAppRouteTenantSlug = ({
+  authStore,
+  to,
+}: {
+  authStore: { selectedTenant?: { slug: string } | null };
+  to: RouteLike;
+}): true => {
+  void authStore;
+  void to;
+  return true;
 };

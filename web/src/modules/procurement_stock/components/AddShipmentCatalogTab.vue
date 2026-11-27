@@ -469,12 +469,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { productRepository } from 'src/modules/products/repositories/productRepository';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
-import { productService } from 'src/modules/products/services/productService';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
+import { globalReferenceRepository } from 'src/modules/tenant/submodules/global_reference/repositories/globalReferenceRepository';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import NewShipmentProductSidebar from './NewShipmentProductSidebar.vue';

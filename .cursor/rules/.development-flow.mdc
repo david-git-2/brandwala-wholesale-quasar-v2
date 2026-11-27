@@ -1,74 +1,40 @@
 ---
-description: Project stack, domain rules, architecture constraints, and development conventions. Always active.
-globs:
-alwaysApply: true
+description: Naming, locked business rules, do-not-touch. Crib lives in core.mdc.
+globs: ["web/**", "supabase/**", "docs/**", "python/**"]
+alwaysApply: false
 ---
 
-# Development Flow — TradeFlow BD
+# Development Flow
 
-## Stack
-- Frontend: Quasar 2 SPA (Vue 3 + TypeScript) in `web/`
-- Backend: Supabase (Postgres, Auth, Storage, RPCs) in `supabase/`
-- Auth: Google OAuth via Supabase; scoped login (`platform` | `app` | `shop`)
-- Deploy: Cloudflare Pages (`web/` root, `npm run build`, output `dist/spa`)
-- Python ETL: `python/` scripts (PC/WTS product sync) — env shared via `web/.env`
-- Types: generated at `web/src/types/database.types.ts` via `npm run backend:types` (re-export: `web/src/types/supabase.ts`). Grep signatures only — never full-read; not proof migrations are reset-safe.
+## Surfaces
 
-## App surfaces
-- `platform` — superadmin (`/auth/platform/login` → `/platform/dashboard`)
-- `app` — tenant admin/staff/viewer (`/:slug/app/*`)
-- `shop` — customer storefront (`/:slug/shop/*` or `public_domain` hostname resolve)
-- `investor` — read-only investor portal (`/:slug/investor/*`)
+- `platform` — `/auth/platform/login` → `/platform/*`
+- `app` — `/:slug/app/*`
+- `shop` — `/:slug/shop/*` or `public_domain`
+- `investor` — `/:slug/investor/*`
 
-## Architecture constraints
-- Module pattern: follow the folder you edit — Pinia `page → store → service → repository`, or Vue Query composables + repository. See `docs/architecture/state.md`.
-- DB writes: prefer Supabase RPCs over direct client mutations when RLS depends on computed access
-- New tables: migration → indexes → RLS → helper functions (`security definer` if cross-table) → RPCs → regenerate types
-- Permissions: `authStore.effectiveGrants` + `createAccessGuard`; server via `has_module_action()` / `membership_has_module_action()`
-- Data contract order: DB schema → UI data shapes → API/RPC contracts (backend fulfills UI, not vice versa)
-- Domain change: `docs/README.md` → module `spec.md` → `web/src/modules/<module>/`. New docs: `docs/STRUCTURE.md`. Missing fact: `DOC_GAP`.
+## Naming
 
-## File structure
-- `web/src/modules/<module>/` — pages, components, stores, services, repositories, routes
-- `web/src/components/` — cross-module shared UI (`ui/` subfolder for primitives)
-- `supabase/schemas/` — current SQL ([doc/supabase-schema.md](../../doc/supabase-schema.md)); `supabase/migrations/` — history
-- `docs/README.md` + `docs/STRUCTURE.md` — index and how to add docs. Specs: `docs/features/<module>/spec.md`. `doc/fix/` — dated fix notes.
+- Vue: PascalCase. Stores: `<module>Store.ts`. Repos/services: `<entity>Repository|Service.ts`.
+- SQL: snake_case; migrations `YYYYMMDDHHMMSS_description.sql`.
+- RPCs: `verb_noun_for_scope`. Routes: scope-prefixed.
 
-## Naming conventions
-- Vue SFCs: PascalCase (`TenantPage.vue`)
-- Stores: `<module>Store.ts` (Pinia)
-- Repositories/services: `<entity>Repository.ts`, `<entity>Service.ts`
-- SQL: snake_case identifiers; migration prefix `YYYYMMDDHHMMSS_description.sql`
-- RPCs: verb_noun_for_scope pattern (e.g. `list_tenants_for_superadmin`)
-- Routes: scope-prefixed (`/:tenantSlug/app/...`, `/platform/...`)
+## Locked business
 
-## Patterns & libraries
-- Feedback: `web/src/utils/appFeedback.ts` (`showSuccessNotification`, `showErrorNotification`, `requestConfirmation`)
-- Images: `SmartImage.vue`, Cloudinary uploader dialog
-- Loading bar: `GlobalAjaxBar.vue`
-- Shell: `WorkspaceShell.vue` with theme classes (`theme-platform`, `theme-app`, `theme-shop`)
-- Treasury pages: `TreasuryPageShell`, `TreasuryStatGrid`, `TreasuryTableWrap`
-- Batch costing: `useShipmentItemsCostingCache` / `listShipmentItemsBatch` — never `listShipmentItems` in loops
-- List pagination: pass `skip_count: true` on large search/list queries
-- Performance: no `backdrop-filter` on static surfaces; opaque surfaces preferred
+- Multi-tenant; stock owned by parent; child via allocations.
+- Stock-backed shops sell from `global_stock_allocations` only.
+- Sales models BW / pre-order / K-beauty (`koba`) / thrift — do not mix `global_stocks` with `koba_*` or `thrift_*`.
+- Investor portal v1 read-only. Commerce legacy → `shop_order`.
 
-## Business rules (locked)
-- Multi-tenant parent/child hierarchy; stock owned by parent, child display via allocations
-- Shop sells from `global_stock_allocations` only (stock-backed shops)
-- Four login scopes unchanged; grants from bootstrap `effectiveGrants` + `permissionVersion`
-- Sales models: BW, pre-order, K-beauty (`koba`), thrift — `docs/architecture/business-models.md`. Do not mix `global_stocks` with `koba_*` or `thrift_*`.
-- Investor portal v1 is read-only (no withdrawal request flow)
-- Commerce legacy modules retire toward `shop_order`
+## Patterns (pointers only)
 
-## Scope guard for agents
-- Tasks touching >3 files or >150 lines: narrow scope per `docs/STRUCTURE.md`
-- Do not copy Thrift composable architecture into web — keep module/repository/store pattern
-- New docs must follow `docs/STRUCTURE.md` (thin, as-built, no duplicate topics)
-- Regenerate types after every schema migration (`pnpm run backend:types:local` on local DB; `backend:types` after remote push)
-- Deploy backend: `pnpm run backend:prod` (push migrations + types)
-- **Apply migrations locally (default):** `pnpm run backend:local` — keeps prod snapshot data. See `.cursor/rules/supabase-local-backend.mdc`
-- **Empty-DB replay (ordering fix / user asks):** `pnpm run backend:reset` — wipes data; then `backend:pull-prod-data` once if prod rows needed
+- Feedback: `appFeedback.ts`. Images: `SmartImage`. Loading: `GlobalAjaxBar`. Shell themes: `theme-platform|app|shop`.
+- Treasury: `TreasuryPageShell` / `TreasuryStatGrid` / `TreasuryTableWrap`.
+- Batch costing: `useShipmentItemsCostingCache` — never `listShipmentItems` in loops.
+- Large lists: `skip_count: true`. No `backdrop-filter` on static chrome.
+- UI canon: `quasar-ui.mdc`. Local DB: `supabase-local-backend.mdc` (`backend:local` default).
 
-## Do NOT touch without explicit request
-- Generated `web/src/types/database.types.ts` / `web/src/types/supabase.ts` (edit via migrations + `backend:types`)
-- Legacy cutover migrations until tenant cutover (`20260709000600_b7_cleanup.sql` chain)
+## Do not touch without ask
+
+- Generated `database.types.ts` / `supabase.ts`
+- Legacy cutover migrations (`20260709000600_b7_cleanup.sql` chain)

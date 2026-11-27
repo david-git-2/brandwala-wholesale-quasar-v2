@@ -6,7 +6,7 @@
 
 <script setup lang="ts">
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
-import { usePlatformWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
+import { usePlatformWorkspaceLinks } from 'src/modules/workspace/submodules/navigation/useWorkspaceNavigation';
 
 const { links } = usePlatformWorkspaceLinks();
 </script>

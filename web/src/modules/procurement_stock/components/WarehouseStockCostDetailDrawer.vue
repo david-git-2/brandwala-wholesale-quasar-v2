@@ -113,7 +113,7 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import {
   calculateLineLandedCostBreakdown,
   costingShipmentForPreview,
@@ -123,8 +123,8 @@ import { formatGlobalShipmentStatus } from '../constants/shipmentStatus';
 import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
 import type { GlobalStock } from '../repositories/globalStockRepository';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import { isGlobalStockCostingInput } from 'src/modules/global/utils/resolveGlobalStockUnitCost';
-import type { ShipmentCostingCacheItem } from 'src/modules/global/composables/useShipmentItemsCostingCache';
+import { isGlobalStockCostingInput } from 'src/modules/procurement_stock/submodules/global_stock/utils/resolveGlobalStockUnitCost';
+import type { ShipmentCostingCacheItem } from 'src/modules/procurement_stock/submodules/global_stock/composables/useShipmentItemsCostingCache';
 
 const props = defineProps<{
   modelValue: boolean;

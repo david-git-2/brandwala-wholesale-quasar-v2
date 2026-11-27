@@ -16,6 +16,7 @@ import {
   getCustomerOrderStatusColor,
   getCustomerOrderStatusIcon,
 } from '../utils/customerOrderStatusUi';
+import { hasPendingResellDiscount } from '../utils/dropshipReviewPricingUtils';
 
 const props = defineProps<{
   order: CustomerOrderDetailOrder;
@@ -91,6 +92,12 @@ const itemRows = computed(() =>
   props.orderItems.map((item) => {
     const resell = Number(item.customer_sell_price_amount ?? item.final_price_amount ?? 0);
     const quantity = item.quantity;
+    const requestedResell =
+      item.requested_resell_discount_price_amount != null
+        ? Number(item.requested_resell_discount_price_amount)
+        : null;
+    const hasDiscountRequest = hasPendingResellDiscount(requestedResell);
+    const effectiveUnit = hasDiscountRequest ? (requestedResell as number) : resell;
     return {
       id: item.id,
       productId: item.product_id,
@@ -98,10 +105,17 @@ const itemRows = computed(() =>
       name: item.name,
       quantity,
       resell,
-      lineResell: resell * quantity,
+      requestedResell,
+      hasDiscountRequest,
+      discountReason: item.resell_discount_request_reason?.trim() || '',
+      lineResell: effectiveUnit * quantity,
       item,
     };
   }),
+);
+
+const hasAnyDiscountRequest = computed(() =>
+  itemRows.value.some((row) => row.hasDiscountRequest),
 );
 
 const totals = computed(() =>
@@ -358,6 +372,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   <th class="col-item">Item</th>
                   <th class="col-qty">{{ t('shop_admin.quantity') }}</th>
                   <th class="col-money">{{ t('shop_admin.recipient_price') }}</th>
+                  <th v-if="hasAnyDiscountRequest" class="col-money">{{ $t('shop.dropship_col_requested_resell') }}</th>
                   <th v-if="isNegotiationOpen" class="col-money">{{ t('shop_admin.your_counter') }}</th>
                   <th class="col-money">{{ t('shop_admin.line_total') }}</th>
                 </tr>
@@ -380,6 +395,17 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   </td>
                   <td class="col-qty text-weight-bold">{{ row.quantity }}</td>
                   <td class="col-money">{{ formatMoney(row.resell) }}</td>
+                  <td v-if="hasAnyDiscountRequest" class="col-money">
+                    <template v-if="row.hasDiscountRequest">
+                      <div class="dropship-invoice-paper__requested-price">
+                        {{ formatMoney(row.requestedResell!) }}
+                      </div>
+                      <div v-if="row.discountReason" class="dropship-invoice-paper__discount-reason text-caption">
+                        {{ row.discountReason }}
+                      </div>
+                    </template>
+                    <span v-else class="text-grey-5">—</span>
+                  </td>
                   <td v-if="isNegotiationOpen" class="col-money">
                     <q-input
                       v-model.number="row.item.customer_offer_amount"
@@ -391,7 +417,10 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                       :prefix="currencySymbol"
                     />
                   </td>
-                  <td class="col-money text-weight-bolder text-grey-9">{{ formatMoney(row.lineResell) }}</td>
+                  <td
+                    class="col-money text-weight-bolder"
+                    :class="row.hasDiscountRequest ? 'dropship-invoice-paper__requested-price' : 'text-grey-9'"
+                  >{{ formatMoney(row.lineResell) }}</td>
                 </tr>
               </tbody>
               <tfoot>
@@ -400,6 +429,7 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   <td class="col-item text-weight-bold">Totals</td>
                   <td class="col-qty text-weight-bold">{{ totals.quantity }}</td>
                   <td class="col-money" />
+                  <td v-if="hasAnyDiscountRequest" class="col-money" />
                   <td v-if="isNegotiationOpen" class="col-money" />
                   <td class="col-money text-weight-bolder text-primary">{{ formatMoney(totals.resell) }}</td>
                 </tr>
@@ -429,6 +459,26 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                   <div class="dropship-invoice-paper__mobile-meta">
                     <span>{{ t('shop_admin.quantity') }} {{ row.quantity }}</span>
                     <span>{{ formatMoney(row.resell) }} {{ t('shop.each') }}</span>
+                  </div>
+                  <div
+                    v-if="row.hasDiscountRequest"
+                    class="dropship-invoice-paper__mobile-discount q-mt-xs"
+                  >
+                    <q-icon name="ph ph-hourglass-medium" size="14px" class="q-mr-xs" />
+                    <span>
+                      {{
+                        $t('shop.dropship_discount_requested', {
+                          price: formatMoney(row.requestedResell!),
+                        })
+                      }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="row.discountReason"
+                    class="dropship-invoice-paper__discount-reason text-caption q-mt-xs"
+                  >
+                    <span class="text-weight-medium">{{ $t('shop.dropship_request_discount_reason_label') }}:</span>
+                    {{ row.discountReason }}
                   </div>
                 </div>
               </div>
@@ -463,6 +513,13 @@ const copyDetail = (text: string | null | undefined, label: string) => {
               <span class="text-subtitle2 text-weight-bolder text-primary">{{ formatMoney(totals.resell) }}</span>
             </div>
           </div>
+
+          <p
+            v-if="hasAnyDiscountRequest"
+            class="dropship-invoice-paper__footnote text-caption text-grey-7 q-mt-sm q-mb-none"
+          >
+            {{ $t('shop.dropship_totals_pending_discount_note') }}
+          </p>
         </section>
       </div>
 
@@ -610,5 +667,24 @@ export default {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.dropship-invoice-paper__requested-price {
+  color: color-mix(in srgb, var(--tf-warning, #d97706) 80%, var(--tf-neutral-ink, #1f2937));
+  font-weight: 600;
+}
+
+.dropship-invoice-paper__discount-reason {
+  color: var(--tf-neutral-muted, #6b7280);
+  margin-top: 0.2rem;
+  white-space: pre-wrap;
+}
+
+.dropship-invoice-paper__mobile-discount {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--tf-warning, #d97706) 75%, var(--tf-neutral-ink, #1f2937));
 }
 </style>

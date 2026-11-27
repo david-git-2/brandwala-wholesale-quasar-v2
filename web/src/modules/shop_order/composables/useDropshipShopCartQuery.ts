@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { dropshipCartService } from '../services/dropshipCartService';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import { seedCustomerShopPermissions } from './useCustomerShopPermissionsQuery';
 import { useQueryClient } from '@tanstack/vue-query';
@@ -70,8 +70,10 @@ export function useDropshipShopCartQuery(shopId: Ref<number | null>) {
   const purchaseSubtotal = computed(() => totals.value?.purchase_subtotal ?? 0);
   const resellSubtotal = computed(() => totals.value?.resell_subtotal ?? 0);
 
-  const getPurchaseUnitAmount = (item: (typeof items.value)[number]) =>
-    cartPriceAmount(item.listing_sell_price) || cartPriceAmount(item.purchase_price);
+  const getPurchaseUnitAmount = (item: {
+    listing_sell_price?: Parameters<typeof cartPriceAmount>[0];
+    purchase_price?: Parameters<typeof cartPriceAmount>[0];
+  }) => cartPriceAmount(item.listing_sell_price) || cartPriceAmount(item.purchase_price);
 
   const getLinePurchaseTotal = (item: (typeof items.value)[number]) =>
     Number(item.line_totals?.purchase_subtotal ?? getPurchaseUnitAmount(item) * item.quantity);

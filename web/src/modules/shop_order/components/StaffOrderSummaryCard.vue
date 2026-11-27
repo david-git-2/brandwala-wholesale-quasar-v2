@@ -3,12 +3,16 @@ import { ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { date } from 'quasar';
 
-const props = defineProps<{
-  order: any;
-  orderItems: any[];
-  currencySymbol: string;
-  isUpdatingCharges: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    order: any;
+    orderItems: any[];
+    currencySymbol: string;
+    isUpdatingCharges: boolean;
+    readOnly?: boolean;
+  }>(),
+  { readOnly: false },
+);
 
 const emit = defineEmits<{
   (e: 'update-charges', payload: any): void;
@@ -252,6 +256,7 @@ const saveCharges = () => {
           </div>
 
           <q-btn
+            v-if="!readOnly"
             outline
             dense
             color="primary"

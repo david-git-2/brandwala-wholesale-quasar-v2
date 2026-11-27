@@ -1,0 +1,481 @@
+<template>
+  <q-page class="tf-page theme-shop" data-test="storefront-page">
+    <div class="tf-page__stack">
+      <template v-if="accessDenied">
+        <q-banner
+          class="tf-status-banner bg-negative text-white"
+          rounded
+          data-test="storefront-access-denied"
+        >
+          <div class="text-subtitle1 text-weight-bold">{{ $t('shop.access_denied') }}</div>
+          <div class="q-mt-xs">{{ $t('shop.access_denied_desc') }}</div>
+        </q-banner>
+        <div class="row justify-center">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            :label="$t('shop.go_back')"
+            class="pill-btn"
+            data-test="storefront-go-back"
+            @click="goBack"
+          />
+        </div>
+      </template>
+
+      <template v-else-if="notFound">
+        <q-banner
+          class="tf-status-banner bg-warning text-white"
+          rounded
+          data-test="storefront-not-found"
+        >
+          <div class="text-subtitle1 text-weight-bold">{{ $t('shop.shop_not_found') }}</div>
+          <div class="q-mt-xs">{{ $t('shop.shop_not_found_desc') }}</div>
+        </q-banner>
+        <div class="row justify-center">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            :label="$t('shop.go_back')"
+            class="pill-btn"
+            data-test="storefront-go-back"
+            @click="goBack"
+          />
+        </div>
+      </template>
+
+      <StorefrontSkeletonGrid v-else-if="initialLoading" initial />
+
+      <template v-else>
+        <StorefrontSearchToolbar
+          v-model:search="search"
+          v-model:brand="brand"
+          v-model:category="category"
+          :active-filter-count="activeFilterCount"
+          :has-active-filters="hasActiveFilters"
+          :show-fixed-price-chip="showFixedPriceChip"
+          @search="onSearchClick"
+          @open-filter="filterDrawerOpen = true"
+          @reset-filters="onResetFilters"
+        />
+
+        <q-infinite-scroll ref="infiniteScrollRef" :offset="250" @load="onLoadMore">
+          <div v-if="catalogItems.length > 0" class="tf-entity-grid">
+            <StorefrontProductCard
+              v-for="item in catalogItems"
+              :key="itemKey(item)"
+              :item="item"
+              :permissions="permissions"
+              :shop-type="activeShopType"
+              :show-grade-chip="!!item.stock_grade?.label"
+              :show-actions="true"
+              :selected-qty="selectedQuantities[itemKey(item)]"
+              :in-cart="isInCart(item)"
+              :loading="isCartPendingForItem(item)"
+              :is-image-broken="brokenImages[itemKey(item)]"
+              :format-money="formatMoney"
+              :price-text="storefrontItemPriceText(item)"
+              :price-label="storefrontItemPriceLabel(item)"
+              :min-price-text="storefrontItemMinPriceText(item)"
+              @open-detail="goToProductDetail"
+              @image-error="brokenImages[itemKey(item)] = true"
+              @increment="incrementQty"
+              @decrement="decrementQty"
+              @add-to-cart="onAddToCart"
+              @remove-from-cart="onRemoveFromCart"
+            />
+          </div>
+
+          <div
+            v-else-if="!isLoading && !isFetching"
+            class="column items-center justify-center q-pa-xl text-center empty-state-block floating-surface"
+            data-test="storefront-empty"
+          >
+            <q-icon name="ph ph-tote" size="64px" class="q-mb-md tf-text-muted" />
+            <div class="text-subtitle1 text-weight-bold">{{ $t('shop.no_products_found') }}</div>
+            <p class="tf-type-body tf-text-muted q-mt-sm q-mb-none">
+              {{ $t('shop.no_products_desc') }}
+            </p>
+            <q-btn
+              v-if="hasActiveFilters"
+              color="primary"
+              unelevated
+              no-caps
+              class="pill-btn q-mt-md"
+              :label="$t('shop.clear_all')"
+              data-test="storefront-clear-filters"
+              @click="onResetFilters"
+            />
+          </div>
+
+          <template #loading>
+            <StorefrontSkeletonGrid
+              v-if="isFetchingNextPage || (isLoading && catalogItems.length > 0)"
+            />
+          </template>
+        </q-infinite-scroll>
+      </template>
+    </div>
+
+    <FilterSidebar v-model="filterDrawerOpen" :title="$t('shop.filters')">
+      <StorefrontFilterDrawer
+        v-model:brand="brand"
+        v-model:category="category"
+        :brand-options="filteredBrandOptions"
+        :category-options="filteredCategoryOptions"
+        @filter-brands="filterBrands"
+        @filter-categories="filterCategories"
+      />
+
+      <template #footer>
+        <div class="row q-gutter-sm justify-end">
+          <q-btn flat no-caps :label="$t('shop_admin.reset')" color="grey-7" @click="onResetFilters" />
+          <q-btn
+            unelevated
+            no-caps
+            :label="$t('shop.apply')"
+            color="primary"
+            style="border-radius: 8px"
+            @click="filterDrawerOpen = false"
+          />
+        </div>
+      </template>
+    </FilterSidebar>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useShopStorefrontInfiniteQuery } from '../../composables/useShopStorefrontQuery';
+import {
+  useShopBrandOptionsQuery,
+  useShopCategoryOptionsQuery,
+} from '../../composables/useShopLookupOptionsQuery';
+import { useShopCartQuery } from '../../composables/useShopCartQuery';
+import type { CustomerShopPermissions } from '../../composables/useCustomerShopPermissionsQuery';
+import { useShopCartMutations } from '../../composables/useShopCartMutations';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useStorefrontState } from '../../composables/useStorefrontState';
+import {
+  isFixedPriceCatalog,
+  rememberCatalogShop,
+  resolveCustomerShopTypePath,
+  shopCatalogPath,
+  shopCatalogProductPath,
+  shopHomePath,
+} from '../../utils/catalogShop';
+import { shopTypeFromPathSegment } from '../../utils/shopRouteTypes';
+import FilterSidebar from 'src/components/FilterSidebar.vue';
+import StorefrontSearchToolbar from '../../components/StorefrontSearchToolbar.vue';
+import StorefrontFilterDrawer from '../../components/StorefrontFilterDrawer.vue';
+import StorefrontProductCard from '../../components/StorefrontProductCard.vue';
+import StorefrontSkeletonGrid from '../../components/StorefrontSkeletonGrid.vue';
+import type { ShopCatalogItem } from '../../types';
+import type { QInfiniteScroll } from 'quasar';
+import { activeCartShopMetaFromShop } from '../../utils/activeCartCacheUtils';
+import { resolveShopCartItemMoq } from '../../utils/cartQuantityUtils';
+import {
+  customerCanSeeCatalogPrice,
+  formatStorefrontCardMinPrice,
+  formatStorefrontCardPrice,
+  storefrontCardPriceLabelKey,
+} from '../../utils/catalogPriceUtils';
+
+const route = useRoute();
+const router = useRouter();
+const { t } = useI18n();
+const authStore = useAuthStore();
+const sessionTenantId = computed(() => authStore.tenantId ?? 0);
+
+const {
+  search,
+  brand,
+  category,
+  activeFilterCount,
+  hasActiveFilters,
+  syncUrlQuery,
+  itemKey,
+  formatMoney,
+} = useStorefrontState();
+
+const shopSlug = computed(() => (route.params.shopSlug as string) || '');
+
+const queryParams = computed(() => ({
+  shopSlug: shopSlug.value,
+  search: search.value || null,
+  category: category.value || null,
+  brand: brand.value || null,
+  pageSize: 24,
+}));
+
+const {
+  catalogItems,
+  shopDetails,
+  catalogPermissions,
+  isLoading,
+  isFetching,
+  isFetchingNextPage,
+  hasNextPage,
+  fetchNextPage,
+  isError,
+  error,
+} = useShopStorefrontInfiniteQuery(queryParams);
+
+const filterDrawerOpen = ref(false);
+
+const lookupParams = computed(() => ({
+  vendorCode: shopDetails.value?.vendor_code ?? null,
+  tenantId: shopDetails.value?.tenant_id ?? authStore.tenantId ?? null,
+  enabled: filterDrawerOpen.value,
+}));
+
+const { brands: brandNames } = useShopBrandOptionsQuery(lookupParams);
+const { categories: categoryNames } = useShopCategoryOptionsQuery(lookupParams);
+
+const activeShopId = computed(() => shopDetails.value?.id ?? null);
+const { items: cartItems, permissions: cartPermissions } = useShopCartQuery(activeShopId);
+const permissions = computed<CustomerShopPermissions | null | undefined>(
+  () => catalogPermissions.value ?? cartPermissions.value,
+);
+
+const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMutations();
+
+const activeShopType = computed((): import('../../types').ShopType | null => {
+  const raw = shopDetails.value?.shop_type ?? null;
+  return raw as import('../../types').ShopType | null;
+});
+const showFixedPriceChip = computed(() =>
+  isFixedPriceCatalog(activeShopType.value, permissions.value?.can_negotiate),
+);
+const initialLoading = computed(() => isLoading.value && catalogItems.value.length === 0);
+const accessDenied = computed(() => isError.value && error.value?.message?.includes('access denied'));
+const notFound = computed(() => isError.value && !accessDenied.value);
+
+const brandSearchVal = ref('');
+const categorySearchVal = ref('');
+const selectedQuantities = reactive<Record<string, number>>({});
+const brokenImages = reactive<Record<string, boolean>>({});
+const infiniteScrollRef = ref<QInfiniteScroll | null>(null);
+
+const allBrandOption = computed(() => ({ label: t('shop.all_brands'), value: null }));
+const allCategoryOption = computed(() => ({ label: t('shop.all_categories'), value: null }));
+
+const filteredBrandNames = computed(() => {
+  if (!brandSearchVal.value) return brandNames.value;
+  const needle = brandSearchVal.value.toLowerCase();
+  return brandNames.value.filter((b) => b.toLowerCase().includes(needle));
+});
+
+const filteredCategoryNames = computed(() => {
+  if (!categorySearchVal.value) return categoryNames.value;
+  const needle = categorySearchVal.value.toLowerCase();
+  return categoryNames.value.filter((c) => c.toLowerCase().includes(needle));
+});
+
+const filteredBrandOptions = computed(() => [
+  allBrandOption.value,
+  ...filteredBrandNames.value.map((item) => ({ label: item, value: item })),
+]);
+
+const filteredCategoryOptions = computed(() => [
+  allCategoryOption.value,
+  ...filteredCategoryNames.value.map((item) => ({ label: item, value: item })),
+]);
+
+const goBack = () => {
+  router.back();
+};
+
+const filterBrands = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    brandSearchVal.value = val;
+  });
+};
+
+const filterCategories = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    categorySearchVal.value = val;
+  });
+};
+
+const resetInfiniteScroll = () => {
+  void nextTick(() => {
+    if (infiniteScrollRef.value) {
+      infiniteScrollRef.value.reset();
+      infiniteScrollRef.value.resume();
+    }
+  });
+};
+
+const onLoadMore = async (_index: number, done: (stop?: boolean) => void) => {
+  if (!hasNextPage.value || isFetchingNextPage.value) {
+    done(!hasNextPage.value);
+    return;
+  }
+  await fetchNextPage();
+  done(!hasNextPage.value);
+};
+
+const onResetFilters = () => {
+  search.value = '';
+  brand.value = null;
+  category.value = null;
+  syncUrlQuery();
+  resetInfiniteScroll();
+};
+
+const getMinQty = (item: ShopCatalogItem) =>
+  resolveShopCartItemMoq(item, shopDetails.value?.shop_type);
+
+const canSeeCatalogPrice = computed(() =>
+  customerCanSeeCatalogPrice(activeShopType.value, permissions.value),
+);
+
+const storefrontItemPriceText = (item: ShopCatalogItem) =>
+  canSeeCatalogPrice.value ? formatStorefrontCardPrice(item, formatMoney) : null;
+
+const storefrontItemPriceLabel = (item: ShopCatalogItem) => {
+  if (!canSeeCatalogPrice.value) return null;
+  const key = storefrontCardPriceLabelKey(item);
+  return key ? t(key) : null;
+};
+
+const storefrontItemMinPriceText = (item: ShopCatalogItem) =>
+  canSeeCatalogPrice.value ? formatStorefrontCardMinPrice(item, formatMoney) : null;
+
+const decrementQty = (item: ShopCatalogItem) => {
+  const key = itemKey(item);
+  const min = getMinQty(item);
+  const current = selectedQuantities[key] || min;
+  if (current > min) {
+    selectedQuantities[key] = current - min;
+  }
+};
+
+const incrementQty = (item: ShopCatalogItem) => {
+  const key = itemKey(item);
+  const min = getMinQty(item);
+  const current = selectedQuantities[key] || min;
+  if (item.available_units === null || current + min <= item.available_units) {
+    selectedQuantities[key] = current + min;
+  }
+};
+
+const goToProductDetail = (item: ShopCatalogItem) => {
+  void router.push(
+    shopCatalogProductPath(
+      authStore.tenantSlug,
+      shopSlug.value,
+      item.product_id,
+      item.listing_id,
+      activeShopType.value,
+    ),
+  );
+};
+
+const cartItemFor = (catalogItem: ShopCatalogItem) => {
+  return cartItems.value.find((cartItem) => {
+    if (catalogItem.listing_id != null) {
+      return cartItem.listing_id === catalogItem.listing_id;
+    }
+    return (
+      cartItem.product_id === catalogItem.product_id &&
+      cartItem.global_stock_id === catalogItem.global_stock_id
+    );
+  });
+};
+
+const isInCart = (catalogItem: ShopCatalogItem) => {
+  return !!cartItemFor(catalogItem);
+};
+
+const pendingCartItems = reactive(new Set<string>());
+
+const isCartPendingForItem = (item: ShopCatalogItem) => {
+  return pendingCartItems.has(itemKey(item));
+};
+
+const onAddToCart = async (item: ShopCatalogItem) => {
+  if (!shopDetails.value) return;
+  const key = itemKey(item);
+  const qty = selectedQuantities[key] || getMinQty(item);
+  pendingCartItems.add(key);
+  try {
+    await addItemMutation.mutateAsync({
+      shopId: shopDetails.value.id,
+      productId: item.product_id,
+      globalStockAllocationId: item.global_stock_id ?? null,
+      globalStockId: item.global_stock_id ?? null,
+      listingId: item.listing_id ?? null,
+      gradeSlug: item.stock_grade?.slug ?? null,
+      quantity: qty,
+      shopMeta: activeCartShopMetaFromShop(shopDetails.value, item.sell_price ?? item.unit_price),
+    });
+    delete selectedQuantities[key];
+  } finally {
+    pendingCartItems.delete(key);
+  }
+};
+
+const onRemoveFromCart = async (catalogItem: ShopCatalogItem) => {
+  if (!shopDetails.value) return;
+  const cartItem = cartItemFor(catalogItem);
+  if (!cartItem) return;
+  const key = itemKey(catalogItem);
+  pendingCartItems.add(key);
+  try {
+    await removeItemMutation.mutateAsync({
+      cartItemId: cartItem.id,
+      shopId: shopDetails.value.id,
+    });
+  } finally {
+    pendingCartItems.delete(key);
+  }
+};
+
+const onSearchClick = () => {
+  syncUrlQuery();
+  resetInfiniteScroll();
+};
+
+watch([search, category, brand], () => {
+  syncUrlQuery();
+  resetInfiniteScroll();
+});
+
+watch(shopDetails, (newDetails) => {
+  const slug = newDetails?.slug || shopSlug.value;
+  if (newDetails?.id && slug && sessionTenantId.value) {
+    rememberCatalogShop(sessionTenantId.value, {
+      id: newDetails.id,
+      slug,
+      shop_type: newDetails.shop_type as import('../../types').ShopType | null,
+    });
+  }
+
+  const expectedType = shopTypeFromPathSegment(
+    resolveCustomerShopTypePath(route, sessionTenantId.value),
+  );
+  if (
+    newDetails?.shop_type &&
+    expectedType &&
+    newDetails.shop_type !== expectedType
+  ) {
+    if (newDetails.slug) {
+      void router.replace(
+        shopCatalogPath(authStore.tenantSlug, newDetails.slug, null, newDetails.shop_type),
+      );
+    } else {
+      void router.replace(
+        shopHomePath(
+          authStore.tenantSlug,
+          resolveCustomerShopTypePath(route, sessionTenantId.value),
+        ),
+      );
+    }
+  }
+});
+</script>

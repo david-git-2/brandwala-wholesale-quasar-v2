@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -12,7 +12,7 @@ const guard = (requiredModule: ModuleKey) =>
 
 const peopleRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/people',
+    path: '/app/people',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: guard('people'),
     children: [

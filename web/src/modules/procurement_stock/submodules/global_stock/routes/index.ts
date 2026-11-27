@@ -1,0 +1,83 @@
+import type { RouteRecordRaw } from 'vue-router';
+
+const getTenantSlugPrefix = (params: Record<string, string | string[]>) => {
+  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : '';
+  return tenantSlug ? `/${tenantSlug}` : '';
+};
+
+const appDashboard = (to: { params: Record<string, string | string[]> }) => {
+  const prefix = getTenantSlugPrefix(to.params);
+  return `${prefix}/app/dashboard`;
+};
+
+const globalRoutes: RouteRecordRaw[] = [
+  {
+    path: '/app/global/invoices',
+    redirect: appDashboard,
+  },
+  {
+    path: '/app/global/invoices/billing-profiles',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      return `${prefix}/app/customers`;
+    },
+  },
+  {
+    path: '/app/global/invoices/recipient-profiles',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      return `${prefix}/app/customers/recipient-profiles`;
+    },
+  },
+  {
+    path: '/app/global/invoices/brands',
+    redirect: appDashboard,
+  },
+  {
+    path: '/app/global/invoices/:id',
+    redirect: appDashboard,
+  },
+  {
+    path: '/app/global/invoices/:id/preview',
+    redirect: appDashboard,
+  },
+  {
+    path: '/app/global/accounting/ledger',
+    redirect: appDashboard,
+  },
+  {
+    path: '/app/global/accounting/shipments',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      return `${prefix}/app/procurement`;
+    },
+  },
+  {
+    path: '/app/global/accounting/shipments/:id',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      const id = typeof to.params.id === 'string' ? to.params.id : '';
+      return `${prefix}/app/procurement/shipment/${id}`;
+    },
+  },
+  {
+    path: '/app/global/accounting/invoices',
+    redirect: appDashboard,
+  },
+  {
+    path: '/app/global/investors',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      return `${prefix}/app/capital/investors`;
+    },
+  },
+  {
+    path: '/app/global/investor-shipments',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      return `${prefix}/app/capital/shipments`;
+    },
+  },
+];
+
+export default globalRoutes;

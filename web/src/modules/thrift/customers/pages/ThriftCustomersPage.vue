@@ -109,7 +109,7 @@ import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { date } from 'quasar';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useThriftCustomersQuery } from '../composables/useThriftCustomersQuery';
 import type { ThriftCustomerListItem } from '../repositories/thriftCustomersRepository';
 

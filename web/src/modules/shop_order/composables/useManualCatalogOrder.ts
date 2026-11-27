@@ -9,8 +9,8 @@ import {
   type StaffCatalogOrderRatesInput,
 } from '../repositories/staffManualCatalogOrderRepository';
 import { useBooksCustomerGroupsQuery } from './useBooksCustomerGroupsQuery';
-import { productRepository } from 'src/modules/products/repositories/productRepository';
-import type { Product } from 'src/modules/products/types';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
+import type { Product } from 'src/modules/shop_order/submodules/products/types';
 import type { ShopCatalogItem } from '../types';
 
 export type ManualCatalogCreateTab = 'standard' | 'old_order';
@@ -56,6 +56,7 @@ export function productRowToCatalogItem(p: Product): ShopCatalogItem {
     sell_price: null,
     resell_minimum_price: null,
     available_units: p.available_units,
+    minimum_order_quantity: null,
     unit_price_amount: p.list_price_amount,
     global_stock_allocation_id: null,
     global_stock_id: null,
@@ -104,7 +105,6 @@ function mergeCatalogItems(pages: ShopCatalogItem[]): ShopCatalogItem[] {
 
 export function useManualCatalogOrder(options: {
   tenantId: Ref<number>;
-  parentTenantId: Ref<number | null | undefined>;
   vendorCatalogShopIds: Ref<number[]>;
 }) {
   const createTab = ref<ManualCatalogCreateTab>('standard');
@@ -162,7 +162,7 @@ export function useManualCatalogOrder(options: {
 
   const booksCustomerGroupsQuery = useBooksCustomerGroupsQuery(
     options.tenantId,
-    options.parentTenantId,
+    undefined,
   );
 
   const customerGroupOptions = computed(() => {
@@ -364,7 +364,6 @@ export function useManualCatalogOrder(options: {
       }
       const shopId = await staffManualCatalogOrderRepository.resolveVendorCatalogShopForCreate({
         tenantId: options.tenantId.value,
-        parentTenantId: options.parentTenantId?.value ?? null,
         customerGroupId: selectedCustomerGroupId.value,
         selectedShopId: selectedShopId.value,
         knownVendorCatalogShopIds: options.vendorCatalogShopIds.value,

@@ -2,8 +2,9 @@ import { computed, ref, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { requestConfirmation } from 'src/utils/appFeedback';
+import { useUnsavedLeaveGuard } from 'src/composables/useUnsavedLeaveGuard';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ActiveCartItem, ShopCartItem } from '../repositories/shopCartRepository';
 import { useShopCartMutations } from './useShopCartMutations';
 import { useShopCartSelection } from './useShopCartSelection';
@@ -22,6 +23,11 @@ import {
   formatCartPriceAmount,
 } from '../utils/cartPriceUtils';
 import { adjustQtyByMoq, resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
+import {
+  resolveCustomerShopTypePath,
+  shopCustomerOrdersPath,
+  shopDropshipPlaceOrderPath,
+} from '../utils/catalogShop';
 
 export function useShopCartPageLogic(
   activeCarts: Ref<ActiveCartItem[]>,
@@ -48,7 +54,9 @@ export function useShopCartPageLogic(
     selectShopCart,
     formatActiveCartTotal,
     goBack,
-  } = useShopCartSelection(activeCarts, isCartsLoading, { cartKind: 'catalog' });
+  } = useShopCartSelection(activeCarts, isCartsLoading, {
+    cartKind: resolveCustomerShopTypePath(route, authStore.tenantId),
+  });
 
   const tenantSlugParam = () =>
     route.params.tenantSlug ? String(route.params.tenantSlug) : null;
@@ -58,6 +66,12 @@ export function useShopCartPageLogic(
   );
 
   const goToCheckout = () => {
+    if (cart.value?.shop_type === 'dropship') {
+      void router.push(
+        shopDropshipPlaceOrderPath(tenantSlugParam(), selectedShopId.value, 1),
+      );
+      return;
+    }
     void router.push({
       path: `${shopScopeBaseFromRoute()}/checkout`,
       query: { shopId: selectedShopId.value },
@@ -247,8 +261,9 @@ export function useShopCartPageLogic(
           void queryClient.invalidateQueries({
             queryKey: shopOrderQueryKeys.activeCarts(authStore.tenantId ?? 0),
           });
-          const slug = tenantSlugParam();
-          void router.push(`${slug ? `/${slug}` : ''}/shop/orders`);
+          void router.push(
+            shopCustomerOrdersPath(tenantSlugParam(), cart.value?.shop_type),
+          );
         }
       } finally {
         placingOrder.value = false;
@@ -361,6 +376,25 @@ export function useShopCartPageLogic(
       }
     },
   );
+
+  const discardCartEdits = () => {
+    editedQuantities.value = {};
+    editedPrices.value = {};
+  };
+
+  const saveCartEditsForLeave = async (): Promise<boolean> => {
+    if (hasFloorViolation.value) return false;
+    await saveAllCartEdits();
+    return !hasUnsavedEdits.value;
+  };
+
+  useUnsavedLeaveGuard({
+    isDirty: hasUnsavedEdits,
+    onSave: saveCartEditsForLeave,
+    onDiscard: discardCartEdits,
+    title: t('shop.unsaved_leave_title'),
+    message: t('shop.unsaved_leave_message'),
+  });
 
   return {
     selectedShopId,

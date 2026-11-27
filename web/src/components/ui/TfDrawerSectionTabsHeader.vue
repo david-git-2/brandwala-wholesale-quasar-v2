@@ -16,7 +16,7 @@ import TfDrawerSectionTabs, { type TfDrawerSectionTab } from './TfDrawerSectionT
 
 defineProps<{
   tabs: readonly TfDrawerSectionTab[];
-  ariaLabel: string;
+  ariaLabel?: string;
   countVisibility?: 'always' | 'positive';
 }>();
 

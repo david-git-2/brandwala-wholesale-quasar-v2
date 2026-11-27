@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
-import { productRepository } from 'src/modules/products/repositories/productRepository';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { shopStorefrontAdminRepository } from '../repositories/shopStorefrontAdminRepository';
 import { shopWarehouseRepository } from '../repositories/shopWarehouseRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';

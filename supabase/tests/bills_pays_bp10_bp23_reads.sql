@@ -41,13 +41,13 @@ SELECT ok(
 
 SELECT ok(
   (
-    SELECT prosrc LIKE '%list_bills_for_source%'
+    SELECT prosrc LIKE '%_list_shipment_cost_ap_bills_json%'
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
       AND p.proname = 'get_shipment_settings_finance_bundle'
   ),
-  'shipment finance bundle uses list_bills_for_source'
+  'shipment finance bundle uses _list_shipment_cost_ap_bills_json'
 );
 
 SELECT finish();

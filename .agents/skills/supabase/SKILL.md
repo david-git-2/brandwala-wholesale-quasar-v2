@@ -121,7 +121,7 @@ Before implementing any Supabase feature, find the relevant documentation. Use t
 
 ## Making and Committing Schema Changes
 
-This repo uses **Option A (declarative schemas)**. `supabase/schemas/` exists and `config.toml` sets `schema_paths`. How-to: [doc/supabase-schema.md](../../../doc/supabase-schema.md).
+This repo uses **Option A (declarative schemas)**. `supabase/schemas/` exists and `config.toml` sets `schema_paths`. How-to: [docs/architecture/database.md](../../../docs/architecture/database.md).
 
 ### Option A: Declarative schemas (this project)
 

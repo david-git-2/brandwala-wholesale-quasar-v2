@@ -114,10 +114,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { cashbookRepository } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
-import ProfileOperatingAccountPanel from 'src/modules/bills_pays/components/ProfileOperatingAccountPanel.vue';
+import ProfileOperatingAccountPanel from 'src/modules/finance/submodules/bills_pays/components/ProfileOperatingAccountPanel.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
 import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import ProfileCashbookActionBar from './ProfileCashbookActionBar.vue';
@@ -126,8 +126,8 @@ import { useProfileCashMovementDialog } from '../composables/useProfileCashMovem
 import { useProfileCashMovementNav } from '../composables/useProfileCashMovementNav';
 import { isProfileCashbookEnabled } from '../utils/profileCashbookEnabled';
 import { formatAmountBdt } from 'src/utils/currency';
-import { getInitials } from 'src/modules/sales_invoice/utils/invoiceListDisplay';
-import type { PayTransferEntityType } from 'src/modules/bills_pays/types/payTransferParty';
+import { getInitials } from 'src/modules/finance/submodules/bills_pays/utils/invoiceListDisplay';
+import type { PayTransferEntityType } from 'src/modules/finance/submodules/bills_pays/types/payTransferParty';
 
 type PartyRow = {
   id: number;
@@ -152,11 +152,7 @@ const selected = ref<{ id: number; name: string } | null>(null);
 const movementPartyId = ref(0);
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-const booksTenantId = computed(() => {
-  const t = authStore.selectedTenant;
-  if (!t) return 0;
-  return t.parent_id ?? t.id;
-});
+const booksTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 const tenantName = computed(() => authStore.selectedTenant?.name ?? 'Company');
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined,
@@ -186,7 +182,7 @@ const partyMeta = (caption: string | null, code: string | null) => {
 };
 
 const load = async () => {
-  if (!tenantId.value) return;
+  if (!tenantId.value || props.entityType === 'tenant') return;
   loading.value = true;
   try {
     const list = await cashbookRepository.listEntities({

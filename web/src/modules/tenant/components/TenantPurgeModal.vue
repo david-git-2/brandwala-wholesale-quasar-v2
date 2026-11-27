@@ -251,7 +251,7 @@ const handlePurge = async () => {
 
   try {
     await purgeMutation.mutateAsync({
-      parentTenantId: props.tenant.id,
+      tenantId: props.tenant.id,
       scope: selectedScope.value,
       confirmationSlug: targetSlug,
       targetChildId: selectedScope.value === 'child_only' ? (selectedChildId.value ?? null) : null,

@@ -1,6 +1,6 @@
 import { ref, computed, type Ref } from 'vue';
 import { useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { supabase } from 'src/boot/supabase';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';

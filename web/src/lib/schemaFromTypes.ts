@@ -98,14 +98,7 @@ export const SCHEMA_MODULES: { id: string; label: string; match: (name: string) 
       name === 'profiles' ||
       name.startsWith('billing_profile') ||
       name.startsWith('invoice_brands') ||
-      name.startsWith('invoice_write_offs') ||
-      name.startsWith('sales_invoice_counters') ||
       name.startsWith('courier_remittance_'),
-  },
-  {
-    id: 'after_sales',
-    label: 'After-sales',
-    match: (name) => name.startsWith('sales_return'),
   },
   {
     id: 'shop_order',
@@ -454,7 +447,7 @@ export function tablesToErdSlices(tables: SchemaTable[], moduleId: string): ErdS
         tables.filter((t) => tableGroup(t.name) === 'warehouse'),
       ),
       pack(
-        'Demand / delivery paper',
+        'Demand buy',
         tables.filter((t) => tableGroup(t.name) === 'demand'),
       ),
       pack(

@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/products/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/products/spec.md` |
 | UI | `web/src/modules/products/` |
 | SQL | `public.sql` |
 | Model | BW master catalog — [business-models](../../architecture/business-models.md) |

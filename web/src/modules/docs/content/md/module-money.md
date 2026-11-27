@@ -19,7 +19,7 @@ Grants: `global_invoice` (bills), `payments`, `cashbook`. [Access kernel](/docs/
 
 | Desk | Route | Job |
 | --- | --- | --- |
-| **Bills** | `/:slug/app/bills` | List, compose, issue, void, print, notes |
+| **Bills** | `/app/bills` | List, compose, issue, void, print, notes |
 | **Payments** | `/:slug/app/finance/payments` | Pay **in** (collect), pay **out**, courier remittance |
 | **Cashbook** | `/:slug/app/cashbook` | Tenant cash, **points** (till/safe/bank), profile leftover |
 
@@ -30,7 +30,7 @@ Grants: `global_invoice` (bills), `payments`, `cashbook`. [Access kernel](/docs/
 | Pay out | `.../payments/payout` |
 | Profile ledger | `.../payments/party/:type/:id` |
 
-UI: `web/src/modules/bills_pays/` (legacy names `sales_invoice/`, `wallet/` in older docs).
+UI: `web/src/modules/finance/submodules/bills_pays/` (legacy names `sales_invoice/`, `wallet/` in older docs).
 
 ## Five layers
 
@@ -69,7 +69,7 @@ Bills use **from_profile** and **to_profile** (live data may still use `profile_
 | Paper type | Examples |
 | --- | --- |
 | **AR** | [Wholesale](/docs/modules/wholesale) compose, [dropship](/docs/modules/dropship) merchant bill at ship |
-| **AP** | [Inbound](/docs/modules/inbound) shipment buckets, dropship courier AP |
+| **AP** | [Inbound](/docs/modules/inbound) shipment buckets; dropship courier AP **as-built** (target = courier AR net, SO-CA1) |
 
 AP shipment bills: **no** stock `bill_lines`; sync from cost rows. One bill per **bucket × currency** (`source_key = {bucket}:{currency_code}`).
 
@@ -103,8 +103,8 @@ flowchart TB
 | `compose` | [Wholesale](/docs/modules/wholesale) desk |
 | `shop_order` | [Dropship](/docs/modules/dropship) merchant bill |
 | `shipment_cost` | [Inbound](/docs/modules/inbound) AP sync |
-| `delivery_close` | Pre-order delivery paper |
-| `dropship_courier` | Courier AP at dropship ship |
+| `delivery_close` | **Legacy** — pre-order delivery paper bills (retired product; readable only) |
+| `dropship_courier` | Courier AP at dropship ship (**as-built**; target courier AR net — SO-CA1) |
 
 Features call: issue/void bill, pay in/out + alloc, `create_bill_adjustment`, `get_bill_net_balances` — they do not re-sum allocations in app code.
 

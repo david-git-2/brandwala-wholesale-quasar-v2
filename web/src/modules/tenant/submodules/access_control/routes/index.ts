@@ -1,0 +1,58 @@
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+
+const accessControlRoutes: RouteRecordRaw[] = [
+  {
+    path: '/app/access-control',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'admin-access-control-overview',
+        component: () => import('../pages/AccessControlOverviewPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
+      {
+        path: 'overview',
+        redirect: (to) => {
+          const tenantSlug = Array.isArray(to.params.tenantSlug)
+            ? to.params.tenantSlug[0]
+            : to.params.tenantSlug;
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control`
+            : '/app/access-control';
+        },
+      },
+      {
+        path: 'roles/:id/grants',
+        name: 'admin-access-control-role-grants',
+        component: () => import('../pages/AccessControlRoleGrantsPage.vue'),
+        props: (route) => ({ id: Number(route.params.id) }),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
+      {
+        path: ':tab',
+        name: 'admin-access-control',
+        component: () => import('../pages/AccessControlPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
+    ],
+  },
+];
+
+export default accessControlRoutes;

@@ -81,8 +81,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
-import type { Vendor } from 'src/modules/vendor/types';
+import { vendorRepository } from 'src/modules/people/submodules/vendor/repositories/vendorRepository';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import type { PlacementDialogTarget } from '../composables/useProcurementPlacementMutations';
 
 const props = defineProps<{

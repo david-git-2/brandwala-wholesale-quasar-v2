@@ -677,7 +677,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from
 import { useQueryClient } from '@tanstack/vue-query';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, copyToClipboard } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import {
   requestConfirmation,
@@ -685,7 +685,7 @@ import {
   showSuccessNotification,
   showWarningNotification,
 } from 'src/utils/appFeedback';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
@@ -1838,7 +1838,7 @@ const bulkApplySellableLandSplits = async () => {
   if (!confirmed) return;
 
   const itemsById = new Map(shipmentStore.currentShipmentItems.map((item) => [item.id, item]));
-  const parentTenantId = resolveBatchParentTenantId();
+  const tenantId = resolveBatchParentTenantId();
   const fullQtyItems: Array<{
     id: number;
     ordered_quantity: number;
@@ -1875,7 +1875,7 @@ const bulkApplySellableLandSplits = async () => {
     }
 
     gapRows.push({
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       shipment_item_id: item.id,
       quantity: gap,
       kind: 'sellable',
@@ -1888,7 +1888,7 @@ const bulkApplySellableLandSplits = async () => {
   bulkApplyingLandSplits.value = true;
   try {
     const createdFull = fullQtyItems.length
-      ? await globalShipmentRepository.ensureReceivedGeneralOutcomes(parentTenantId, fullQtyItems)
+      ? await globalShipmentRepository.ensureReceivedGeneralOutcomes(tenantId, fullQtyItems)
       : [];
     const createdGaps = gapRows.length
       ? await globalShipmentRepository.createShipmentItemOutcomesBulk(gapRows)
@@ -2174,14 +2174,14 @@ const ensureBatchCodeListForShipment = async (): Promise<number> => {
   const existing = await batchCodeRepository.getByShipmentId(shipmentId);
   if (existing) return existing.id;
 
-  const parentTenantId = resolveBatchParentTenantId();
+  const tenantId = resolveBatchParentTenantId();
   const shipment = shipmentStore.currentShipment;
   if (!shipment) throw new Error('Shipment not found');
 
   const created = await createBatchListMutation.mutateAsync({
-    parentTenantId,
+    tenantId,
     payload: {
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       shipment_id: shipmentId,
     },
     relations: {
@@ -2752,10 +2752,10 @@ const onSaveSectionSheet = async (data: SectionFormData) => {
     let createdDbId: number | undefined;
     if (shipmentId && !isNaN(shipmentId)) {
       try {
-        const parentTenantId = currentTenantId.value ?? shipmentStore.currentShipment?.tenant_id;
+        const tenantId = currentTenantId.value ?? shipmentStore.currentShipment?.tenant_id;
         const vendorId = shipmentStore.currentShipment?.vendor_id ?? shipmentStore.currentShipmentSections[0]?.vendor_id;
         const created = await shipmentStore.createSection({
-          tenant_id: parentTenantId ?? undefined,
+          tenant_id: tenantId ?? undefined,
           shipment_id: shipmentId,
           vendor_id: vendorId ?? undefined,
           title: data.title,

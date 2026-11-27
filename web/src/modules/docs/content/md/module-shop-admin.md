@@ -57,7 +57,7 @@ flowchart TB
 | Channel | After order lands in hub |
 | --- | --- |
 | Fixed / catalog stock | Pick / fulfill per shop_order rules |
-| Catalog negotiation | Demand + [inbound](/docs/modules/inbound) / delivery paper |
+| Catalog negotiation | Demand + [inbound](/docs/modules/inbound) + money desk |
 | Dropship | `/app/shop/dropship*`, management settlement |
 
 Dropship-specific routes (same module):

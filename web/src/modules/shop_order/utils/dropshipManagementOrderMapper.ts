@@ -197,6 +197,8 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       return_charge_amount: num(orderRaw.return_charge_amount),
       deduct_return_charge_from_middle_man: orderRaw.deduct_return_charge_from_middle_man === true,
       return_override_reason: (orderRaw.return_override_reason as string | null) ?? null,
+      global_invoice_id:
+        orderRaw.global_invoice_id == null ? null : num(orderRaw.global_invoice_id),
       courier_ap_bill_id:
         orderRaw.courier_ap_bill_id == null ? null : num(orderRaw.courier_ap_bill_id),
     },

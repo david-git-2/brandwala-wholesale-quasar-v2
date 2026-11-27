@@ -7,8 +7,6 @@ import {
 function invalidateDemandQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroups'] });
   void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'demandGroupItems'] });
-  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroups'] });
-  void queryClient.invalidateQueries({ queryKey: ['procurementStock', 'fulfillGroupItems'] });
 }
 
 export function useMarkDemandGroupReadyMutation() {

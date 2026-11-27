@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/procurement_stock/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/procurement_stock/spec.md` |
 | UI | `web/src/modules/procurement_stock/`, `vendor/` |
 | SQL | **Split** `supabase/schemas/procurement/` |
 | State | Mix of Pinia and Vue Query — copy neighbors |
@@ -16,19 +16,18 @@
 | Need | Path |
 | :--- | :--- |
 | **Stock spine** (Tier 1/2 warehouse actions, RPC index, dispatch vs issue) | [stock-spine.md](stock-spine.md) |
-| Inbound ↔ money kernel | Below **Inbound ↔ money**; AP shape [bills § Shipment cost AP](../bills/spec.md#shipment-cost-ap); gaps [bills_pays/00-gaps](../bills_pays/00-gaps.md) |
+| Inbound ↔ money kernel | Below **Inbound ↔ money**; AP shape [bills § Shipment cost AP](../bills/spec.md#shipment-cost-ap); see bills_pays desks + money bridge spec |
 | ERD / columns | `/dev/document` → **Schema** → Procurement |
 | Tables, types, RLS, RPCs | `supabase/schemas/procurement/` — grep `03_rpcs.sql` for bodies |
 | Pages / wiring | `web/src/modules/procurement_stock/pages/` + grep `procurementStockQueryKeys` |
-| Full pre-order flow (catalog + PBC → delivery paper) | [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md) |
 
 ## Scope
 
 | | |
 | :--- | :--- |
 | Surfaces | `app` only |
-| In | Shipments, sections, landed + **local costs**, bins, `global_stocks`, movements, vendors, outcomes, close, Demand / **Delivery paper** |
-| Out | Shop/Koba/thrift/PBC formulas; invoice issue; cost entries ≠ wallet pay. Retire allocations ([PS9](00-gaps.md)). Shelf damage = **movement**, not new inbound general row. |
+| In | Shipments, sections, landed + **local costs**, bins, `global_stocks`, movements, vendors, outcomes, close, **Demand buy** (`preorder_demand`) |
+| Out | Shop/Koba/thrift/PBC formulas; invoice issue; cost entries ≠ wallet pay. Retire allocations (PS9). Shelf damage = **movement**, not new inbound general row. |
 
 ## Inbound ↔ money
 
@@ -44,7 +43,7 @@ Procurement never DMLs kernel tables. Wrappers: `supabase/schemas/bills_pays/07_
 | Web entry | `shipmentMoneyKernelRepository`, `globalShipmentStore.loadSettingsFinanceBundle` |
 | Header save → AP sync | `sync_shipment_ap_bills` only when header touches payee/cost fields or `status = cancelled`; workflow-only `draft` / `in_transit` status PATCH does not sync |
 | Costs AP tenant | `money_kernel.bills.tenant_id` = workspace header (`current_tenant_id` / `x-selected-tenant-id`); shipment must match that tenant; `rpc_get_bill(p_tenant_id, …)` is SECURITY DEFINER + membership check (kernel RLS still keys on JWT `tenant_id`) |
-| Cutover gaps | [bills_pays/00-gaps](../bills_pays/00-gaps.md) WA15, BP8, BP9 |
+| Cutover gaps | bills_pays desks (see money bridge atlas) WA15, BP8, BP9 |
 
 ## Status, flags, receive
 
@@ -64,7 +63,7 @@ Procurement never DMLs kernel tables. Wrappers: `supabase/schemas/bills_pays/07_
 | `costs_locked` | Stamp frozen |
 | `is_closed` | Read-only ([US-9](#us-9-close)) |
 
-**Staff path:** ordered paste → optional `in_transit` → land splits (Case A) → `post_shipment_outcome_stock` → vendor credit when `received` (C–E) → warehouse movement (B) → close. Live partial: [PS7](00-gaps.md).
+**Staff path:** ordered paste → optional `in_transit` → land splits (Case A) → `post_shipment_outcome_stock` → vendor credit when `received` (C–E) → warehouse movement (B) → close. Live partial: PS7.
 
 ## Kind and reason
 
@@ -79,9 +78,9 @@ Lots mirror kind/reason; warehouse grades via tags — do not write splits back 
 
 | Case | Where | Rule |
 | :--- | :--- | :--- |
-| **A Land** | Shipment extras | Split at receive; sum land qty = ordered ([PS11](00-gaps.md)); post sellable → lots |
+| **A Land** | Shipment extras | Split at receive; sum land qty = ordered (PS11); post sellable → lots |
 | **B Warehouse** | Stock movement | Shelf life after receive; shipment paper unchanged |
-| **C–E Vendor credit** | When `received` | `global_shipment_outcome_vendor_credits`; profit timing [PS8](00-gaps.md); AP [WA15](../bills_pays/00-gaps.md) |
+| **C–E Vendor credit** | When `received` | `global_shipment_outcome_vendor_credits`; profit timing PS8; AP WA15 |
 
 **Do not:** clone ordered on mark received; auto-fill missing; warehouse damage as new shipment extra; lower extra qty below on-hand without write-off.
 
@@ -105,7 +104,7 @@ Lots mirror kind/reason; warehouse grades via tags — do not write splits back 
 | `finance` | **Goods Taka**. |
 | `other` | **Qty** when capitalized. |
 
-Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calculations.md) (see [PS13](00-gaps.md)).
+Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calculations.md) (see PS13).
 
 ### US-7 Outcomes + stock
 - `global_shipment_item_outcomes`; lots FK `outcome_id`. Restamp on-hand only when vendor price drops.
@@ -117,19 +116,15 @@ Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calcul
 - Rows with `is_capitalizable = false` subtract from shipment profit; they do not affect unit stamp. (Often `other` bucket or customs VAT; not limited to a single legacy `local` type.)
 
 ### US-9 Close
-- `is_closed` → read-only shipment UI ([PS10](00-gaps.md)).
+- `is_closed` → read-only shipment UI (PS10).
 
 ### US-3 Warehouse
 - Bins leaf; tree warehouse → zone → shelf → level → bin (+ returns root). `list_global_stocks_groups` for grouped list.
 
-### US-4 Demand & Delivery paper
-- Routes: `procurement/demand` (buy), `procurement/fulfill` (delivery paper / picks). Sources: vendor-catalog shop order + PBC lines in **procuring**.
-- **Delivery paper (2026-11):** While a catalog order or PBC file is **procuring** (or lines still have quantity to deliver), staff see **Create** + chips (`DP-{id}`) on the order/file page. Chip opens **delivery paper detail** (shop/PBC routes): all document lines, stock picks, qty + take/condition/return splits, top **Save** → `save_delivery_paper_detail` (draft header only; **`delivery_paper_line.splits`** jsonb `[{ quantity, status, invoice_id?, returned_at? }]` per stock lot). Picks live on paper lines only (not mirrored into `preorder_demand.stock_picks` on save).
-- **Status edit rules:** **draft** — pick stock only; **packed** / **dispatched** — edit Accepted / Condition / Rejected column qty (Save required); **delivered** / **cancelled** — line/outcome columns read-only; **header status** may still change on **delivered** (not on **cancelled**). From **packed** onward, unpicked lines are hidden.
-- **Outcome buttons (packed / dispatched):** **Accept**, **Condition**, **Reject** use the matching **column qty** on each visible row (staff must **Save** unsaved column edits first). FE FIFO-allocates column qty across **packed** lots on each line, then RPC **`apply_delivery_paper_outcome`** (paper-scoped; not `close_preorder_demand_document` on the whole document). **Accept** / **Condition** → draft AR on **`money_kernel.bills`** via **`rpc_create_bill`** (`kind = sales_invoice_wholesale`, `source_key` `delivery_paper:{paperId}:take|condition`, `issue` only from bills desk); **Reject** → warehouse return via stock movement with **warehouse grade per returned lot** (`grade_tag_id` on each allocation). Accept/condition stamp `invoice_id` (kernel `bill_id`) on the outcome split in jsonb. **Qty cap:** only **pending** planned outcome qty (column minus already-applied splits with `invoice_id` / `returned_at`) must fit **remaining packed**; applied qty is locked. **Save** (packed/dispatched) writes planned qty on the null-stock planning row; **apply** reconciles that row after each outcome action.
-- **Demand buy page** (`ProcurementDemandBuyDesk`): list RPC `list_procurement_demand_buy_documents` (procuring only; `has_under_ordered_lines` / `under_ordered_line_count` computed in SQL). Expand one document → detail RPC `get_procurement_demand_buy_document` (paginated items). Lines table **SL** = display order on loaded rows. **Need** = confirmed qty on shop/PBC line; **Order £** = shop line `shop_order_item_demand_buy_unit_price` (same cost basis as staff order `pricing.cost`: `cost_price_amount` → `unit_list_price_amount` → product `reference_cost_amount`, then sell/offer fallbacks); PBC = `offer_price`; **vendor orders** = `preorder_demand.vendor_placements` jsonb `[{ vendor_code, quantity, unit_price }]` (per-line **split**: multiple vendor rows; **placed vendor qty may exceed need** for over-buy). New/edited rows prefill `unit_price` from order unit price. **Header totals** on loaded lines: grand placed qty + vendor £; when more than one vendor code has placements, per-vendor qty + £ breakdown. **Bulk bar:** vendor dropdown + checkbox bulk vendor apply (draft until **Save**) + **Bulk paste** (barcode and/or product code, qty, unit £ → vendor from bar; upserts that vendor row only, keeps other split rows). Bulk paste loads all document pages then **`bulk_upsert_preorder_demand_vendor_placements`** on apply. Manual **Save** for other edits; route switch confirms discard if dirty.
-- Entering **procuring** still seeds `preorder_demand` per line (`ensure_preorder_demand_for_procuring_document`). **Fulfill desk** still closes at **document** scope via **`close_preorder_demand_document`** (Packed tab). **Delivery paper v2** closes outcomes per paper via **`apply_delivery_paper_outcome`**. Not dropship desk ([shop_order](../shop_order/spec.md) US-3).
-- **Pick matching:** **Pick stock** (`ProcurementDemandStockPickDialog`) lists sellable lots via **`search_stock_network`** for the line’s **`product_id`** first. If none (e.g. duplicate catalog rows), auto-search by line **name**; staff may also search name, barcode, or product code with no `product_id` filter. **`save_delivery_paper_detail`** / demand pick save store **`global_stock_id`** only — chosen lots may belong to a different catalog **`product_id`** than the document line.
+### US-4 Demand buy & catalog delivery
+- **Demand buy:** Route `procurement/demand`. Sources: vendor-catalog shop order + PBC lines in **procuring**. List RPC `list_procurement_demand_buy_documents`; detail `get_procurement_demand_buy_document`. Vendor placements on `preorder_demand.vendor_placements`; bulk paste via **`bulk_upsert_preorder_demand_vendor_placements`**. Document-level close remains **`close_preorder_demand_document`** when appropriate. Not dropship desk ([shop_order](../shop_order/spec.md) US-3).
+- **Customer delivery (catalog / PBC):** No delivery-paper product surface. Staff bill and stock-issue through the money desk and warehouse flows when ready (no dedicated line-level delivery jsonb).
+- **Pick matching (demand buy):** **`ProcurementDemandStockPickDialog`** lists sellable lots via **`search_stock_network`** (product id, then name/barcode). Demand pick save stores **`global_stock_id`** only.
 
 ### US-5 Archive / US-6 Batch code
 - List archive; optional batch analyze per shipment.
@@ -138,4 +133,4 @@ Stamp and FE preview follow [shipment-rate-calculations.md](shipment-rate-calcul
 
 ## Allocations (retire)
 
-Drop `global_stock_allocations` after shop/invoice use `global_stock_id` only ([PS9](00-gaps.md)).
+Drop `global_stock_allocations` after shop/invoice use `global_stock_id` only (PS9).

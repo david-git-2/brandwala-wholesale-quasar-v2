@@ -1,5 +1,6 @@
 import type {
   DropshipCourierBankTransferPayload,
+  DropshipManagementListSettlementPayload,
   DropshipManagementOrderView,
   DropshipReturnFinalizePayload,
   DropshipSettlementDraftPayload,
@@ -190,7 +191,6 @@ const fetchCustomerOrders = async (
 const fetchStaffOrders = async (
   tenantId: number,
   opts?: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -212,7 +212,6 @@ const fetchStaffOrders = async (
 const fetchDropshipStaffOrders = async (
   tenantId: number,
   opts?: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -258,6 +257,30 @@ const saveDropshipSettlementDraft = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to save settlement draft.'),
+    };
+  }
+};
+
+const saveDropshipManagementListSettlement = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipManagementListSettlementPayload,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.saveDropshipManagementListSettlement(
+      tenantId,
+      orderId,
+      payload,
+    );
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to save settlement.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to save settlement.'),
     };
   }
 };
@@ -340,6 +363,25 @@ const issueDropshipTenantB2bInvoice = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to issue tenant invoice.'),
+    };
+  }
+};
+
+const issueDropshipCourierArForOrder = async (
+  tenantId: number,
+  orderId: number,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.issueDropshipCourierArForOrder(tenantId, orderId);
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to issue courier AR.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to issue courier AR.'),
     };
   }
 };
@@ -646,10 +688,12 @@ export const shopOrderService = {
   fetchDropshipStaffOrders,
   fetchDropshipManagementOrder,
   saveDropshipSettlementDraft,
+  saveDropshipManagementListSettlement,
   previewDropshipDeliverBillNotes,
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,
+  issueDropshipCourierArForOrder,
   shipDropshipOrderAndIssueMerchantBill,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,

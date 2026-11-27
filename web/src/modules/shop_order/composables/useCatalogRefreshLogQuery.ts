@@ -3,8 +3,8 @@ import { computed, type Ref } from 'vue';
 import { listCatalogRefreshLog } from '../repositories/catalogRefreshRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 
-export function useCatalogRefreshLogQuery(parentTenantId: Ref<number | null | undefined>) {
-  const parentId = computed(() => Number(parentTenantId.value ?? 0));
+export function useCatalogRefreshLogQuery(tenantId: Ref<number | null | undefined>) {
+  const parentId = computed(() => Number(tenantId.value ?? 0));
 
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.catalogRefreshLog(parentId.value)),

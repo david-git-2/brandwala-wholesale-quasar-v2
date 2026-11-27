@@ -2,7 +2,7 @@
 
 **Who this is for:** staff who run shipments, junior devs wiring costing, anyone asking “how do we get a product price in Taka?”
 
-**One job:** the **target** calculation — how bills become **unit cost in BDT** on every SKU. This file is calculation truth; shipping code may lag ([PS13](00-gaps.md) in spec).
+**One job:** the **target** calculation — how bills become **unit cost in BDT** on every SKU. This file is calculation truth; shipping code may lag (PS13 in spec).
 
 Product context: [procurement_stock/spec.md](spec.md) US-1.
 

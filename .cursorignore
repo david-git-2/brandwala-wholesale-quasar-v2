@@ -25,10 +25,18 @@ python/credentials/
 python/data/
 **/*.xlsx
 
-# Catalog dumps (not app source)
+# Catalog dumps & static data (not app logic)
 web/public/uk/
+web/src/data/bd_address/*.json
 
-# Schema dump leftovers (not live SQL)
+# Lockfiles
+pnpm-lock.yaml
+**/package-lock.json
+**/*.lock
+
+# Schema dump leftovers & archives (not live SQL)
+supabase/.dumps/
+supabase/_domain_splits_archive/
 supabase/schemas/*.bak
 supabase/schemas/*.pre-so3
 

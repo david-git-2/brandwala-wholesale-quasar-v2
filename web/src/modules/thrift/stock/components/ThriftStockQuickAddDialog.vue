@@ -4,7 +4,7 @@ import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMone
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import type { ThriftSection } from '../types';
 import { resolveTypeIcon } from 'src/modules/thrift/type/utils/typeIcon';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 const authStore = useAuthStore();
 

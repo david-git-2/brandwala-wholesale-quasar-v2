@@ -875,28 +875,11 @@ const deleteShipmentItemsBulk = async (
 };
 
 const checkShipmentInvoiceReferences = async (shipmentId: number): Promise<string[]> => {
-  // First get all items of this shipment
-  const items = await listShipmentItems(shipmentId);
-  if (!items.length) return [];
-
-  const itemIds = items.map((i) => i.id);
-  const { data, error } = await db
-    .from('bill_lines')
-    .select('invoice_id, sales_invoices:bills(invoice_no)')
-    .in('shipment_item_id', itemIds);
-
+  const { data, error } = await db.rpc('check_shipment_bill_references', {
+    p_shipment_id: shipmentId,
+  });
   if (error) throw error;
-
-  const invoiceNos = new Set<string>();
-  if (data) {
-    for (const row of data) {
-      const inv = row.sales_invoices as any;
-      if (inv && inv.invoice_no) {
-        invoiceNos.add(inv.invoice_no);
-      }
-    }
-  }
-  return Array.from(invoiceNos);
+  return Array.isArray(data) ? (data as string[]) : [];
 };
 
 const checkShipmentStockReferences = async (shipmentId: number): Promise<boolean> => {
@@ -1449,7 +1432,7 @@ const createShipmentItemOutcome = async (payload: {
 };
 
 const ensureReceivedGeneralOutcomes = async (
-  parentTenantId: number,
+  tenantId: number,
   items: Array<{
     id: number;
     ordered_quantity: number;
@@ -1465,7 +1448,7 @@ const ensureReceivedGeneralOutcomes = async (
   const toInsert = items
     .filter((item) => !hasGeneral.has(item.id))
     .map((item) => ({
-      tenant_id: parentTenantId,
+      tenant_id: tenantId,
       shipment_item_id: item.id,
       quantity: item.ordered_quantity,
       kind: 'sellable' as const,

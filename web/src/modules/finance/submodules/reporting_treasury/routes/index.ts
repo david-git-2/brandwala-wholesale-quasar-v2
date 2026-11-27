@@ -1,0 +1,145 @@
+import type { RouteRecordRaw } from 'vue-router';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
+
+const guard = (requiredModule: ModuleKey) =>
+  createAccessGuard({
+    loginRoute: 'admin-login-page',
+    requiredScope: 'app',
+    requireTenantContext: true,
+    requiredModule,
+  });
+
+const getTenantSlugPrefix = (params: Record<string, string | string[]>) => {
+  const tenantSlug = typeof params.tenantSlug === 'string' ? params.tenantSlug : '';
+  return tenantSlug ? `/${tenantSlug}` : '';
+};
+
+const accountingRedirect = (to: { params: Record<string, string | string[]> }, suffix: string) =>
+  `${getTenantSlugPrefix(to.params)}/app${suffix}`;
+
+const reportingTreasuryRoutes: RouteRecordRaw[] = [
+  {
+    path: '/app/accounting/invoice',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      return `${prefix}/app/dashboard`;
+    },
+  },
+  {
+    path: '/app/accounting/customer-payments',
+    redirect: (to) => accountingRedirect(to, '/finance/reports'),
+  },
+  {
+    path: '/app/accounting/customer-payments/:profileId',
+    redirect: (to) => accountingRedirect(to, '/finance/reports'),
+  },
+  {
+    path: '/app/accounting/shipment',
+    redirect: (to) => accountingRedirect(to, '/procurement'),
+  },
+  {
+    path: '/app/accounting/shipment/:id',
+    redirect: (to) => {
+      const prefix = getTenantSlugPrefix(to.params);
+      const id = typeof to.params.id === 'string' ? to.params.id : '';
+      return `${prefix}/app/procurement/shipment/${id}`;
+    },
+  },
+  {
+    path: '/app/accounting/inventory-shipment',
+    redirect: (to) => accountingRedirect(to, '/procurement'),
+  },
+  {
+    path: '/app/finance',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: 'reports',
+        name: 'app-finance-reports-page',
+        component: () => import('../pages/ReportsOverviewPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: { title: 'Reports', headerTitle: 'Reports', breadcrumb: 'Reports' },
+      },
+      {
+        path: 'reports/cash-in',
+        name: 'app-finance-cash-in-report-page',
+        component: () => import('../pages/CashInReportPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: { title: 'Cash in', headerTitle: 'Cash in', breadcrumb: 'Cash in' },
+      },
+      {
+        path: 'reports/customer-dues',
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/customers`,
+      },
+      {
+        path: 'reports/customers',
+        name: 'app-finance-customers-report-page',
+        component: () => import('../pages/CustomersReportPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: { title: 'Customers', headerTitle: 'Customers', breadcrumb: 'Customers' },
+      },
+      {
+        path: 'reports/customers/:customerGroupId',
+        name: 'app-finance-customers-report-detail-page',
+        component: () => import('../pages/CustomerReportDetailPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: { title: 'Customer report', headerTitle: 'Customers', breadcrumb: 'Detail' },
+      },
+      {
+        path: 'reports/invoice-book',
+        name: 'app-finance-invoice-book-report-page',
+        component: () => import('../pages/InvoiceBookReportPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: { title: 'Invoice book', headerTitle: 'Invoice book', breadcrumb: 'Invoice book' },
+      },
+      {
+        path: 'reports/invoice-profit',
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/shipment-report`,
+      },
+      {
+        path: 'reports/shipment-profit',
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports/shipment-report`,
+      },
+      {
+        path: 'reports/shipment-report',
+        name: 'app-finance-shipment-report-page',
+        component: () => import('../pages/ShipmentReportPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: {
+          title: 'Shipment report',
+          headerTitle: 'Shipment report',
+          breadcrumb: 'Shipment report',
+        },
+      },
+      {
+        path: 'reports/shipment-report/:shipmentId',
+        name: 'app-finance-shipment-report-detail-page',
+        component: () => import('../pages/ShipmentReportDetailPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: {
+          title: 'Shipment report detail',
+          headerTitle: 'Shipment report',
+          breadcrumb: 'Detail',
+        },
+      },
+      {
+        path: 'reports/courier-cod',
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/payments/courier-remit`,
+      },
+      {
+        path: 'reports/wallet',
+        redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/finance/reports`,
+      },
+      {
+        path: 'reports/month-snapshot',
+        name: 'app-finance-month-snapshot-report-page',
+        component: () => import('../pages/MonthSnapshotReportPage.vue'),
+        beforeEnter: guard('reporting_treasury'),
+        meta: { title: 'Money position', headerTitle: 'Money position', breadcrumb: 'Money position' },
+      },
+    ],
+  },
+];
+
+export default reportingTreasuryRoutes;

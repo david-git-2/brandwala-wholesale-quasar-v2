@@ -317,7 +317,7 @@ export interface ShopCategory {
 /** Shared setup lookups (vendors, categories, brands) for a tenant. */
 export type ShopSetupTenantLookups = {
   categories: ShopCategory[];
-  vendors: import('src/modules/vendor/types').Vendor[];
+  vendors: import('src/modules/people/submodules/vendor/types').Vendor[];
   brandsByVendor: Record<string, string[]>;
 };
 
@@ -437,6 +437,7 @@ export type ShopOrderStatus =
   | 'expired'
   | 'placed'
   | 'fulfilled'
+  | 'resell_discount_requested'
   | 'processing'
   | 'ready_for_pickup'
   | 'shipped'
@@ -623,6 +624,14 @@ export interface ShopOrder {
   catalog_manual_price_entry?: boolean;
   placement_scope?: ShopOrderPlacementScope;
   total_amount?: number;
+  /** List RPC: settlement collected COD or order COD face */
+  collected_cod_amount?: number | null;
+  /** Customer AR total (B2B bill or reseller purchase fallback) */
+  dropshipper_bill_amount?: number | null;
+  customer_invoice_no?: string | null;
+  customer_invoice_status?: string | null;
+  courier_ar_bill_id?: number | null;
+  courier_ar_invoice_status?: string | null;
   cod_collect_amount?: number | null;
   courier_name?: string | null;
   courier_awb_number?: string | null;
@@ -689,6 +698,10 @@ export interface ShopOrderItem {
   unit_minimum_sell_price_currency_id: number | null;
   customer_sell_price_amount: number | null;
   customer_sell_price_currency_id: number | null;
+  requested_resell_discount_price_amount?: number | null;
+  requested_resell_discount_price_currency_id?: number | null;
+  resell_discount_request_reason?: string | null;
+  resell_discount_requested_at?: string | null;
   customer_offer_amount: number | null;
   customer_offer_currency_id: number | null;
   staff_offer_amount: number | null;
@@ -708,6 +721,8 @@ export interface ShopOrderItem {
   weight_kg?: number | null;
   cost_price_amount?: number | null;
   cost_price_currency_id?: number | null;
+  cost_price_currency_symbol?: string | null;
+  unit_list_price_currency_symbol?: string | null;
   customer_decision_status?: string | null;
   customer_decision_at?: string | null;
   negotiation_status?: string | null;

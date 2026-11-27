@@ -1,4 +1,4 @@
-import { productRepository } from 'src/modules/products/repositories/productRepository';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
 
 export async function syncShipmentWeightToProduct(
   productId: number | null,

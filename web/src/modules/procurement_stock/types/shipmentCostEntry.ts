@@ -6,7 +6,21 @@ export type ShipmentCostPaymentSource = 'cash' | 'wallet' | 'credit';
 export type GlobalShipmentCostBucket = Database['public']['Enums']['global_shipment_cost_bucket'];
 export type GlobalShipmentCostComponent = Database['public']['Enums']['global_shipment_cost_component'];
 
-export type GlobalShipmentCostEntry = Database['public']['Tables']['global_shipment_cost_entries']['Row'];
+export type GlobalShipmentCostEntry = {
+  id: number;
+  shipment_id: number;
+  tenant_id: number;
+  cost_bucket: GlobalShipmentCostBucket;
+  cost_component: GlobalShipmentCostComponent;
+  is_capitalizable: boolean;
+  description: string | null;
+  amount: number;
+  currency_id: number | null;
+  metadata: Record<string, unknown> | null;
+  section_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export const PRODUCT_COST_BUCKET: GlobalShipmentCostBucket = 'material';
 export const CARGO_COST_BUCKET: GlobalShipmentCostBucket = 'freight';

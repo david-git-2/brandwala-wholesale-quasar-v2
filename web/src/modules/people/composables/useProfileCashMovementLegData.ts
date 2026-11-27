@@ -1,10 +1,10 @@
 import { computed, type Ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
-import type { CashbookPointRow } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { useMoneyKernelCurrenciesQuery } from 'src/modules/bills_pays/composables/useMoneyKernelCurrenciesQuery';
+import type { CashbookPointRow } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { useMoneyKernelCurrenciesQuery } from 'src/modules/finance/submodules/bills_pays/composables/useMoneyKernelCurrenciesQuery';
 import { useProfileCashbookBundlesQuery } from './useProfileCashbookBundlesQuery';
-import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
+import { cashbookQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/cashbookQueryKeys';
 import type { ProfileCashbookBundleRow } from '../types/profileCashbookBundle';
 
 function bundleMatchesLocation(

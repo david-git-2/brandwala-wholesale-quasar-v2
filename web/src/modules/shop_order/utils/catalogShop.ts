@@ -1,18 +1,78 @@
+import type { LocationQueryRaw } from 'vue-router';
 import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
+import type { ShopType } from '../types';
+import { getShopTypePathFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
+import {
+  isShopTypePathSegment,
+  shopTypeFromPathSegment,
+  shopTypeToPathSegment,
+  type ShopTypePathSegment,
+} from './shopRouteTypes';
+
+type CustomerShopRouteLike = {
+  params?: Record<string, unknown>;
+  query?: LocationQueryRaw;
+  fullPath?: string;
+};
+
+export function resolveCustomerShopTypePath(
+  route: CustomerShopRouteLike,
+  tenantId?: number | null,
+): ShopTypePathSegment {
+  return getShopTypePathFromRoute(route) ?? getLastShopTypePath(tenantId);
+}
+
+export function shopTypeEnumFromCustomerRoute(
+  route: CustomerShopRouteLike,
+  tenantId?: number | null,
+): ShopType | null {
+  return shopTypeFromPathSegment(resolveCustomerShopTypePath(route, tenantId));
+}
 
 const lastShopIdKey = (tenantId: number) => `shop:${tenantId}:lastShopId`;
 const lastShopSlugKey = (tenantId: number) => `shop:${tenantId}:lastShopSlug`;
+const lastShopTypePathKey = (tenantId: number) => `shop:${tenantId}:lastShopTypePath`;
 
-export function shopScopeBase(tenantSlug?: string | null) {
-  return tenantSlug ? `/${tenantSlug}/shop` : '/shop';
+export function shopScopeBase(
+  tenantSlug: string | null | undefined,
+  shopTypePath?: ShopTypePathSegment | null,
+) {
+  const tenant = tenantSlug?.trim() ? tenantSlug.trim() : null;
+  if (!tenant) {
+    return shopTypePath ? `/shop/${shopTypePath}` : '/shop';
+  }
+  return shopTypePath ? `/shop/${tenant}/${shopTypePath}` : `/shop/${tenant}`;
 }
 
-export function shopHomePath(tenantSlug?: string | null) {
-  return `${shopScopeBase(tenantSlug)}/dashboard`;
+export function getLastShopTypePath(tenantId: number | null | undefined): ShopTypePathSegment {
+  if (!tenantId) return 'catalog';
+  const stored = localStorage.getItem(lastShopTypePathKey(tenantId));
+  if (stored && isShopTypePathSegment(stored)) {
+    return stored;
+  }
+  return 'catalog';
 }
 
-export function shopCatalogEntryPath(tenantSlug?: string | null) {
-  return `${shopScopeBase(tenantSlug)}/browse`;
+export function rememberShopTypePath(
+  tenantId: number,
+  shopTypePath: ShopTypePathSegment,
+) {
+  localStorage.setItem(lastShopTypePathKey(tenantId), shopTypePath);
+}
+
+export function shopHomePath(
+  tenantSlug?: string | null,
+  shopTypePath?: ShopTypePathSegment | null,
+) {
+  const type = shopTypePath ?? 'catalog';
+  return `${shopScopeBase(tenantSlug, type)}/dashboard`;
+}
+
+export function shopCatalogEntryPath(
+  tenantSlug?: string | null,
+  shopTypePath: ShopTypePathSegment = 'catalog',
+) {
+  return `${shopScopeBase(tenantSlug, shopTypePath)}/browse`;
 }
 
 export function customerShopTypeI18nKey(shopType: string) {
@@ -34,9 +94,11 @@ export function shopCatalogPath(
   tenantSlug: string | null | undefined,
   shopSlug: string,
   query?: string | null,
+  shopType?: ShopType | null,
 ) {
+  const shopTypePath = shopTypeToPathSegment(shopType) ?? 'catalog';
   return {
-    path: `${shopScopeBase(tenantSlug)}/browse/${shopSlug}`,
+    path: `${shopScopeBase(tenantSlug, shopTypePath)}/browse/${shopSlug}`,
     query: query ? { q: query } : {},
   };
 }
@@ -46,11 +108,14 @@ export function shopCatalogProductPath(
   shopSlug: string,
   productId: number | string,
   listingId?: number | null,
+  shopType?: ShopType | null,
 ) {
+  const shopTypePath = shopTypeToPathSegment(shopType) ?? 'catalog';
   return {
     name: 'shop-storefront-product-detail-page' as const,
     params: {
-      ...(tenantSlug ? { tenantSlug } : {}),
+      tenantSlug: tenantSlug ?? '',
+      shopType: shopTypePath,
       shopSlug,
       productId: String(productId),
     },
@@ -61,31 +126,38 @@ export function shopCatalogProductPath(
 export function shopCartPath(
   tenantSlug: string | null | undefined,
   shopId?: number | null,
+  shopType?: ShopType | null,
 ) {
+  const shopTypePath = shopTypeToPathSegment(shopType) ?? 'catalog';
   return {
-    path: `${shopScopeBase(tenantSlug)}/cart`,
+    path: `${shopScopeBase(tenantSlug, shopTypePath)}/cart`,
     query: shopId ? { shopId: String(shopId) } : {},
   };
 }
 
-export function shopDropshipReviewPath(
+export function shopDropshipPlaceOrderPath(
   tenantSlug: string | null | undefined,
   shopId?: number | null,
+  step?: number,
 ) {
+  const query: Record<string, string> = {};
+  if (shopId) query.shopId = String(shopId);
+  if (step != null && step > 0) query.step = String(step);
   return {
-    path: `${shopScopeBase(tenantSlug)}/dropship/review`,
-    query: shopId ? { shopId: String(shopId) } : {},
+    path: `/shop/${tenantSlug ?? ''}/dropship/place-order`,
+    query,
   };
+}
+
+export function shopDropshipReviewPath(tenantSlug: string | null | undefined, shopId?: number | null) {
+  return shopDropshipPlaceOrderPath(tenantSlug, shopId, 2);
 }
 
 export function shopDropshipDeliveryPath(
   tenantSlug: string | null | undefined,
   shopId?: number | null,
 ) {
-  return {
-    path: `${shopScopeBase(tenantSlug)}/dropship/delivery`,
-    query: shopId ? { shopId: String(shopId) } : {},
-  };
+  return shopDropshipPlaceOrderPath(tenantSlug, shopId, 3);
 }
 
 export function shopDropshipCheckoutPath(
@@ -93,8 +165,33 @@ export function shopDropshipCheckoutPath(
   shopId?: number | null,
 ) {
   return {
-    path: `${shopScopeBase(tenantSlug)}/checkout`,
+    path: `/shop/${tenantSlug ?? ''}/dropship/checkout`,
     query: shopId ? { shopId: String(shopId) } : {},
+  };
+}
+
+export function shopCustomerOrdersPath(
+  tenantSlug: string | null | undefined,
+  shopType?: ShopType | null,
+) {
+  const shopTypePath = shopTypeToPathSegment(shopType) ?? 'catalog';
+  return `${shopScopeBase(tenantSlug, shopTypePath)}/orders`;
+}
+
+export function shopCustomerOrderDetailRoute(
+  tenantSlug: string | null | undefined,
+  orderId: number | string,
+  shopType?: ShopType | null,
+) {
+  const shopTypePath = shopTypeToPathSegment(shopType) ?? 'catalog';
+  return {
+    name: 'shop-order-detail-page' as const,
+    params: {
+      tenantSlug: String(tenantSlug ?? ''),
+      shopType: shopTypePath,
+      id: String(orderId),
+    },
+    ...(shopType ? { state: { shopTypeSnapshot: shopType } } : {}),
   };
 }
 
@@ -126,9 +223,14 @@ export function resolveCartShopId(
   return sorted[0]?.shop_id ?? null;
 }
 
-export function rememberCatalogShop(tenantId: number, shop: { id: number; slug: string }) {
+export function rememberCatalogShop(
+  tenantId: number,
+  shop: { id: number; slug: string; shop_type?: ShopType | null },
+) {
   localStorage.setItem(lastShopIdKey(tenantId), String(shop.id));
   localStorage.setItem(lastShopSlugKey(tenantId), shop.slug);
+  const typePath = shopTypeToPathSegment(shop.shop_type) ?? 'catalog';
+  localStorage.setItem(lastShopTypePathKey(tenantId), typePath);
 }
 
 export function getLastVisitedShopId(tenantId: number | null | undefined): string | null {
@@ -144,20 +246,38 @@ export function getLastVisitedShopSlug(tenantId: number | null | undefined): str
 export function resolveCatalogShop(
   tenantId: number | null | undefined,
   shops: CustomerAccessibleShop[],
+  shopType?: ShopType | null,
 ): CustomerAccessibleShop | null {
-  if (shops.length === 0) return null;
+  const typedShops =
+    shopType != null ? shops.filter((shop) => shop.shop_type === shopType) : shops;
+  if (typedShops.length === 0) return null;
 
   const lastId = getLastVisitedShopId(tenantId);
   if (lastId) {
-    const byId = shops.find((shop) => String(shop.id) === lastId);
+    const byId = typedShops.find((shop) => String(shop.id) === lastId);
     if (byId) return byId;
   }
 
   const lastSlug = getLastVisitedShopSlug(tenantId);
   if (lastSlug) {
-    const bySlug = shops.find((shop) => shop.slug === lastSlug);
+    const bySlug = typedShops.find((shop) => shop.slug === lastSlug);
     if (bySlug) return bySlug;
   }
 
-  return shops[0] ?? null;
+  return typedShops[0] ?? null;
+}
+
+export function filterShopsByRouteType(
+  shops: CustomerAccessibleShop[],
+  shopTypePath: string | null | undefined,
+): CustomerAccessibleShop[] {
+  const path = (shopTypePath ?? 'catalog').trim().toLowerCase();
+  const map: Record<string, ShopType> = {
+    catalog: 'vendor_catalog',
+    stock: 'fixed_price',
+    dropship: 'dropship',
+  };
+  const shopType = map[path];
+  if (!shopType) return shops;
+  return shops.filter((s) => s.shop_type === shopType);
 }

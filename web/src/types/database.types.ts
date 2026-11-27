@@ -5,27 +5,7 @@ export type Database = {
   
   "public": {
           Tables: {
-            "activity_logs": {
-                  Row: {
-                    "action": string,"created_at": string,"id": number,"item_id": number,"new_value": string | null,"old_value": string | null,"user_email": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "action": string,"created_at"?: string,"id"?: number,"item_id": number,"new_value"?: string | null,"old_value"?: string | null,"user_email"?: string
-                  }
-                  Update: {
-                    "action"?: string,"created_at"?: string,"id"?: number,"item_id"?: number,"new_value"?: string | null,"old_value"?: string | null,"user_email"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "activity_logs_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"app_release_versions": {
+            "app_release_versions": {
                   Row: {
                     "backend_updated_at": string,"backend_version": string,"frontend_updated_at": string,"frontend_version": string,"id": number
                   }
@@ -291,27 +271,21 @@ isOneToOne: false
                   ]
                 },"comments": {
                   Row: {
-                    "body": string,"created_at": string,"deleted_at": string | null,"id": number,"item_id": number,"parent_comment_id": number | null,"updated_at": string,"user_email": string
+                    "body": string,"created_at": string,"created_by": string,"deleted_at": string | null,"entity_id": string,"entity_type": string,"id": number,"tenant_id": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body": string,"created_at"?: string,"deleted_at"?: string | null,"id"?: number,"item_id": number,"parent_comment_id"?: number | null,"updated_at"?: string,"user_email"?: string
+                    "body": string,"created_at"?: string,"created_by"?: string,"deleted_at"?: string | null,"entity_id": string,"entity_type": string,"id"?: number,"tenant_id": number,"updated_at"?: string
                   }
                   Update: {
-                    "body"?: string,"created_at"?: string,"deleted_at"?: string | null,"id"?: number,"item_id"?: number,"parent_comment_id"?: number | null,"updated_at"?: string,"user_email"?: string
+                    "body"?: string,"created_at"?: string,"created_by"?: string,"deleted_at"?: string | null,"entity_id"?: string,"entity_type"?: string,"id"?: number,"tenant_id"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
-      foreignKeyName: "comments_item_id_fkey"
-      columns: ["item_id"]
+      foreignKeyName: "comments_tenant_id_fkey"
+      columns: ["tenant_id"]
 isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "comments_parent_comment_id_fkey"
-      columns: ["parent_comment_id"]
-isOneToOne: false
-      referencedRelation: "comments"
+      referencedRelation: "tenants"
       referencedColumns: ["id"]
     }
                   ]
@@ -651,87 +625,35 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"delivery_paper": {
+                },"definition_of_done_items": {
                   Row: {
-                    "created_at": string,"delivery_date": string | null,"dispatched_at": string | null,"id": number,"note": string | null,"profile_id": number | null,"source_id": number,"source_type": Database["public"]['Enums']["delivery_paper_source_type"],"status": Database["public"]['Enums']["delivery_paper_status"],"tenant_id": number,"updated_at": string
+                    "criterion": string,"goal_id": number,"id": number,"milestone_id": number | null,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"delivery_date"?: string | null,"dispatched_at"?: string | null,"id"?: number,"note"?: string | null,"profile_id"?: number | null,"source_id": number,"source_type": Database["public"]['Enums']["delivery_paper_source_type"],"status"?: Database["public"]['Enums']["delivery_paper_status"],"tenant_id": number,"updated_at"?: string
+                    "criterion": string,"goal_id": number,"id"?: never,"milestone_id"?: number | null,"sort_order"?: number
                   }
                   Update: {
-                    "created_at"?: string,"delivery_date"?: string | null,"dispatched_at"?: string | null,"id"?: number,"note"?: string | null,"profile_id"?: number | null,"source_id"?: number,"source_type"?: Database["public"]['Enums']["delivery_paper_source_type"],"status"?: Database["public"]['Enums']["delivery_paper_status"],"tenant_id"?: number,"updated_at"?: string
+                    "criterion"?: string,"goal_id"?: number,"id"?: never,"milestone_id"?: number | null,"sort_order"?: number
                   }
                   Relationships: [
                     {
-      foreignKeyName: "delivery_paper_profile_id_fkey"
-      columns: ["profile_id"]
+      foreignKeyName: "definition_of_done_items_goal_id_fkey"
+      columns: ["goal_id"]
 isOneToOne: false
-      referencedRelation: "profiles"
+      referencedRelation: "goal_summaries"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "delivery_paper_tenant_id_fkey"
-      columns: ["tenant_id"]
+      foreignKeyName: "definition_of_done_items_goal_id_fkey"
+      columns: ["goal_id"]
 isOneToOne: false
-      referencedRelation: "tenants"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"delivery_paper_line": {
-                  Row: {
-                    "created_at": string,"delivery_paper_id": number,"dispatched_global_stock_id": number | null,"global_stock_id": number | null,"id": number,"note": string | null,"preorder_demand_id": number,"splits": NonNullable<Json>,"unit_cost_landed_snapshot": number | null,"updated_at": string,"delivery_paper_line_resolvable_bill_stock_id": number | null
-                  }
-                  ComputedFields: "delivery_paper_line_resolvable_bill_stock_id"
-                  Insert: {
-                    "created_at"?: string,"delivery_paper_id": number,"dispatched_global_stock_id"?: number | null,"global_stock_id"?: number | null,"id"?: number,"note"?: string | null,"preorder_demand_id": number,"splits"?: NonNullable<Json>,"unit_cost_landed_snapshot"?: number | null,"updated_at"?: string
-                  }
-                  Update: {
-                    "created_at"?: string,"delivery_paper_id"?: number,"dispatched_global_stock_id"?: number | null,"global_stock_id"?: number | null,"id"?: number,"note"?: string | null,"preorder_demand_id"?: number,"splits"?: NonNullable<Json>,"unit_cost_landed_snapshot"?: number | null,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "delivery_paper_line_delivery_paper_id_fkey"
-      columns: ["delivery_paper_id"]
-isOneToOne: false
-      referencedRelation: "delivery_paper"
+      referencedRelation: "goals"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "delivery_paper_line_global_stock_id_fkey"
-      columns: ["global_stock_id"]
+      foreignKeyName: "definition_of_done_items_milestone_id_fkey"
+      columns: ["milestone_id"]
 isOneToOne: false
-      referencedRelation: "global_stocks"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "delivery_paper_line_preorder_demand_id_fkey"
-      columns: ["preorder_demand_id"]
-isOneToOne: false
-      referencedRelation: "preorder_demand"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"delivery_paper_pick_exceptions": {
-                  Row: {
-                    "created_at": string,"created_by_email": string | null,"delivery_paper_id": number,"delivery_paper_line_id": number,"id": number,"picked_qty": number,"reason": string | null,"requested_qty": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"created_by_email"?: string | null,"delivery_paper_id": number,"delivery_paper_line_id": number,"id"?: number,"picked_qty": number,"reason"?: string | null,"requested_qty": number
-                  }
-                  Update: {
-                    "created_at"?: string,"created_by_email"?: string | null,"delivery_paper_id"?: number,"delivery_paper_line_id"?: number,"id"?: number,"picked_qty"?: number,"reason"?: string | null,"requested_qty"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "delivery_paper_pick_exceptions_delivery_paper_id_fkey"
-      columns: ["delivery_paper_id"]
-isOneToOne: false
-      referencedRelation: "delivery_paper"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "delivery_paper_pick_exceptions_delivery_paper_line_id_fkey"
-      columns: ["delivery_paper_line_id"]
-isOneToOne: false
-      referencedRelation: "delivery_paper_line"
+      referencedRelation: "milestones"
       referencedColumns: ["id"]
     }
                   ]
@@ -1123,14 +1045,14 @@ isOneToOne: false
                   ]
                 },"global_stocks": {
                   Row: {
-                    "archived_at": string | null,"availability": Database["public"]['Enums']["stock_availability"],"created_at": string,"grade_tag_id": number | null,"id": number,"is_archived": boolean,"is_usable": boolean,"location_id": number | null,"outcome_id": number | null,"quantity": number,"shipment_item_id": number,"stock_type_id": number | null,"tenant_id": number,"updated_at": string
+                    "archived_at": string | null,"availability": Database["public"]['Enums']["stock_availability"],"created_at": string,"grade_tag_id": number | null,"id": number,"is_archived": boolean,"is_usable": boolean,"location_id": number | null,"outcome_id": number | null,"product_id": number | null,"quantity": number,"shipment_item_id": number,"stock_type_id": number | null,"tenant_id": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived_at"?: string | null,"availability"?: Database["public"]['Enums']["stock_availability"],"created_at"?: string,"grade_tag_id"?: number | null,"id"?: number,"is_archived"?: boolean,"is_usable"?: boolean,"location_id"?: number | null,"outcome_id"?: number | null,"quantity"?: number,"shipment_item_id": number,"stock_type_id"?: number | null,"tenant_id": number,"updated_at"?: string
+                    "archived_at"?: string | null,"availability"?: Database["public"]['Enums']["stock_availability"],"created_at"?: string,"grade_tag_id"?: number | null,"id"?: number,"is_archived"?: boolean,"is_usable"?: boolean,"location_id"?: number | null,"outcome_id"?: number | null,"product_id"?: number | null,"quantity"?: number,"shipment_item_id": number,"stock_type_id"?: number | null,"tenant_id": number,"updated_at"?: string
                   }
                   Update: {
-                    "archived_at"?: string | null,"availability"?: Database["public"]['Enums']["stock_availability"],"created_at"?: string,"grade_tag_id"?: number | null,"id"?: number,"is_archived"?: boolean,"is_usable"?: boolean,"location_id"?: number | null,"outcome_id"?: number | null,"quantity"?: number,"shipment_item_id"?: number,"stock_type_id"?: number | null,"tenant_id"?: number,"updated_at"?: string
+                    "archived_at"?: string | null,"availability"?: Database["public"]['Enums']["stock_availability"],"created_at"?: string,"grade_tag_id"?: number | null,"id"?: number,"is_archived"?: boolean,"is_usable"?: boolean,"location_id"?: number | null,"outcome_id"?: number | null,"product_id"?: number | null,"quantity"?: number,"shipment_item_id"?: number,"stock_type_id"?: number | null,"tenant_id"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1158,6 +1080,12 @@ isOneToOne: false
       referencedRelation: "tenants"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "global_stocks_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "products"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "global_stocks_shipment_item_id_fkey"
       columns: ["shipment_item_id"]
 isOneToOne: false
@@ -1170,6 +1098,60 @@ isOneToOne: false
       referencedRelation: "global_stock_types"
       referencedColumns: ["id"]
     }
+                  ]
+                },"goal_modules": {
+                  Row: {
+                    "description": string | null,"id": number,"milestone_id": number,"sort_order": number,"status": string,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "description"?: string | null,"id"?: never,"milestone_id": number,"sort_order"?: number,"status"?: string,"title": string
+                  }
+                  Update: {
+                    "description"?: string | null,"id"?: never,"milestone_id"?: number,"sort_order"?: number,"status"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "goal_modules_milestone_id_fkey"
+      columns: ["milestone_id"]
+isOneToOne: false
+      referencedRelation: "milestones"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"goal_tasks": {
+                  Row: {
+                    "acceptance_note": string | null,"actual_minutes": number | null,"completed_at": string | null,"due_date": string | null,"estimated_minutes": number,"id": number,"module_id": number,"sort_order": number,"status": string,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "acceptance_note"?: string | null,"actual_minutes"?: number | null,"completed_at"?: string | null,"due_date"?: string | null,"estimated_minutes"?: number,"id"?: never,"module_id": number,"sort_order"?: number,"status"?: string,"title": string
+                  }
+                  Update: {
+                    "acceptance_note"?: string | null,"actual_minutes"?: number | null,"completed_at"?: string | null,"due_date"?: string | null,"estimated_minutes"?: number,"id"?: never,"module_id"?: number,"sort_order"?: number,"status"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "goal_tasks_module_id_fkey"
+      columns: ["module_id"]
+isOneToOne: false
+      referencedRelation: "goal_modules"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"goals": {
+                  Row: {
+                    "created_at": string,"final_outcome": string | null,"id": number,"north_star": string | null,"start_date": string | null,"status": string,"target_end_date": string | null,"title": string,"updated_at": string,"user_id": string,"weekly_hours_budget": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"final_outcome"?: string | null,"id"?: never,"north_star"?: string | null,"start_date"?: string | null,"status"?: string,"target_end_date"?: string | null,"title": string,"updated_at"?: string,"user_id": string,"weekly_hours_budget"?: number | null
+                  }
+                  Update: {
+                    "created_at"?: string,"final_outcome"?: string | null,"id"?: never,"north_star"?: string | null,"start_date"?: string | null,"status"?: string,"target_end_date"?: string | null,"title"?: string,"updated_at"?: string,"user_id"?: string,"weekly_hours_budget"?: number | null
+                  }
+                  Relationships: [
+                    
                   ]
                 },"investors": {
                   Row: {
@@ -1231,98 +1213,6 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "invoice_write_offs_tenant_id_fkey"
-      columns: ["tenant_id"]
-isOneToOne: false
-      referencedRelation: "tenants"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"item_assignees": {
-                  Row: {
-                    "assigned_by_email": string,"created_at": string,"id": number,"item_id": number,"user_email": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "assigned_by_email"?: string,"created_at"?: string,"id"?: number,"item_id": number,"user_email": string
-                  }
-                  Update: {
-                    "assigned_by_email"?: string,"created_at"?: string,"id"?: number,"item_id"?: number,"user_email"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_assignees_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"item_permissions": {
-                  Row: {
-                    "created_at": string,"id": number,"item_id": number,"role": string,"user_email": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"id"?: number,"item_id": number,"role": string,"user_email": string
-                  }
-                  Update: {
-                    "created_at"?: string,"id"?: number,"item_id"?: number,"role"?: string,"user_email"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_permissions_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"item_tags": {
-                  Row: {
-                    "created_at": string,"id": number,"item_id": number,"tag_id": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"id"?: number,"item_id": number,"tag_id": number
-                  }
-                  Update: {
-                    "created_at"?: string,"id"?: number,"item_id"?: number,"tag_id"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_tags_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "item_tags_tag_id_fkey"
-      columns: ["tag_id"]
-isOneToOne: false
-      referencedRelation: "tags"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"items": {
-                  Row: {
-                    "accessibility": string,"archived_at": string | null,"content": string | null,"created_at": string,"created_by_email": string,"due_date": string | null,"id": number,"is_markdown": boolean,"parent_id": number | null,"priority": string,"start_date": string | null,"status": string,"tenant_id": number | null,"title": string,"type": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "accessibility"?: string,"archived_at"?: string | null,"content"?: string | null,"created_at"?: string,"created_by_email"?: string,"due_date"?: string | null,"id"?: number,"is_markdown"?: boolean,"parent_id"?: number | null,"priority"?: string,"start_date"?: string | null,"status"?: string,"tenant_id"?: number | null,"title": string,"type": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "accessibility"?: string,"archived_at"?: string | null,"content"?: string | null,"created_at"?: string,"created_by_email"?: string,"due_date"?: string | null,"id"?: number,"is_markdown"?: boolean,"parent_id"?: number | null,"priority"?: string,"start_date"?: string | null,"status"?: string,"tenant_id"?: number | null,"title"?: string,"type"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "items_parent_id_fkey"
-      columns: ["parent_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "items_tenant_id_fkey"
       columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenants"
@@ -1588,6 +1478,32 @@ isOneToOne: false
       columns: ["tenant_role_id"]
 isOneToOne: false
       referencedRelation: "tenant_roles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"milestones": {
+                  Row: {
+                    "due_date": string | null,"goal_id": number,"id": number,"passed_at": string | null,"retrospective_note": string | null,"sort_order": number,"start_date": string | null,"status": string,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "due_date"?: string | null,"goal_id": number,"id"?: never,"passed_at"?: string | null,"retrospective_note"?: string | null,"sort_order"?: number,"start_date"?: string | null,"status"?: string,"title": string
+                  }
+                  Update: {
+                    "due_date"?: string | null,"goal_id"?: number,"id"?: never,"passed_at"?: string | null,"retrospective_note"?: string | null,"sort_order"?: number,"start_date"?: string | null,"status"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "milestones_goal_id_fkey"
+      columns: ["goal_id"]
+isOneToOne: false
+      referencedRelation: "goal_summaries"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "milestones_goal_id_fkey"
+      columns: ["goal_id"]
+isOneToOne: false
+      referencedRelation: "goals"
       referencedColumns: ["id"]
     }
                   ]
@@ -1873,6 +1789,148 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "pickup_locations_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pp_order_lines": {
+                  Row: {
+                    "added_to_cart_at": string | null,"created_at": string,"deleted_at": string | null,"description": string | null,"id": number,"image_url": string | null,"is_added_to_cart": boolean,"needed_qty": number,"placed_qty": number | null,"placement_status": string,"pp_customer_group_id": number,"pp_supplier_group_id": number | null,"product_name": string | null,"purchase_request_id": number,"received_qty": number | null,"shipment_id": number | null,"status": string,"tenant_id": number,"tracking_url": string | null,"unit_price": number | null,"updated_at": string,"url": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "added_to_cart_at"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"image_url"?: string | null,"is_added_to_cart"?: boolean,"needed_qty": number,"placed_qty"?: number | null,"placement_status"?: string,"pp_customer_group_id": number,"pp_supplier_group_id"?: number | null,"product_name"?: string | null,"purchase_request_id": number,"received_qty"?: number | null,"shipment_id"?: number | null,"status"?: string,"tenant_id": number,"tracking_url"?: string | null,"unit_price"?: number | null,"updated_at"?: string,"url": string
+                  }
+                  Update: {
+                    "added_to_cart_at"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"image_url"?: string | null,"is_added_to_cart"?: boolean,"needed_qty"?: number,"placed_qty"?: number | null,"placement_status"?: string,"pp_customer_group_id"?: number,"pp_supplier_group_id"?: number | null,"product_name"?: string | null,"purchase_request_id"?: number,"received_qty"?: number | null,"shipment_id"?: number | null,"status"?: string,"tenant_id"?: number,"tracking_url"?: string | null,"unit_price"?: number | null,"updated_at"?: string,"url"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_order_lines_pp_customer_group_id_fkey"
+      columns: ["pp_customer_group_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_order_lines_pp_supplier_group_id_fkey"
+      columns: ["pp_supplier_group_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_order_lines_purchase_request_id_fkey"
+      columns: ["purchase_request_id"]
+isOneToOne: false
+      referencedRelation: "pp_purchase_requests"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_order_lines_shipment_id_fkey"
+      columns: ["shipment_id"]
+isOneToOne: false
+      referencedRelation: "pp_shipment"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_order_lines_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pp_people_group": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"id": number,"name": string,"tenant_id": number,"type": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name": string,"tenant_id": number,"type": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name"?: string,"tenant_id"?: number,"type"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_people_group_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pp_people_group_member": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"email": string,"id": number,"is_active": boolean,"name": string,"people_group_id": number,"role": string,"tenant_id": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"email": string,"id"?: number,"is_active"?: boolean,"name": string,"people_group_id": number,"role": string,"tenant_id": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"email"?: string,"id"?: number,"is_active"?: boolean,"name"?: string,"people_group_id"?: number,"role"?: string,"tenant_id"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_people_group_member_people_group_id_fkey"
+      columns: ["people_group_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_people_group_member_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pp_purchase_requests": {
+                  Row: {
+                    "bucket_instructions": NonNullable<Json>,"created_at": string,"created_by_member_id": number,"deleted_at": string | null,"id": number,"people_group_id": number,"request_number": string | null,"status": string,"tenant_id": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bucket_instructions"?: NonNullable<Json>,"created_at"?: string,"created_by_member_id": number,"deleted_at"?: string | null,"id"?: number,"people_group_id": number,"request_number"?: string | null,"status"?: string,"tenant_id": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "bucket_instructions"?: NonNullable<Json>,"created_at"?: string,"created_by_member_id"?: number,"deleted_at"?: string | null,"id"?: number,"people_group_id"?: number,"request_number"?: string | null,"status"?: string,"tenant_id"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_purchase_requests_created_by_member_id_fkey"
+      columns: ["created_by_member_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group_member"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_purchase_requests_people_group_id_fkey"
+      columns: ["people_group_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_purchase_requests_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pp_shipment": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"id": number,"name": string,"shipment_code": string,"status": string,"tenant_id": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name": string,"shipment_code": string,"status"?: string,"tenant_id": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name"?: string,"shipment_code"?: string,"status"?: string,"tenant_id"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_shipment_tenant_id_fkey"
       columns: ["tenant_id"]
 isOneToOne: false
       referencedRelation: "tenants"
@@ -2425,14 +2483,14 @@ isOneToOne: false
                   ]
                 },"shop_cart_items": {
                   Row: {
-                    "cart_id": number,"created_at": string,"customer_sell_price_amount": number | null,"customer_sell_price_currency_id": number | null,"global_stock_allocation_id": number | null,"global_stock_id": number | null,"grade_tag_id": number | null,"id": number,"image_url": string | null,"listing_id": number | null,"minimum_quantity": number,"name": string,"product_id": number,"quantity": number,"unit_list_price_amount": number | null,"unit_list_price_currency_id": number | null,"unit_minimum_sell_price_amount": number | null,"unit_minimum_sell_price_currency_id": number | null,"unit_sell_price_amount": number | null,"unit_sell_price_currency_id": number | null,"updated_at": string
+                    "cart_id": number,"created_at": string,"customer_sell_price_amount": number | null,"customer_sell_price_currency_id": number | null,"global_stock_allocation_id": number | null,"global_stock_id": number | null,"grade_tag_id": number | null,"id": number,"image_url": string | null,"listing_id": number | null,"minimum_quantity": number,"name": string,"product_id": number,"quantity": number,"requested_resell_discount_price_amount": number | null,"requested_resell_discount_price_currency_id": number | null,"resell_discount_request_reason": string | null,"resell_discount_requested_at": string | null,"unit_list_price_amount": number | null,"unit_list_price_currency_id": number | null,"unit_minimum_sell_price_amount": number | null,"unit_minimum_sell_price_currency_id": number | null,"unit_sell_price_amount": number | null,"unit_sell_price_currency_id": number | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cart_id": number,"created_at"?: string,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"listing_id"?: number | null,"minimum_quantity"?: number,"name": string,"product_id": number,"quantity": number,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string
+                    "cart_id": number,"created_at"?: string,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"listing_id"?: number | null,"minimum_quantity"?: number,"name": string,"product_id": number,"quantity": number,"requested_resell_discount_price_amount"?: number | null,"requested_resell_discount_price_currency_id"?: number | null,"resell_discount_request_reason"?: string | null,"resell_discount_requested_at"?: string | null,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string
                   }
                   Update: {
-                    "cart_id"?: number,"created_at"?: string,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"listing_id"?: number | null,"minimum_quantity"?: number,"name"?: string,"product_id"?: number,"quantity"?: number,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string
+                    "cart_id"?: number,"created_at"?: string,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"listing_id"?: number | null,"minimum_quantity"?: number,"name"?: string,"product_id"?: number,"quantity"?: number,"requested_resell_discount_price_amount"?: number | null,"requested_resell_discount_price_currency_id"?: number | null,"resell_discount_request_reason"?: string | null,"resell_discount_requested_at"?: string | null,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2472,6 +2530,12 @@ isOneToOne: false
       referencedRelation: "products"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "shop_cart_items_requested_resell_discount_price_currency_i_fkey"
+      columns: ["requested_resell_discount_price_currency_id"]
+isOneToOne: false
+      referencedRelation: "global_currencies"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "shop_cart_items_unit_list_price_currency_id_fkey"
       columns: ["unit_list_price_currency_id"]
 isOneToOne: false
@@ -2493,14 +2557,14 @@ isOneToOne: false
                   ]
                 },"shop_carts": {
                   Row: {
-                    "can_see_buy_price_snapshot": boolean,"can_see_sell_price_snapshot": boolean,"cod_charge_amount": number,"created_at": string,"customer_group_id": number,"deduct_charges_from_margin": boolean,"deduct_cod_from_margin": boolean,"deduct_delivery_from_margin": boolean,"deduct_packing_from_margin": boolean,"deduct_print_from_margin": boolean,"delivery_charge_amount": number,"delivery_instructions": string | null,"discount_amount": number,"id": number,"is_prepaid": boolean,"packing_charge_amount": number,"print_charge_amount": number,"shop_id": number,"status": Database["public"]['Enums']["shop_cart_status"],"tenant_id": number,"updated_at": string
+                    "can_see_buy_price_snapshot": boolean,"can_see_sell_price_snapshot": boolean,"cod_charge_amount": number,"created_at": string,"customer_group_id": number,"deduct_charges_from_margin": boolean,"deduct_cod_from_margin": boolean,"deduct_delivery_from_margin": boolean,"deduct_packing_from_margin": boolean,"deduct_print_from_margin": boolean,"delivery_charge_amount": number,"delivery_details": NonNullable<Json>,"delivery_instructions": string | null,"discount_amount": number,"id": number,"is_prepaid": boolean,"packing_charge_amount": number,"print_charge_amount": number,"shop_id": number,"status": Database["public"]['Enums']["shop_cart_status"],"tenant_id": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "can_see_buy_price_snapshot"?: boolean,"can_see_sell_price_snapshot"?: boolean,"cod_charge_amount"?: number,"created_at"?: string,"customer_group_id": number,"deduct_charges_from_margin"?: boolean,"deduct_cod_from_margin"?: boolean,"deduct_delivery_from_margin"?: boolean,"deduct_packing_from_margin"?: boolean,"deduct_print_from_margin"?: boolean,"delivery_charge_amount"?: number,"delivery_instructions"?: string | null,"discount_amount"?: number,"id"?: never,"is_prepaid"?: boolean,"packing_charge_amount"?: number,"print_charge_amount"?: number,"shop_id": number,"status"?: Database["public"]['Enums']["shop_cart_status"],"tenant_id": number,"updated_at"?: string
+                    "can_see_buy_price_snapshot"?: boolean,"can_see_sell_price_snapshot"?: boolean,"cod_charge_amount"?: number,"created_at"?: string,"customer_group_id": number,"deduct_charges_from_margin"?: boolean,"deduct_cod_from_margin"?: boolean,"deduct_delivery_from_margin"?: boolean,"deduct_packing_from_margin"?: boolean,"deduct_print_from_margin"?: boolean,"delivery_charge_amount"?: number,"delivery_details"?: NonNullable<Json>,"delivery_instructions"?: string | null,"discount_amount"?: number,"id"?: never,"is_prepaid"?: boolean,"packing_charge_amount"?: number,"print_charge_amount"?: number,"shop_id": number,"status"?: Database["public"]['Enums']["shop_cart_status"],"tenant_id": number,"updated_at"?: string
                   }
                   Update: {
-                    "can_see_buy_price_snapshot"?: boolean,"can_see_sell_price_snapshot"?: boolean,"cod_charge_amount"?: number,"created_at"?: string,"customer_group_id"?: number,"deduct_charges_from_margin"?: boolean,"deduct_cod_from_margin"?: boolean,"deduct_delivery_from_margin"?: boolean,"deduct_packing_from_margin"?: boolean,"deduct_print_from_margin"?: boolean,"delivery_charge_amount"?: number,"delivery_instructions"?: string | null,"discount_amount"?: number,"id"?: never,"is_prepaid"?: boolean,"packing_charge_amount"?: number,"print_charge_amount"?: number,"shop_id"?: number,"status"?: Database["public"]['Enums']["shop_cart_status"],"tenant_id"?: number,"updated_at"?: string
+                    "can_see_buy_price_snapshot"?: boolean,"can_see_sell_price_snapshot"?: boolean,"cod_charge_amount"?: number,"created_at"?: string,"customer_group_id"?: number,"deduct_charges_from_margin"?: boolean,"deduct_cod_from_margin"?: boolean,"deduct_delivery_from_margin"?: boolean,"deduct_packing_from_margin"?: boolean,"deduct_print_from_margin"?: boolean,"delivery_charge_amount"?: number,"delivery_details"?: NonNullable<Json>,"delivery_instructions"?: string | null,"discount_amount"?: number,"id"?: never,"is_prepaid"?: boolean,"packing_charge_amount"?: number,"print_charge_amount"?: number,"shop_id"?: number,"status"?: Database["public"]['Enums']["shop_cart_status"],"tenant_id"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2703,14 +2767,14 @@ isOneToOne: false
                   ]
                 },"shop_order_items": {
                   Row: {
-                    "confirmed_quantity": number | null,"cost_price_amount": number | null,"cost_price_currency_id": number | null,"created_at": string,"customer_counter_at": string | null,"customer_decision_at": string | null,"customer_decision_status": string | null,"customer_offer_amount": number | null,"customer_offer_currency_id": number | null,"customer_sell_price_amount": number | null,"customer_sell_price_currency_id": number | null,"final_offer_at": string | null,"final_price_amount": number | null,"final_price_currency_id": number | null,"gift_added_by": string | null,"gift_cost_amount": number,"gift_cost_charged_to": string | null,"gift_source": string | null,"global_stock_allocation_id": number | null,"global_stock_id": number | null,"grade_tag_id": number | null,"id": number,"image_url": string | null,"is_final_offer_manual": boolean,"is_first_offer_manual": boolean,"is_fulfillment_unavailable": boolean,"is_gift": boolean,"listing_id": number | null,"name": string,"negotiation_status": string | null,"order_id": number,"procurement_pulled": boolean,"product_id": number | null,"quantity": number,"returned_quantity": number,"shop_customer_stock_id": number | null,"shortfall_quantity": number,"staff_offer_amount": number | null,"staff_offer_at": string | null,"staff_offer_currency_id": number | null,"unavailable_at": string | null,"unavailable_by_email": string | null,"unavailable_reason": string | null,"unit_list_price_amount": number | null,"unit_list_price_currency_id": number | null,"unit_minimum_sell_price_amount": number | null,"unit_minimum_sell_price_currency_id": number | null,"unit_sell_price_amount": number | null,"unit_sell_price_currency_id": number | null,"updated_at": string,"weight_kg": number | null
+                    "confirmed_quantity": number | null,"cost_price_amount": number | null,"cost_price_currency_id": number | null,"created_at": string,"customer_counter_at": string | null,"customer_decision_at": string | null,"customer_decision_status": string | null,"customer_offer_amount": number | null,"customer_offer_currency_id": number | null,"customer_sell_price_amount": number | null,"customer_sell_price_currency_id": number | null,"final_offer_at": string | null,"final_price_amount": number | null,"final_price_currency_id": number | null,"gift_added_by": string | null,"gift_cost_amount": number,"gift_cost_charged_to": string | null,"gift_source": string | null,"global_stock_allocation_id": number | null,"global_stock_id": number | null,"grade_tag_id": number | null,"id": number,"image_url": string | null,"is_final_offer_manual": boolean,"is_first_offer_manual": boolean,"is_fulfillment_unavailable": boolean,"is_gift": boolean,"listing_id": number | null,"name": string,"negotiation_status": string | null,"order_id": number,"procurement_pulled": boolean,"product_id": number | null,"quantity": number,"requested_resell_discount_price_amount": number | null,"requested_resell_discount_price_currency_id": number | null,"resell_discount_request_reason": string | null,"resell_discount_requested_at": string | null,"returned_quantity": number,"shop_customer_stock_id": number | null,"shortfall_quantity": number,"staff_offer_amount": number | null,"staff_offer_at": string | null,"staff_offer_currency_id": number | null,"unavailable_at": string | null,"unavailable_by_email": string | null,"unavailable_reason": string | null,"unit_list_price_amount": number | null,"unit_list_price_currency_id": number | null,"unit_minimum_sell_price_amount": number | null,"unit_minimum_sell_price_currency_id": number | null,"unit_sell_price_amount": number | null,"unit_sell_price_currency_id": number | null,"updated_at": string,"weight_kg": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "confirmed_quantity"?: number | null,"cost_price_amount"?: number | null,"cost_price_currency_id"?: number | null,"created_at"?: string,"customer_counter_at"?: string | null,"customer_decision_at"?: string | null,"customer_decision_status"?: string | null,"customer_offer_amount"?: number | null,"customer_offer_currency_id"?: number | null,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"final_offer_at"?: string | null,"final_price_amount"?: number | null,"final_price_currency_id"?: number | null,"gift_added_by"?: string | null,"gift_cost_amount"?: number,"gift_cost_charged_to"?: string | null,"gift_source"?: string | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"is_final_offer_manual"?: boolean,"is_first_offer_manual"?: boolean,"is_fulfillment_unavailable"?: boolean,"is_gift"?: boolean,"listing_id"?: number | null,"name": string,"negotiation_status"?: string | null,"order_id": number,"procurement_pulled"?: boolean,"product_id"?: number | null,"quantity": number,"returned_quantity"?: number,"shop_customer_stock_id"?: number | null,"shortfall_quantity"?: number,"staff_offer_amount"?: number | null,"staff_offer_at"?: string | null,"staff_offer_currency_id"?: number | null,"unavailable_at"?: string | null,"unavailable_by_email"?: string | null,"unavailable_reason"?: string | null,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string,"weight_kg"?: number | null
+                    "confirmed_quantity"?: number | null,"cost_price_amount"?: number | null,"cost_price_currency_id"?: number | null,"created_at"?: string,"customer_counter_at"?: string | null,"customer_decision_at"?: string | null,"customer_decision_status"?: string | null,"customer_offer_amount"?: number | null,"customer_offer_currency_id"?: number | null,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"final_offer_at"?: string | null,"final_price_amount"?: number | null,"final_price_currency_id"?: number | null,"gift_added_by"?: string | null,"gift_cost_amount"?: number,"gift_cost_charged_to"?: string | null,"gift_source"?: string | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"is_final_offer_manual"?: boolean,"is_first_offer_manual"?: boolean,"is_fulfillment_unavailable"?: boolean,"is_gift"?: boolean,"listing_id"?: number | null,"name": string,"negotiation_status"?: string | null,"order_id": number,"procurement_pulled"?: boolean,"product_id"?: number | null,"quantity": number,"requested_resell_discount_price_amount"?: number | null,"requested_resell_discount_price_currency_id"?: number | null,"resell_discount_request_reason"?: string | null,"resell_discount_requested_at"?: string | null,"returned_quantity"?: number,"shop_customer_stock_id"?: number | null,"shortfall_quantity"?: number,"staff_offer_amount"?: number | null,"staff_offer_at"?: string | null,"staff_offer_currency_id"?: number | null,"unavailable_at"?: string | null,"unavailable_by_email"?: string | null,"unavailable_reason"?: string | null,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string,"weight_kg"?: number | null
                   }
                   Update: {
-                    "confirmed_quantity"?: number | null,"cost_price_amount"?: number | null,"cost_price_currency_id"?: number | null,"created_at"?: string,"customer_counter_at"?: string | null,"customer_decision_at"?: string | null,"customer_decision_status"?: string | null,"customer_offer_amount"?: number | null,"customer_offer_currency_id"?: number | null,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"final_offer_at"?: string | null,"final_price_amount"?: number | null,"final_price_currency_id"?: number | null,"gift_added_by"?: string | null,"gift_cost_amount"?: number,"gift_cost_charged_to"?: string | null,"gift_source"?: string | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"is_final_offer_manual"?: boolean,"is_first_offer_manual"?: boolean,"is_fulfillment_unavailable"?: boolean,"is_gift"?: boolean,"listing_id"?: number | null,"name"?: string,"negotiation_status"?: string | null,"order_id"?: number,"procurement_pulled"?: boolean,"product_id"?: number | null,"quantity"?: number,"returned_quantity"?: number,"shop_customer_stock_id"?: number | null,"shortfall_quantity"?: number,"staff_offer_amount"?: number | null,"staff_offer_at"?: string | null,"staff_offer_currency_id"?: number | null,"unavailable_at"?: string | null,"unavailable_by_email"?: string | null,"unavailable_reason"?: string | null,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string,"weight_kg"?: number | null
+                    "confirmed_quantity"?: number | null,"cost_price_amount"?: number | null,"cost_price_currency_id"?: number | null,"created_at"?: string,"customer_counter_at"?: string | null,"customer_decision_at"?: string | null,"customer_decision_status"?: string | null,"customer_offer_amount"?: number | null,"customer_offer_currency_id"?: number | null,"customer_sell_price_amount"?: number | null,"customer_sell_price_currency_id"?: number | null,"final_offer_at"?: string | null,"final_price_amount"?: number | null,"final_price_currency_id"?: number | null,"gift_added_by"?: string | null,"gift_cost_amount"?: number,"gift_cost_charged_to"?: string | null,"gift_source"?: string | null,"global_stock_allocation_id"?: number | null,"global_stock_id"?: number | null,"grade_tag_id"?: number | null,"id"?: never,"image_url"?: string | null,"is_final_offer_manual"?: boolean,"is_first_offer_manual"?: boolean,"is_fulfillment_unavailable"?: boolean,"is_gift"?: boolean,"listing_id"?: number | null,"name"?: string,"negotiation_status"?: string | null,"order_id"?: number,"procurement_pulled"?: boolean,"product_id"?: number | null,"quantity"?: number,"requested_resell_discount_price_amount"?: number | null,"requested_resell_discount_price_currency_id"?: number | null,"resell_discount_request_reason"?: string | null,"resell_discount_requested_at"?: string | null,"returned_quantity"?: number,"shop_customer_stock_id"?: number | null,"shortfall_quantity"?: number,"staff_offer_amount"?: number | null,"staff_offer_at"?: string | null,"staff_offer_currency_id"?: number | null,"unavailable_at"?: string | null,"unavailable_by_email"?: string | null,"unavailable_reason"?: string | null,"unit_list_price_amount"?: number | null,"unit_list_price_currency_id"?: number | null,"unit_minimum_sell_price_amount"?: number | null,"unit_minimum_sell_price_currency_id"?: number | null,"unit_sell_price_amount"?: number | null,"unit_sell_price_currency_id"?: number | null,"updated_at"?: string,"weight_kg"?: number | null
                   }
                   Relationships: [
                     {
@@ -2768,6 +2832,12 @@ isOneToOne: false
       referencedRelation: "products"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "shop_order_items_requested_resell_discount_price_currency__fkey"
+      columns: ["requested_resell_discount_price_currency_id"]
+isOneToOne: false
+      referencedRelation: "global_currencies"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "shop_order_items_shop_customer_stock_id_fkey"
       columns: ["shop_customer_stock_id"]
 isOneToOne: false
@@ -2801,9 +2871,9 @@ isOneToOne: false
                   ]
                 },"shop_orders": {
                   Row: {
-                    "allow_open_box": boolean | null,"auto_gifts_applied_at": string | null,"auto_gifts_apply_result": Json | null,"cancel_reason": string | null,"cargo_rate": number | null,"cart_id": number | null,"catalog_manual_price_entry": boolean,"cod_charge_amount": number,"cod_collect_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"conversion_rate": number | null,"courier_awb_number": string | null,"courier_bank_trx_id": string | null,"courier_consignment_id": string | null,"courier_cost_amount": number | null,"courier_name": string | null,"courier_order_ref": string | null,"courier_remittance_ref": string | null,"courier_service_id": string | null,"courier_tracking_number": string | null,"created_at": string,"created_by_email": string,"customer_group_id": number | null,"deduct_charges_from_margin": boolean,"deduct_cod_from_margin": boolean,"deduct_delivery_from_margin": boolean,"deduct_packing_from_margin": boolean,"deduct_print_from_margin": boolean,"deduct_return_charge_from_middle_man": boolean | null,"default_payout_account_info": string | null,"default_payout_account_type": string | null,"default_pickup_address": string | null,"default_pickup_phone": string | null,"default_sender_name": string | null,"delivered_at": string | null,"delivery_charge_amount": number,"delivery_instruction_notes": string | null,"delivery_instructions": string | null,"delivery_zone": string | null,"discount_amount": number,"driver_notes": string | null,"final_offer_rate": number | null,"first_offer_rate": number | null,"fulfilled_at": string | null,"global_invoice_id": number | null,"hidden_from_customer": boolean,"id": number,"is_negotiable_snapshot": boolean,"is_prepaid_snapshot": boolean,"item_category": string | null,"middle_man_reference": string | null,"name": string,"negotiate_round": number,"order_mode_snapshot": Database["public"]['Enums']["shop_order_mode_enum"],"order_no": string,"package_weight_band": string | null,"package_weight_kg": number | null,"packing_charge_amount": number,"parcel_description": string | null,"payout_account_info": string | null,"payout_account_type": string | null,"payout_settlement_status": string | null,"pickup_address": string | null,"pickup_phone": string | null,"placed_at": string | null,"placement_scope": string,"print_charge_amount": number,"profile_id": number | null,"profit_basis": string | null,"profit_rate": number | null,"recipient_call_attempt_count": number,"recipient_name": string | null,"recipient_phone": string | null,"recipient_phone_secondary": string | null,"recipient_profile_id": number | null,"recipient_verified_at": string | null,"replacement_of_order_id": number | null,"return_charge_amount": number | null,"return_override_reason": string | null,"return_ref": string | null,"return_sub_state": string | null,"returned_at": string | null,"sender_name": string | null,"shipping_address": string | null,"shipping_district": string | null,"shipping_thana": string | null,"shop_id": number,"shop_type_snapshot": Database["public"]['Enums']["shop_type_enum"],"status": Database["public"]['Enums']["shop_order_status"],"tenant_id": number,"tracking_url": string | null,"updated_at": string,"build_default_dropship_settlement_charge_lines": Json | null
+                    "allow_open_box": boolean | null,"auto_gifts_applied_at": string | null,"auto_gifts_apply_result": Json | null,"cancel_reason": string | null,"cargo_rate": number | null,"cart_id": number | null,"catalog_manual_price_entry": boolean,"cod_charge_amount": number,"cod_collect_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"conversion_rate": number | null,"courier_awb_number": string | null,"courier_bank_trx_id": string | null,"courier_consignment_id": string | null,"courier_cost_amount": number | null,"courier_name": string | null,"courier_order_ref": string | null,"courier_remittance_ref": string | null,"courier_service_id": string | null,"courier_tracking_number": string | null,"created_at": string,"created_by_email": string,"customer_group_id": number | null,"deduct_charges_from_margin": boolean,"deduct_cod_from_margin": boolean,"deduct_delivery_from_margin": boolean,"deduct_packing_from_margin": boolean,"deduct_print_from_margin": boolean,"deduct_return_charge_from_middle_man": boolean | null,"default_payout_account_info": string | null,"default_payout_account_type": string | null,"default_pickup_address": string | null,"default_pickup_phone": string | null,"default_sender_name": string | null,"delivered_at": string | null,"delivery_charge_amount": number,"delivery_instruction_notes": string | null,"delivery_instructions": string | null,"delivery_zone": string | null,"discount_amount": number,"driver_notes": string | null,"final_offer_rate": number | null,"first_offer_rate": number | null,"fulfilled_at": string | null,"global_invoice_id": number | null,"hidden_from_customer": boolean,"id": number,"is_negotiable_snapshot": boolean,"is_prepaid_snapshot": boolean,"item_category": string | null,"middle_man_reference": string | null,"name": string,"negotiate_round": number,"order_mode_snapshot": Database["public"]['Enums']["shop_order_mode_enum"],"order_no": string,"package_weight_band": string | null,"package_weight_kg": number | null,"packing_charge_amount": number,"parcel_description": string | null,"payout_account_info": string | null,"payout_account_type": string | null,"payout_settlement_status": string | null,"pickup_address": string | null,"pickup_phone": string | null,"placed_at": string | null,"placement_scope": string,"print_charge_amount": number,"profile_id": number | null,"profit_basis": string | null,"profit_rate": number | null,"recipient_call_attempt_count": number,"recipient_name": string | null,"recipient_phone": string | null,"recipient_phone_secondary": string | null,"recipient_profile_id": number | null,"recipient_verified_at": string | null,"replacement_of_order_id": number | null,"return_charge_amount": number | null,"return_override_reason": string | null,"return_ref": string | null,"return_sub_state": string | null,"returned_at": string | null,"sender_name": string | null,"shipping_address": string | null,"shipping_district": string | null,"shipping_thana": string | null,"shop_id": number,"shop_type_snapshot": Database["public"]['Enums']["shop_type_enum"],"status": Database["public"]['Enums']["shop_order_status"],"tenant_id": number,"tracking_url": string | null,"updated_at": string,"_shop_order_allows_stock_pick": boolean | null,"build_default_dropship_settlement_charge_lines": Json | null
                   }
-                  ComputedFields: "build_default_dropship_settlement_charge_lines"
+                  ComputedFields: "_shop_order_allows_stock_pick" | "build_default_dropship_settlement_charge_lines"
                   Insert: {
                     "allow_open_box"?: boolean | null,"auto_gifts_applied_at"?: string | null,"auto_gifts_apply_result"?: Json | null,"cancel_reason"?: string | null,"cargo_rate"?: number | null,"cart_id"?: number | null,"catalog_manual_price_entry"?: boolean,"cod_charge_amount"?: number,"cod_collect_amount"?: number | null,"collection_source"?: Database["public"]['Enums']["collection_source_type"] | null,"conversion_rate"?: number | null,"courier_awb_number"?: string | null,"courier_bank_trx_id"?: string | null,"courier_consignment_id"?: string | null,"courier_cost_amount"?: number | null,"courier_name"?: string | null,"courier_order_ref"?: string | null,"courier_remittance_ref"?: string | null,"courier_service_id"?: string | null,"courier_tracking_number"?: string | null,"created_at"?: string,"created_by_email": string,"customer_group_id"?: number | null,"deduct_charges_from_margin"?: boolean,"deduct_cod_from_margin"?: boolean,"deduct_delivery_from_margin"?: boolean,"deduct_packing_from_margin"?: boolean,"deduct_print_from_margin"?: boolean,"deduct_return_charge_from_middle_man"?: boolean | null,"default_payout_account_info"?: string | null,"default_payout_account_type"?: string | null,"default_pickup_address"?: string | null,"default_pickup_phone"?: string | null,"default_sender_name"?: string | null,"delivered_at"?: string | null,"delivery_charge_amount"?: number,"delivery_instruction_notes"?: string | null,"delivery_instructions"?: string | null,"delivery_zone"?: string | null,"discount_amount"?: number,"driver_notes"?: string | null,"final_offer_rate"?: number | null,"first_offer_rate"?: number | null,"fulfilled_at"?: string | null,"global_invoice_id"?: number | null,"hidden_from_customer"?: boolean,"id"?: never,"is_negotiable_snapshot"?: boolean,"is_prepaid_snapshot"?: boolean,"item_category"?: string | null,"middle_man_reference"?: string | null,"name": string,"negotiate_round"?: number,"order_mode_snapshot": Database["public"]['Enums']["shop_order_mode_enum"],"order_no": string,"package_weight_band"?: string | null,"package_weight_kg"?: number | null,"packing_charge_amount"?: number,"parcel_description"?: string | null,"payout_account_info"?: string | null,"payout_account_type"?: string | null,"payout_settlement_status"?: string | null,"pickup_address"?: string | null,"pickup_phone"?: string | null,"placed_at"?: string | null,"placement_scope"?: string,"print_charge_amount"?: number,"profile_id"?: number | null,"profit_basis"?: string | null,"profit_rate"?: number | null,"recipient_call_attempt_count"?: number,"recipient_name"?: string | null,"recipient_phone"?: string | null,"recipient_phone_secondary"?: string | null,"recipient_profile_id"?: number | null,"recipient_verified_at"?: string | null,"replacement_of_order_id"?: number | null,"return_charge_amount"?: number | null,"return_override_reason"?: string | null,"return_ref"?: string | null,"return_sub_state"?: string | null,"returned_at"?: string | null,"sender_name"?: string | null,"shipping_address"?: string | null,"shipping_district"?: string | null,"shipping_thana"?: string | null,"shop_id": number,"shop_type_snapshot": Database["public"]['Enums']["shop_type_enum"],"status"?: Database["public"]['Enums']["shop_order_status"],"tenant_id": number,"tracking_url"?: string | null,"updated_at"?: string
                   }
@@ -4128,9 +4198,9 @@ isOneToOne: false
                   ]
                 },"bills": {
                   Row: {
-                    "ap_kind": string | null,"ap_shipment_id": number | null,"books_exchange_rate": number | null,"channel_meta": Json | null,"charges_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"created_at": string | null,"created_by": string | null,"currency_code": string | null,"discount_amount": number | null,"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,"due_amount": number | null,"due_date": string | null,"from_profile_id": number | null,"id": number | null,"invoice_date": string | null,"invoice_no": string | null,"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,"issued_by_tenant_id": number | null,"note": string | null,"paid_amount": number | null,"parent_bill_id": number | null,"payment_status": string | null,"print_charge": number | null,"profile_id": number | null,"recipient_address": string | null,"recipient_name": string | null,"recipient_phone": string | null,"recipient_profile_id": number | null,"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,"shipping_charge": number | null,"shop_order_id": number | null,"source_id": string | null,"source_key": string | null,"source_type": string | null,"subtotal_amount": number | null,"tenant_id": number | null,"to_profile_id": number | null,"total_amount": number | null,"txn_currency_code": string | null,"txn_total_amount": number | null,"updated_at": string | null,"wrapping_charge": number | null,"written_off_amount": number | null
+                    "ap_kind": string | null,"ap_shipment_id": number | null,"books_exchange_rate": number | null,"channel_meta": Json | null,"charges_amount": number | null,"collection_source": Database["public"]['Enums']["collection_source_type"] | null,"created_at": string | null,"created_by": string | null,"currency_code": string | null,"discount_amount": number | null,"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,"due_amount": number | null,"due_date": string | null,"from_profile_id": number | null,"id": number | null,"invoice_date": string | null,"invoice_no": string | null,"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,"issued_by_tenant_id": number | null,"note": string | null,"paid_amount": number | null,"parent_bill_id": number | null,"payment_status": string | null,"print_charge": number | null,"profile_id": number | null,"recipient_address": string | null,"recipient_name": string | null,"recipient_phone": string | null,"recipient_profile_id": number | null,"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,"shipping_charge": number | null,"shop_order_id": number | null,"source_id": string | null,"source_key": string | null,"source_type": string | null,"subtotal_amount": number | null,"tenant_id": number | null,"to_profile_id": number | null,"total_amount": number | null,"txn_currency_code": string | null,"txn_total_amount": number | null,"updated_at": string | null,"wrapping_charge": number | null,"written_off_amount": number | null,"is_dropship_courier_ar_bill": boolean | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "is_dropship_courier_ar_bill"
                   Insert: {
                            "ap_kind"?: never,"ap_shipment_id"?: never,"books_exchange_rate"?: never,"channel_meta"?: never,"charges_amount"?: never,"collection_source"?: never,"created_at"?: string | null,"created_by"?: string | null,"currency_code"?: never,"discount_amount"?: never,"document_kind"?: never,"due_amount"?: number | null,"due_date"?: string | null,"from_profile_id"?: number | null,"id"?: number | null,"invoice_date"?: never,"invoice_no"?: never,"invoice_status"?: never,"invoice_type"?: never,"issued_by_tenant_id"?: number | null,"note"?: string | null,"paid_amount"?: never,"parent_bill_id"?: number | null,"payment_status"?: never,"print_charge"?: never,"profile_id"?: never,"recipient_address"?: never,"recipient_name"?: never,"recipient_phone"?: never,"recipient_profile_id"?: never,"retail_billing_mode"?: never,"settlement_kind"?: never,"shipping_charge"?: never,"shop_order_id"?: never,"source_id"?: string | null,"source_key"?: string | null,"source_type"?: string | null,"subtotal_amount"?: never,"tenant_id"?: number | null,"to_profile_id"?: number | null,"total_amount"?: number | null,"txn_currency_code"?: never,"txn_total_amount"?: never,"updated_at"?: string | null,"wrapping_charge"?: never,"written_off_amount"?: never
                          }
@@ -4173,6 +4243,14 @@ isOneToOne: false
       referencedRelation: "tenants"
       referencedColumns: ["id"]
     }
+                  ]
+                },"goal_summaries": {
+                  Row: {
+                    "created_at": string | null,"id": number | null,"north_star": string | null,"passed_milestones": number | null,"start_date": string | null,"status": string | null,"target_end_date": string | null,"title": string | null,"total_milestones": number | null,"updated_at": string | null,"user_id": string | null,"weekly_hours_budget": number | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
                   ]
                 },"v_bill_events": {
                   Row: {
@@ -4233,6 +4311,9 @@ isOneToOne: false
 "_assert_shipment_cost_entry_mutable":
 { Args: { "p_entry_id": number }; Returns: undefined
                            },
+"_attribute_bill_stock_line_to_order_item":
+{ Args: { "p_global_stock_id": number,"p_line_meta": Json,"p_order_id": number,"p_product_id": number }; Returns: number
+                           },
 "_bill_line_global_stock_id":
 { Args: { "p_line": Omit<Database["public"]['Views']["bill_lines"]['Row'], Database["public"]['Views']["bill_lines"]['ComputedFields']> }; Returns: number
                            },
@@ -4247,6 +4328,9 @@ isOneToOne: false
                            },
 "_can_view_stock_locations":
 { Args: { "p_tenant_id": number }; Returns: boolean
+                           },
+"_compose_legacy_items_to_kernel_lines":
+{ Args: { "p_items": Json }; Returns: Json
                            },
 "_desk_bill_pay_cashbook_legs_json":
 { Args: { "p_currency_code": string,"p_from_profile_id": number,"p_invoice_type": string,"p_tenant_id": number,"p_to_profile_id": number }; Returns: Json
@@ -4477,6 +4561,9 @@ isOneToOne: false
 "_kernel_freeze_bill_txn_face":
 { Args: { "p_bill_id": number }; Returns: undefined
                            },
+"_kernel_invoice_type_to_bill_kind":
+{ Args: { "p_type": Database["public"]['Enums']["global_invoice_type"] }; Returns: string
+                           },
 "_kernel_lock_bills":
 { Args: { "p_bill_ids": (number)[] }; Returns: undefined
                            },
@@ -4488,6 +4575,9 @@ isOneToOne: false
                            },
 "_kernel_map_money_profile_id_to_public":
 { Args: { "p_books_tenant_id": number,"p_money_profile_id": number }; Returns: number
+                           },
+"_kernel_patch_bill_header":
+{ Args: { "p_bill_id": number,"p_counterparty_profile_id"?: number,"p_meta_patch"?: Json,"p_note"?: string }; Returns: undefined
                            },
 "_kernel_pay_direction_party":
 { Args: { "p_entity_type": string,"p_source": string }; Returns: string
@@ -4659,6 +4749,11 @@ isOneToOne: false
 "_kernel_reverse_payment":
 { Args: { "p_payment_id": number,"p_reason": string,"p_tenant_id": number }; Returns: Json
                            },
+"_kernel_settlement_amounts_from_pay_alloc":
+{ Args: { "p_alloc_books": number,"p_bill": Omit<Database["public"]['Views']["bills"]['Row'], Database["public"]['Views']["bills"]['ComputedFields']>,"p_pay": Omit<Database["public"]['Tables']["pays"]['Row'], Database["public"]['Tables']["pays"]['ComputedFields']> }; Returns: {
+              "allocated_books_amount": number,"allocated_txn_amount": number,"books_rate_at_alloc": number,"fx_realized_books_delta": number
+            }[]
+                           },
 "_kernel_tenant_mirror_profile_id":
 { Args: { "p_books_tenant_id": number }; Returns: number
                            },
@@ -4677,12 +4772,39 @@ isOneToOne: false
 "_kernel_upsert_dropship_courier_ap":
 { Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
                            },
+"_kernel_upsert_dropship_courier_ar":
+{ Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
+                           },
 "_list_shipment_cost_ap_bills_json":
 { Args: { "p_books_tenant_id": number,"p_include_voided"?: boolean,"p_shipment_id": number }; Returns: Json
                            },
 "_newest_pickable_stock_for_network_search":
 { Args: { "p_context_tenant_id": number,"p_product_id"?: number,"p_search"?: string,"p_search_field"?: string }; Returns: {
               "available_atp": number,"global_stock_id": number,"location_name": string,"shipment_name": string
+            }[]
+                           },
+"_pp_assert_customer_request_access":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: {
+              "member_id": number,"people_group_id": number,"request_status": string
+            }[]
+                           },
+"_pp_normalize_bucket_instructions":
+{ Args: { "p_payload": Json }; Returns: Json
+                           },
+"_pp_order_line_to_json":
+{ Args: { "l": Omit<Database["public"]['Tables']["pp_order_lines"]['Row'], Database["public"]['Tables']["pp_order_lines"]['ComputedFields']>,"p_shipment_status"?: string }; Returns: Json
+                           },
+"_pp_order_line_url_host":
+{ Args: { "p_url": string }; Returns: string
+                           },
+"_pp_resolve_proxy_customer_member":
+{ Args: { "p_tenant_id": number }; Returns: {
+              "member_id": number,"people_group_id": number
+            }[]
+                           },
+"_pp_resolve_proxy_supplier_member":
+{ Args: { "p_people_group_member_id"?: number,"p_tenant_id": number }; Returns: {
+              "member_id": number,"people_group_id": number
             }[]
                            },
 "_recompute_shop_order_item_fulfillment":
@@ -4751,6 +4873,15 @@ isOneToOne: false
 "_shipment_money_workspace_tenant":
 { Args: { "p_shipment_id": number }; Returns: number
                            },
+"_shop_order_allows_stock_pick":
+{ Args: { "p_order": Omit<Database["public"]['Tables']["shop_orders"]['Row'], Database["public"]['Tables']["shop_orders"]['ComputedFields']> }; Returns: boolean
+                           },
+"_shop_order_item_billed_qty":
+{ Args: { "p_order_item_id": number }; Returns: number
+                           },
+"_shop_order_item_target_qty":
+{ Args: { "p_item_id": number }; Returns: number
+                           },
 "_stamp_global_shipment_outcome_costs":
 { Args: { "p_shipment_id": number }; Returns: number
                            },
@@ -4768,6 +4899,51 @@ isOneToOne: false
                            },
 "_sync_dropship_courier_ap_bill_details":
 { Args: { "p_allow_line_sync"?: boolean,"p_bill_id": number,"p_order_id": number }; Returns: undefined
+                           },
+"_sync_dropship_courier_ar_bill_details":
+{ Args: { "p_allow_line_sync"?: boolean,"p_bill_id": number,"p_order_id": number }; Returns: undefined
+                           },
+"_test_bootstrap_dropship_golden_a":
+{ Args: { "p_ctx": Json }; Returns: Json
+                           },
+"_test_bootstrap_shipment_s45":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"_test_bootstrap_shipment_s54":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"_test_enable_tenant_module":
+{ Args: { "p_module_key": string,"p_tenant_id": number }; Returns: undefined
+                           },
+"_test_ensure_global_currency":
+{ Args: { "p_code": string,"p_name"?: string,"p_symbol"?: string }; Returns: number
+                           },
+"_test_flush_kernel_pays":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
+"_test_fund_cashbook_pot":
+{ Args: { "p_amount": number,"p_currency_code"?: string,"p_point_id": number,"p_tenant_id": number }; Returns: undefined
+                           },
+"_test_issue_ar_bill":
+{ Args: { "p_amount": number,"p_customer_profile_id": number,"p_invoice_no"?: string,"p_tenant_id": number }; Returns: number
+                           },
+"_test_kernel_service_role":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
+"_test_money_kernel_bootstrap":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"_test_pgtap_auth":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
+"_test_set_workspace_tenant":
+{ Args: { "p_tenant_id": number }; Returns: undefined
+                           },
+"_test_shipment_s45_fund_pay_and_credit":
+{ Args: { "p_ctx": Json }; Returns: Json
+                           },
+"_test_shipment_s54_fund_and_pay":
+{ Args: { "p_ctx": Json }; Returns: Json
                            },
 "_undo_wallet_ledger_row_before_delete":
 { Args: { "p_row": Omit<Database["public"]['Tables']["cashbook_entries"]['Row'], Database["public"]['Tables']["cashbook_entries"]['ComputedFields']> }; Returns: undefined
@@ -4811,6 +4987,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"add_comment":
+{ Args: { "p_body": string,"p_entity_id": string,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
+                           },
 "add_demand_bucket_item_internal":
 { Args: { "p_product_id": number,"p_profile_id": number,"p_quantity"?: number,"p_snapshot"?: Json,"p_source_id"?: number,"p_source_type": Database["public"]['Enums']["demand_bucket_source_type"],"p_tenant_id": number }; Returns: {
               "barcode": string | null,
@@ -4886,6 +5065,12 @@ isOneToOne: false
                            },
 "add_pbc_backlog_to_file":
 { Args: { "p_backlog_ids": (number)[],"p_file_id": number }; Returns: (number)[]
+                           },
+"add_pp_order_line":
+{ Args: { "p_description"?: string,"p_needed_qty": number,"p_request_id": number,"p_tenant_id": number,"p_url": string }; Returns: Json
+                           },
+"add_pp_order_line_staff":
+{ Args: { "p_description"?: string,"p_image_url"?: string,"p_is_added_to_cart"?: boolean,"p_needed_qty": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_pp_supplier_group_id"?: number,"p_product_name"?: string,"p_received_qty"?: number,"p_request_id": number,"p_shipment_id"?: number,"p_tenant_id": number,"p_tracking_url"?: string,"p_unit_price"?: number,"p_url": string }; Returns: Json
                            },
 "add_shipment_item_from_product":
 { Args: { "p_product_id": number,"p_quantity": number,"p_shipment_id": number }; Returns: {
@@ -5024,9 +5209,6 @@ isOneToOne: false
                            },
 "ap_bill_channel_foreign_face":
 { Args: { "p_channel_meta": Json }; Returns: number
-                           },
-"apply_delivery_paper_outcome":
-{ Args: { "p_allocations": Json,"p_close_action": string,"p_delivery_paper_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "apply_dropship_fulfillment_draft":
 { Args: { "p_lines": Json,"p_order_id": number }; Returns: undefined
@@ -5239,6 +5421,9 @@ isOneToOne: false
 "browse_shop_catalog_for_customer":
 { Args: { "p_brand"?: string,"p_category"?: string,"p_cursor_id"?: number,"p_cursor_name"?: string,"p_limit"?: number,"p_search"?: string,"p_shop_slug": string,"p_tenant_id": number }; Returns: Json
                            },
+"build_catalog_shop_order_wholesale_draft_payload":
+{ Args: { "p_order_id": number,"p_settlement_kind"?: Database["public"]['Enums']["bill_settlement_kind"] }; Returns: Json
+                           },
 "build_default_dropship_settlement_charge_lines":
 { Args: { "p_order": Omit<Database["public"]['Tables']["shop_orders"]['Row'], Database["public"]['Tables']["shop_orders"]['ComputedFields']> }; Returns: Json
                            },
@@ -5364,6 +5549,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"bulk_update_pp_order_lines_staff":
+{ Args: { "p_line_ids": (number)[],"p_patch": Json,"p_tenant_id": number }; Returns: Json
+                           },
 "bulk_update_thrift_stock_locations":
 { Args: { "p_box_id"?: number,"p_shelf_id"?: number,"p_stock_ids": (number)[],"p_tenant_id": number }; Returns: undefined
                            },
@@ -5540,13 +5728,24 @@ isOneToOne: false
               "has_match": boolean,"matched_role": Database["public"]['Enums']["app_role"],"member_created_at": string,"member_email": string,"member_id": number,"member_is_active": boolean,"member_tenant_id": number,"member_updated_at": string
             }[]
                            },
-"check_shop_login_access":
+"check_proxy_login_access":
 { Args: { "p_email": string,"p_tenant_id"?: number }; Returns: {
+              "has_match": boolean,"matched_role": string,"member_created_at": string,"member_email": string,"member_id": number,"member_is_active": boolean,"member_name": string,"member_tenant_id": number,"member_updated_at": string,"people_group_id": number,"people_group_is_active": boolean,"people_group_name": string,"people_group_type": string
+            }[]
+                           },
+"check_shipment_bill_references":
+{ Args: { "p_shipment_id": number }; Returns: (string)[]
+                           },
+"check_shop_login_access":
+{ Args: { "p_email": string,"p_shop_type"?: Database["public"]['Enums']["shop_type_enum"],"p_tenant_id"?: number }; Returns: {
               "customer_group_id": number,"customer_group_is_active": boolean,"customer_group_name": string,"has_match": boolean,"matched_role": Database["public"]['Enums']["customer_group_role"],"member_created_at": string,"member_email": string,"member_id": number,"member_is_active": boolean,"member_name": string,"member_tenant_id": number,"member_updated_at": string
             }[]
                            },
 "check_store_access":
 { Args: { "p_store_id": number }; Returns: boolean
+                           },
+"clear_shop_cart_item_resell_discount_request":
+{ Args: { "p_cart_item_id": number }; Returns: Json
                            },
 "clear_shop_order_item_unavailable":
 { Args: { "p_order_item_id": number }; Returns: Json
@@ -5609,8 +5808,66 @@ isOneToOne: false
 "create_and_post_stock_movement":
 { Args: { "p_movement_type"?: Database["public"]['Enums']["stock_movement_type"],"p_notes"?: string,"p_quantity": number,"p_reference_id"?: string,"p_reference_type"?: string,"p_stock_id": number,"p_tenant_id": number,"p_to_availability"?: Database["public"]['Enums']["stock_availability"],"p_to_grade_tag_id"?: number,"p_to_location_id"?: number }; Returns: Json
                            },
+"create_bill_adjustment":
+{ Args: { "p_amount": number,"p_cashbook_point_id"?: number,"p_issue"?: boolean,"p_kind": string,"p_lines"?: Json,"p_parent_bill_id": number,"p_reason": string,"p_refund_amount"?: number }; Returns: {
+              "ap_kind": string | null,
+"ap_shipment_id": number | null,
+"books_exchange_rate": number | null,
+"channel_meta": Json | null,
+"charges_amount": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"] | null,
+"created_at": string | null,
+"created_by": string | null,
+"currency_code": string | null,
+"discount_amount": number | null,
+"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,
+"due_amount": number | null,
+"due_date": string | null,
+"from_profile_id": number | null,
+"id": number | null,
+"invoice_date": string | null,
+"invoice_no": string | null,
+"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,
+"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,
+"issued_by_tenant_id": number | null,
+"note": string | null,
+"paid_amount": number | null,
+"parent_bill_id": number | null,
+"payment_status": string | null,
+"print_charge": number | null,
+"profile_id": number | null,
+"recipient_address": string | null,
+"recipient_name": string | null,
+"recipient_phone": string | null,
+"recipient_profile_id": number | null,
+"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,
+"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,
+"shipping_charge": number | null,
+"shop_order_id": number | null,
+"source_id": string | null,
+"source_key": string | null,
+"source_type": string | null,
+"subtotal_amount": number | null,
+"tenant_id": number | null,
+"to_profile_id": number | null,
+"total_amount": number | null,
+"txn_currency_code": string | null,
+"txn_total_amount": number | null,
+"updated_at": string | null,
+"wrapping_charge": number | null,
+"written_off_amount": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "bills"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "create_cargo_company_with_wallet":
 { Args: { "p_address"?: string,"p_code": string,"p_email"?: string,"p_name": string,"p_notes"?: string,"p_phone"?: string,"p_tenant_id": number }; Returns: Json
+                           },
+"create_catalog_shop_order_wholesale_draft_bill":
+{ Args: { "p_order_id": number,"p_settlement_kind"?: Database["public"]['Enums']["bill_settlement_kind"],"p_tenant_id": number }; Returns: Json
                            },
 "create_costing_file":
 { Args: { "p_customer_group_id": number,"p_market": string,"p_name": string,"p_status"?: Database["public"]['Enums']["costing_file_status"],"p_tenant_id"?: number }; Returns: {
@@ -5633,15 +5890,79 @@ isOneToOne: false
 "create_customer_account":
 { Args: { "p_accent_color"?: string,"p_address"?: string,"p_admin_email"?: string,"p_admin_name"?: string,"p_group_name": string,"p_phone"?: string,"p_phone_country_code"?: string,"p_tenant_id": number }; Returns: Json
                            },
-"create_delivery_paper_for_document":
-{ Args: { "p_document_id": number,"p_document_type": string,"p_tenant_id": number }; Returns: Json
-                           },
 "create_invoice_from_preorder_demand_document":
 { Args: { "p_document_id": number,"p_document_type": string,"p_tenant_id": number }; Returns: Json
                            },
 "create_or_update_courier_remittance_batch":
 { Args: { "p_bank_trx_id"?: string,"p_batch_id"?: number,"p_batch_no"?: string,"p_courier_charges_amount"?: number,"p_courier_service_id"?: string,"p_gross_cod_amount"?: number,"p_items"?: Json,"p_net_deposited_amount"?: number,"p_note"?: string,"p_payment_date"?: string,"p_tenant_id"?: number }; Returns: Json
                            },
+"create_pp_people_group":
+{ Args: { "p_name": string,"p_tenant_id": number,"p_type": string }; Returns: Json
+                           },
+"create_pp_people_group_member":
+{ Args: { "p_email": string,"p_name": string,"p_people_group_id": number,"p_role": string,"p_tenant_id": number }; Returns: Json
+                           },
+"create_pp_purchase_request_draft":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"create_pp_shipment":
+{ Args: { "p_name": string,"p_tenant_id": number }; Returns: Json
+                           },
+"create_sales_invoice":
+{ Args: { "p_due_date"?: string,"p_invoice_date"?: string,"p_invoice_no"?: string,"p_invoice_type"?: Database["public"]['Enums']["global_invoice_type"],"p_note"?: string,"p_profile_id"?: number,"p_recipient_address"?: string,"p_recipient_name"?: string,"p_recipient_phone"?: string,"p_recipient_profile_id"?: number,"p_retail_billing_mode"?: Database["public"]['Enums']["retail_billing_mode"],"p_tenant_id": number }; Returns: {
+              "ap_kind": string | null,
+"ap_shipment_id": number | null,
+"books_exchange_rate": number | null,
+"channel_meta": Json | null,
+"charges_amount": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"] | null,
+"created_at": string | null,
+"created_by": string | null,
+"currency_code": string | null,
+"discount_amount": number | null,
+"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,
+"due_amount": number | null,
+"due_date": string | null,
+"from_profile_id": number | null,
+"id": number | null,
+"invoice_date": string | null,
+"invoice_no": string | null,
+"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,
+"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,
+"issued_by_tenant_id": number | null,
+"note": string | null,
+"paid_amount": number | null,
+"parent_bill_id": number | null,
+"payment_status": string | null,
+"print_charge": number | null,
+"profile_id": number | null,
+"recipient_address": string | null,
+"recipient_name": string | null,
+"recipient_phone": string | null,
+"recipient_profile_id": number | null,
+"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,
+"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,
+"shipping_charge": number | null,
+"shop_order_id": number | null,
+"source_id": string | null,
+"source_key": string | null,
+"source_type": string | null,
+"subtotal_amount": number | null,
+"tenant_id": number | null,
+"to_profile_id": number | null,
+"total_amount": number | null,
+"txn_currency_code": string | null,
+"txn_total_amount": number | null,
+"updated_at": string | null,
+"wrapping_charge": number | null,
+"written_off_amount": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "bills"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "create_sales_invoice_from_payload":
 { Args: { "p_payload": Json,"p_tenant_id": number }; Returns: Json
                            },
@@ -5824,7 +6145,7 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: string
                            },
 "customer_accessible_catalog_glance":
-{ Args: { "p_customer_group_id": number,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_customer_group_id": number,"p_shop_type"?: Database["public"]['Enums']["shop_type_enum"],"p_tenant_id": number }; Returns: Json
                            },
 "customer_can_select_shop":
 { Args: { "p_shop_id": number,"p_tenant_id": number }; Returns: boolean
@@ -5859,14 +6180,14 @@ isOneToOne: false
 "delete_cashbook_point_for_staff":
 { Args: { "p_point_id": number,"p_tenant_id": number }; Returns: Json
                            },
+"delete_catalog_shop_order_draft_bill":
+{ Args: { "p_bill_id": number }; Returns: Json
+                           },
 "delete_customer_group":
 { Args: { "p_id": number }; Returns: undefined
                            },
 "delete_customer_group_member_grant":
 { Args: { "p_action": string,"p_cgm_id": number,"p_module_key": string }; Returns: undefined
-                           },
-"delete_delivery_paper":
-{ Args: { "p_delivery_paper_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "delete_draft_bill_from_desk":
 { Args: { "p_bill_id": number }; Returns: undefined
@@ -5882,6 +6203,15 @@ isOneToOne: false
                            },
 "delete_my_push_subscription":
 { Args: { "p_fcm_token": string }; Returns: Json
+                           },
+"delete_pp_order_line":
+{ Args: { "p_line_id": number,"p_request_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"delete_pp_order_line_staff":
+{ Args: { "p_line_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"delete_pp_purchase_request_draft":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "delete_shipment":
 { Args: { "p_id": number }; Returns: undefined
@@ -5938,70 +6268,6 @@ isOneToOne: false
 "delete_thrift_stocks":
 { Args: { "p_stock_ids": (number)[],"p_tenant_id": number }; Returns: Json
                            },
-"delivery_paper_assert_tenant_access":
-{ Args: { "p_tenant_id": number }; Returns: boolean
-                           },
-"delivery_paper_close_action_to_split_status":
-{ Args: { "p_close_action": string }; Returns: string
-                           },
-"delivery_paper_dispatch_movement_id":
-{ Args: { "p_delivery_paper_id": number }; Returns: number
-                           },
-"delivery_paper_document_allows_papers":
-{ Args: { "p_document_id": number,"p_document_type": string,"p_tenant_id": number }; Returns: boolean
-                           },
-"delivery_paper_ensure_procuring_demands":
-{ Args: { "p_paper_source_type": Database["public"]['Enums']["delivery_paper_source_type"],"p_source_id": number }; Returns: undefined
-                           },
-"delivery_paper_line_apply_outcome_from_packed":
-{ Args: { "p_invoice_id"?: number,"p_move_qty": number,"p_outcome_status": string,"p_returned_at"?: string,"p_splits": Json }; Returns: Json
-                           },
-"delivery_paper_line_lock_for_outcome":
-{ Args: { "p_allocation": Json,"p_delivery_paper_id": number }; Returns: {
-              "created_at": string,
-"delivery_paper_id": number,
-"dispatched_global_stock_id": number | null,
-"global_stock_id": number | null,
-"id": number,
-"note": string | null,
-"preorder_demand_id": number,
-"splits": NonNullable<Json>,
-"unit_cost_landed_snapshot": number | null,
-"updated_at": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "delivery_paper_line"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"delivery_paper_line_packed_qty":
-{ Args: { "p_splits": Json }; Returns: number
-                           },
-"delivery_paper_line_reduce_null_plan_splits":
-{ Args: { "p_delivery_paper_id": number,"p_preorder_demand_id": number,"p_reduce_qty": number,"p_status": string }; Returns: undefined
-                           },
-"delivery_paper_line_resolvable_bill_stock_id":
-{ Args: { "p_line": Omit<Database["public"]['Tables']["delivery_paper_line"]['Row'], Database["public"]['Tables']["delivery_paper_line"]['ComputedFields']> }; Returns: number
-                           },
-"delivery_paper_line_splits_has_status":
-{ Args: { "p_splits": Json,"p_status": string }; Returns: boolean
-                           },
-"delivery_paper_line_status_qty":
-{ Args: { "p_splits": Json,"p_status": string }; Returns: number
-                           },
-"delivery_paper_line_total_qty":
-{ Args: { "p_splits": Json }; Returns: number
-                           },
-"delivery_paper_map_line_status_to_close_action":
-{ Args: { "p_status": Database["public"]['Enums']["delivery_paper_line_status"] }; Returns: string
-                           },
-"delivery_paper_resolve_line_demand_id":
-{ Args: { "p_line_source_id": number,"p_line_source_type": string,"p_paper": Omit<Database["public"]['Tables']["delivery_paper"]['Row'], Database["public"]['Tables']["delivery_paper"]['ComputedFields']>,"p_preorder_demand_id": number }; Returns: number
-                           },
-"dispatch_delivery_paper":
-{ Args: { "p_delivery_paper_id": number,"p_tenant_id": number }; Returns: Json
-                           },
 "dispense_middleman_payout_from_tenant":
 { Args: { "p_amount": number,"p_cashbook_point_id"?: number,"p_cashbook_point_pot_id"?: number,"p_payout_method"?: string,"p_profile_id": number,"p_reference_notes"?: string,"p_tenant_id": number }; Returns: Json
                            },
@@ -6010,6 +6276,9 @@ isOneToOne: false
                            },
 "ensure_cashbook_account_for_profile":
 { Args: { "p_currency_code"?: string,"p_profile_id": number }; Returns: number
+                           },
+"ensure_courier_bdt_bundle":
+{ Args: { "p_books_tenant_id": number,"p_profile_id": number }; Returns: number
                            },
 "ensure_default_cargo_company":
 { Args: { "p_tenant_id": number }; Returns: number
@@ -6058,6 +6327,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"ensure_tenant_courier_bdt_bundle":
+{ Args: { "p_books_tenant_id": number,"p_tenant_profile_id": number }; Returns: number
+                           },
 "ensure_tenant_default_money_profiles":
 { Args: { "p_books_tenant_id": number }; Returns: Json
                            },
@@ -6074,6 +6346,9 @@ isOneToOne: false
                            },
 "finalize_dropship_order_bills_at_delivered":
 { Args: { "p_order_id": number }; Returns: Json
+                           },
+"finalize_dropship_resell_discount_review":
+{ Args: { "p_lines": Json,"p_order_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "finalize_dropship_return":
 { Args: { "p_actual_return_charge"?: number,"p_deduct_from_middle_man"?: boolean,"p_items": Json,"p_order_id": number,"p_override_reason"?: string,"p_return_ref"?: string }; Returns: Json
@@ -6163,8 +6438,21 @@ isOneToOne: false
 "get_bill_detail_bundle":
 { Args: { "p_bill_id": number,"p_tenant_id": number }; Returns: Json
                            },
+"get_bill_detail_bundles":
+{ Args: { "p_bill_ids": (number)[],"p_tenant_id": number }; Returns: Json
+                           },
+"get_bill_lines_for_bills":
+{ Args: { "p_bill_ids": (number)[] }; Returns: {
+              "bill_id": number,"books_amount": number,"currency_code": string,"id": number,"line_discount_amount": number,"line_kind": string,"line_meta": Json,"line_total_amount": number,"name_snapshot": string,"quantity": number,"sell_price_amount": number
+            }[]
+                           },
 "get_bill_net_balances":
 { Args: { "p_bill_id": number }; Returns: Json
+                           },
+"get_bills_source_plugs":
+{ Args: { "p_bill_ids": (number)[] }; Returns: {
+              "ap_shipment_id": number,"id": number,"source_id": string,"source_type": string
+            }[]
                            },
 "get_cashbook_account_balances":
 { Args: { "p_currency_code"?: string,"p_entity_id": number,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
@@ -6177,6 +6465,9 @@ isOneToOne: false
                            },
 "get_cashbook_entity_statement":
 { Args: { "p_end_date"?: string,"p_entity_id": number,"p_entity_type": string,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
+                           },
+"get_catalog_shop_order_bill_summary":
+{ Args: { "p_bill_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "get_costing_file_by_id":
 { Args: { "p_id": number }; Returns: {
@@ -6192,7 +6483,7 @@ isOneToOne: false
 { Args: { "p_customer_group_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "get_customer_dashboard_summary":
-{ Args: { "p_tenant_id": number }; Returns: Json
+{ Args: { "p_shop_type"?: Database["public"]['Enums']["shop_type_enum"],"p_tenant_id": number }; Returns: Json
                            },
 "get_customer_dues_report":
 { Args: { "p_aging_bucket"?: string,"p_issued_by_tenant_id"?: number,"p_min_due"?: number,"p_over_limit_only"?: boolean,"p_page"?: number,"p_page_size"?: number,"p_search"?: string,"p_skip_count"?: boolean,"p_tenant_id": number }; Returns: Json
@@ -6203,19 +6494,16 @@ isOneToOne: false
 "get_customer_shop_order":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
                            },
-"get_delivery_paper_detail":
-{ Args: { "p_delivery_paper_id": number,"p_tenant_id": number }; Returns: Json
+"get_dropship_dropshipper_billable_charges":
+{ Args: { "p_order_id": number }; Returns: {
+              "cod": number,"delivery": number,"packing": number,"print": number
+            }[]
                            },
 "get_dropship_finance_hub_data":
 { Args: { "p_tenant_id": number }; Returns: Json
                            },
 "get_dropship_management_order":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
-                           },
-"get_dropship_merchant_billable_charges":
-{ Args: { "p_order_id": number }; Returns: {
-              "cod": number,"delivery": number,"packing": number,"print": number
-            }[]
                            },
 "get_dropship_order_detail_v2":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
@@ -6257,9 +6545,6 @@ isOneToOne: false
 "get_investor_portfolio_summary":
 { Args: { "p_investor_id": number }; Returns: Json
                            },
-"get_item_details":
-{ Args: { "p_item_id": number }; Returns: Json
-                           },
 "get_koba_cart":
 { Args: { "p_customer_group_id"?: number,"p_tenant_id": number }; Returns: Json
                            },
@@ -6296,6 +6581,9 @@ isOneToOne: false
                            },
 "get_pending_order_qty":
 { Args: { "p_allocation_id": number }; Returns: number
+                           },
+"get_pp_purchase_request":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "get_procurement_dashboard_metrics":
 { Args: { "p_tenant_id": number }; Returns: Json
@@ -6355,6 +6643,11 @@ isOneToOne: false
 "get_profile_kernel_pay_detail_for_staff":
 { Args: { "p_pays_id": number,"p_tenant_id": number }; Returns: Json
                            },
+"get_proxy_bootstrap_context":
+{ Args: { "p_email"?: string,"p_people_group_member_id"?: number,"p_tenant_id"?: number }; Returns: {
+              "active_module_keys": (string)[],"effective_grants": Json,"is_admin": boolean,"member_email": string,"member_id": number,"member_is_active": boolean,"member_name": string,"member_role": string,"people_group_id": number,"people_group_is_active": boolean,"people_group_name": string,"people_group_type": string,"permission_version": number,"tenant_id": number,"tenant_is_active": boolean,"tenant_name": string,"tenant_role_id": number,"tenant_slug": string
+            }[]
+                           },
 "get_recipient_profile_by_phone":
 { Args: { "p_phone": string,"p_tenant_id": number }; Returns: Json
                            },
@@ -6377,7 +6670,7 @@ isOneToOne: false
 { Args: { "p_shipment_id": number }; Returns: Json
                            },
 "get_shop_bootstrap_context":
-{ Args: { "p_customer_group_member_id"?: number,"p_email"?: string,"p_tenant_id"?: number }; Returns: {
+{ Args: { "p_customer_group_member_id"?: number,"p_email"?: string,"p_shop_type"?: Database["public"]['Enums']["shop_type_enum"],"p_tenant_id"?: number }; Returns: {
               "active_module_keys": (string)[],"customer_group_accent_color": string,"customer_group_id": number,"customer_group_is_active": boolean,"customer_group_name": string,"effective_grants": Json,"is_admin": boolean,"member_email": string,"member_id": number,"member_is_active": boolean,"member_name": string,"member_role": Database["public"]['Enums']["customer_group_role"],"permission_version": number,"tenant_id": number,"tenant_is_active": boolean,"tenant_name": string,"tenant_role_id": number,"tenant_slug": string
             }[]
                            },
@@ -6396,6 +6689,9 @@ isOneToOne: false
 { Args: { "p_customer_group_member_id": number,"p_tenant_id": number }; Returns: {
               "action": string,"module_key": string
             }[]
+                           },
+"get_shop_order_bill_item_coverage_for_staff":
+{ Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "get_shop_order_dashboard_metrics":
 { Args: { "p_tenant_id": number }; Returns: Json
@@ -6424,9 +6720,6 @@ isOneToOne: false
                            },
 "get_tag_by_slug":
 { Args: { "p_category_id"?: number,"p_code"?: string,"p_module_key"?: string,"p_slug"?: string }; Returns: Json
-                           },
-"get_tasks_dashboard_metrics":
-{ Args: { "p_tenant_id": number }; Returns: Json
                            },
 "get_tenant_cash_in_report":
 { Args: { "p_end_date"?: string,"p_start_date"?: string,"p_tenant_id": number }; Returns: Json
@@ -6504,11 +6797,6 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
-"global_search_tasks":
-{ Args: { "p_query": string }; Returns: {
-              "content": string,"created_at": string,"created_by_email": string,"due_date": string,"id": number,"parent_id": number,"priority": string,"start_date": string,"status": string,"tenant_id": number,"tenant_name": string,"title": string,"type": string,"updated_at": string
-            }[]
-                           },
 "global_shipment_costs_are_locked":
 { Args: { "p_ship": Omit<Database["public"]['Tables']["global_shipments"]['Row'], Database["public"]['Tables']["global_shipments"]['ComputedFields']> }; Returns: boolean
                            },
@@ -6570,6 +6858,9 @@ isOneToOne: false
                            },
 "is_customer_group_member":
 { Args: { "p_customer_group_id": number }; Returns: boolean
+                           },
+"is_dropship_courier_ar_bill":
+{ Args: { "p_bill": Omit<Database["public"]['Views']["bills"]['Row'], Database["public"]['Views']["bills"]['ComputedFields']> }; Returns: boolean
                            },
 "is_internal_costing_file_creator":
 { Args: { "p_email": string,"p_tenant_id": number }; Returns: boolean
@@ -6653,8 +6944,66 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
-"issue_dropship_tenant_b2b_invoice":
+"issue_bill":
+{ Args: { "p_bill_id": number }; Returns: {
+              "ap_kind": string | null,
+"ap_shipment_id": number | null,
+"books_exchange_rate": number | null,
+"channel_meta": Json | null,
+"charges_amount": number | null,
+"collection_source": Database["public"]['Enums']["collection_source_type"] | null,
+"created_at": string | null,
+"created_by": string | null,
+"currency_code": string | null,
+"discount_amount": number | null,
+"document_kind": Database["public"]['Enums']["bill_document_kind"] | null,
+"due_amount": number | null,
+"due_date": string | null,
+"from_profile_id": number | null,
+"id": number | null,
+"invoice_date": string | null,
+"invoice_no": string | null,
+"invoice_status": Database["public"]['Enums']["global_invoice_status"] | null,
+"invoice_type": Database["public"]['Enums']["global_invoice_type"] | null,
+"issued_by_tenant_id": number | null,
+"note": string | null,
+"paid_amount": number | null,
+"parent_bill_id": number | null,
+"payment_status": string | null,
+"print_charge": number | null,
+"profile_id": number | null,
+"recipient_address": string | null,
+"recipient_name": string | null,
+"recipient_phone": string | null,
+"recipient_profile_id": number | null,
+"retail_billing_mode": Database["public"]['Enums']["retail_billing_mode"] | null,
+"settlement_kind": Database["public"]['Enums']["bill_settlement_kind"] | null,
+"shipping_charge": number | null,
+"shop_order_id": number | null,
+"source_id": string | null,
+"source_key": string | null,
+"source_type": string | null,
+"subtotal_amount": number | null,
+"tenant_id": number | null,
+"to_profile_id": number | null,
+"total_amount": number | null,
+"txn_currency_code": string | null,
+"txn_total_amount": number | null,
+"updated_at": string | null,
+"wrapping_charge": number | null,
+"written_off_amount": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "bills"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"issue_dropship_courier_ar_for_order":
 { Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"issue_dropship_tenant_b2b_invoice":
+{ Args: { "p_as_draft"?: boolean,"p_order_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "issue_retail_bill":
 { Args: { "p_bill_id": number }; Returns: undefined
@@ -6832,6 +7181,9 @@ isOneToOne: false
               "amount": number,"balance_after": number,"base_amount": number,"cashbook_point_id": number,"cashbook_point_name": string,"created_at": string,"currency_code": string,"entity_id": number,"entity_type": string,"exchange_rate": number,"id": string,"is_reversal": boolean,"metadata": Json,"operating_tenant_id": number,"parent_tenant_id": number,"reversed_entry_id": string,"source_id": string,"source_type": string,"type": string
             }[]
                            },
+"list_catalog_draft_bill_lines":
+{ Args: { "p_bill_id": number }; Returns: Json
+                           },
 "list_catalog_refresh_log":
 { Args: { "p_limit"?: number,"p_tenant_id": number }; Returns: {
               "duration_seconds": number,"event_kind": string,"file_name": string,"id": number,"products_updated": number,"ran_at": string,"source": string,"source_url": string,"tenant_id": number
@@ -6862,6 +7214,9 @@ isOneToOne: false
 { Args: { "p_tenant_ids": (number)[] }; Returns: {
               "id": number,"name": string,"parent_id": number
             }[]
+                           },
+"list_comments":
+{ Args: { "p_entity_id": string,"p_entity_type": string,"p_tenant_id": number }; Returns: Json
                            },
 "list_configurable_module_actions":
 { Args: { "p_scope": string,"p_tenant_id": number }; Returns: {
@@ -6916,8 +7271,8 @@ isOneToOne: false
 { Args: { "p_cursor"?: string,"p_customer_group_id": number,"p_kind": string,"p_limit"?: number,"p_tenant_id": number }; Returns: Json
                            },
 "list_customer_shop_orders":
-{ Args: { "p_limit"?: number,"p_offset"?: number,"p_status_bucket"?: string,"p_tenant_id": number }; Returns: {
-              "can_see_buy_price": boolean,"can_see_sell_price": boolean,"created_at": string,"created_by_email": string,"currency_symbol": string,"id": number,"is_negotiable_snapshot": boolean,"item_count": number,"order_no": string,"placement_scope": string,"sell_currency_id": number,"shop_id": number,"shop_name": string,"shop_slug": string,"shop_type_snapshot": Database["public"]['Enums']["shop_type_enum"],"status": Database["public"]['Enums']["shop_order_status"],"total_amount": number
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_shop_type"?: Database["public"]['Enums']["shop_type_enum"],"p_status_bucket"?: string,"p_tenant_id": number }; Returns: {
+              "can_see_buy_price": boolean,"can_see_sell_price": boolean,"created_at": string,"currency_symbol": string,"id": number,"is_negotiable_snapshot": boolean,"item_count": number,"order_no": string,"sell_currency_id": number,"shop_id": number,"shop_name": string,"shop_slug": string,"shop_type_snapshot": Database["public"]['Enums']["shop_type_enum"],"status": Database["public"]['Enums']["shop_order_status"],"total_amount": number
             }[]
                            },
 "list_customer_shops":
@@ -6928,15 +7283,9 @@ isOneToOne: false
 "list_customers_report":
 { Args: { "p_cursor"?: string,"p_limit"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: Json
                            },
-"list_delivery_papers_for_document":
-{ Args: { "p_document_id": number,"p_document_type": string,"p_tenant_id": number }; Returns: Json
-                           },
-"list_delivery_papers_for_fulfill_page":
-{ Args: { "p_limit"?: number,"p_offset"?: number,"p_procurement_status"?: string,"p_search"?: string,"p_tenant_id": number }; Returns: Json
-                           },
 "list_dropship_shop_orders_for_staff":
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_status"?: string,"p_statuses"?: (string)[],"p_tenant_id": number }; Returns: {
-              "cod_collect_amount": number,"collection_source": Database["public"]['Enums']["collection_source_type"],"courier_awb_number": string,"courier_name": string,"courier_remittance_ref": string,"created_at": string,"created_by_email": string,"customer_group_name": string,"global_invoice_id": number,"id": number,"order_no": string,"payout_settlement_status": string,"recipient_name": string,"recipient_phone": string,"status": Database["public"]['Enums']["shop_order_status"],"tenant_id": number,"tenant_name": string,"total_amount": number
+              "cod_charge_amount": number,"cod_collect_amount": number,"collected_cod_amount": number,"collection_source": Database["public"]['Enums']["collection_source_type"],"courier_ar_bill_id": number,"courier_ar_invoice_status": string,"courier_awb_number": string,"courier_name": string,"courier_remittance_ref": string,"created_at": string,"created_by_email": string,"customer_group_name": string,"customer_invoice_no": string,"customer_invoice_status": string,"delivery_charge_amount": number,"dropshipper_bill_amount": number,"global_invoice_id": number,"id": number,"order_no": string,"payout_settlement_status": string,"recipient_name": string,"recipient_phone": string,"status": Database["public"]['Enums']["shop_order_status"],"tenant_id": number,"tenant_name": string,"total_amount": number
             }[]
                            },
 "list_global_currencies":
@@ -6995,9 +7344,6 @@ isOneToOne: false
 "list_invoice_payment_history":
 { Args: { "p_invoice_id": number,"p_tenant_id": number }; Returns: Json
                            },
-"list_items_paginated":
-{ Args: { "p_assignee"?: string,"p_date_field"?: string,"p_date_from"?: string,"p_date_to"?: string,"p_include_parents"?: boolean,"p_my_tasks_email"?: string,"p_page"?: number,"p_page_size"?: number,"p_priority"?: string,"p_search"?: string,"p_status"?: string,"p_tag_id"?: number,"p_tenant_id"?: number,"p_type"?: string }; Returns: Json
-                           },
 "list_koba_brands_for_tenant":
 { Args: { "p_tenant_id": number }; Returns: Json
                            },
@@ -7055,6 +7401,36 @@ isOneToOne: false
                            },
 "list_pays_for_source":
 { Args: { "p_source_id": string,"p_source_type": string,"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_order_lines":
+{ Args: { "p_placement_statuses"?: (string)[],"p_pp_customer_group_id"?: number,"p_pp_supplier_group_id"?: number,"p_purchase_request_id"?: number,"p_shipment_id"?: number,"p_tenant_id": number,"p_url_hosts"?: (string)[] }; Returns: Json
+                           },
+"list_pp_order_lines_for_customer":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_order_lines_for_request":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_order_lines_for_supplier":
+{ Args: { "p_exclude_placement_statuses"?: (string)[],"p_people_group_member_id"?: number,"p_placement_statuses"?: (string)[],"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_order_lines_staff_filter_options":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_people_group_members":
+{ Args: { "p_people_group_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_people_groups":
+{ Args: { "p_tenant_id": number,"p_type": string }; Returns: Json
+                           },
+"list_pp_purchase_requests":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_purchase_requests_for_customer":
+{ Args: { "p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_shipments":
+{ Args: { "p_tenant_id": number }; Returns: Json
                            },
 "list_procurement_demand_buy_documents":
 { Args: { "p_child_tenant_id"?: number,"p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: Json
@@ -7204,8 +7580,8 @@ isOneToOne: false
 "list_shop_listing_group_visibility":
 { Args: { "p_customer_group_id": number,"p_shop_id": number }; Returns: Json
                            },
-"list_shop_order_delivery_paper_qty_by_item":
-{ Args: { "p_order_id": number,"p_tenant_id": number }; Returns: Json
+"list_shop_order_bill_lines_for_product_stock":
+{ Args: { "p_global_stock_id": number,"p_order_id": number,"p_product_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "list_shop_orders_for_staff":
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_shop_id"?: number,"p_status"?: string,"p_tenant_id": number }; Returns: {
@@ -7232,7 +7608,7 @@ isOneToOne: false
 { Args: { "p_active"?: boolean,"p_catalog_tenant_id"?: number,"p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "list_stock_for_order_item_pick":
-{ Args: { "p_limit"?: number,"p_offset"?: number,"p_order_item_id": number,"p_search"?: string }; Returns: Json
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_order_item_id": number,"p_product_id"?: number,"p_search"?: string }; Returns: Json
                            },
 "list_stock_locations":
 { Args: { "p_include_inactive"?: boolean,"p_tenant_id": number }; Returns: {
@@ -7387,17 +7763,11 @@ isOneToOne: false
 "map_global_invoice_type_to_sub_type":
 { Args: { "p_invoice_type": Database["public"]['Enums']["global_invoice_type"] }; Returns: string
                            },
-"map_stock_pick_close_to_delivery_line_status":
-{ Args: { "p_close_action": string }; Returns: Database["public"]['Enums']["delivery_paper_line_status"]
-                           },
 "mark_all_my_notifications_read":
 { Args: { "p_tenant_id": number }; Returns: Json
                            },
-"mark_delivery_paper_packed":
-{ Args: { "p_delivery_paper_id": number,"p_tenant_id": number }; Returns: Json
-                           },
 "mark_dropship_order_delivered":
-{ Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_order_id": number,"p_payload"?: Json,"p_tenant_id": number }; Returns: Json
                            },
 "mark_dropship_order_returned":
 { Args: { "p_actual_return_charge": number,"p_deduct_from_middle_man": boolean,"p_order_id": number,"p_reason"?: string }; Returns: Json
@@ -7528,6 +7898,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"patch_catalog_draft_bill_settlement":
+{ Args: { "p_bill_id": number,"p_settlement_kind"?: Database["public"]['Enums']["bill_settlement_kind"],"p_tenant_id": number }; Returns: Json
+                           },
 "patch_dropship_courier_fees_for_remittance":
 { Args: { "p_cod": number,"p_delivery": number,"p_order_id": number }; Returns: undefined
                            },
@@ -7621,86 +7994,6 @@ isOneToOne: false
 { Args: { "p_allocations"?: Json,"p_cashbook_point_id": number,"p_cashbook_point_pot_id"?: number,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_idempotency_key"?: string,"p_instruments"?: Json,"p_note"?: string,"p_paid_on": string,"p_profile_id": number,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_source_currency_code"?: string,"p_tenant_id": number,"p_transaction_rate"?: number }; Returns: Json
                            },
 "post_customer_receipt_with_allocations":
-{ Args: { "p_allocations"?: Json,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_tenant_id": number }; Returns: {
-              "amount": number,
-"cashbook_point_id": number | null,
-"cashbook_point_pot_id": number | null,
-"collection_source": Database["public"]['Enums']["collection_source_type"],
-"counterparty_name": string | null,
-"created_at": string,
-"customer_group_id": number | null,
-"description": string | null,
-"exchange_rate": number,
-"foreign_amount": number | null,
-"from_profile_id": number | null,
-"id": number,
-"idempotency_key": string | null,
-"method": string | null,
-"note": string | null,
-"payment_date": string,
-"profile_id": number | null,
-"purpose_code": string | null,
-"quote_currency_code": string,
-"reference": string | null,
-"settlement_currency_code": string,
-"shop_order_id": number | null,
-"source": string,
-"source_amount": number | null,
-"source_currency_code": string | null,
-"source_id": string | null,
-"source_type": string | null,
-"tenant_id": number,
-"to_profile_id": number | null,
-"transaction_rate": number | null,
-"unallocated_amount": number,
-"voided_at": string | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "pays"
-        isOneToOne: true
-        isSetofReturn: false
-      } } |
-{ Args: { "p_allocations"?: Json,"p_credit_dropship_profit"?: boolean,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_idempotency_key"?: string,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_tenant_id": number }; Returns: {
-              "amount": number,
-"cashbook_point_id": number | null,
-"cashbook_point_pot_id": number | null,
-"collection_source": Database["public"]['Enums']["collection_source_type"],
-"counterparty_name": string | null,
-"created_at": string,
-"customer_group_id": number | null,
-"description": string | null,
-"exchange_rate": number,
-"foreign_amount": number | null,
-"from_profile_id": number | null,
-"id": number,
-"idempotency_key": string | null,
-"method": string | null,
-"note": string | null,
-"payment_date": string,
-"profile_id": number | null,
-"purpose_code": string | null,
-"quote_currency_code": string,
-"reference": string | null,
-"settlement_currency_code": string,
-"shop_order_id": number | null,
-"source": string,
-"source_amount": number | null,
-"source_currency_code": string | null,
-"source_id": string | null,
-"source_type": string | null,
-"tenant_id": number,
-"to_profile_id": number | null,
-"transaction_rate": number | null,
-"unallocated_amount": number,
-"voided_at": string | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "pays"
-        isOneToOne: true
-        isSetofReturn: false
-      } } |
 { Args: { "p_allocations"?: Json,"p_cashbook_point_id"?: number,"p_cashbook_point_pot_id"?: number,"p_credit_dropship_profit"?: boolean,"p_description"?: string,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_from_profile_id"?: number,"p_idempotency_key"?: string,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_source_currency_code"?: string,"p_tenant_id": number,"p_to_profile_id"?: number,"p_transaction_rate"?: number }; Returns: {
               "amount": number,
 "cashbook_point_id": number | null,
@@ -7746,46 +8039,6 @@ isOneToOne: false
                            },
 "post_money_in":
 { Args: { "p_allocations"?: Json,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_idempotency_key"?: string,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_tenant_id": number }; Returns: {
-              "amount": number,
-"cashbook_point_id": number | null,
-"cashbook_point_pot_id": number | null,
-"collection_source": Database["public"]['Enums']["collection_source_type"],
-"counterparty_name": string | null,
-"created_at": string,
-"customer_group_id": number | null,
-"description": string | null,
-"exchange_rate": number,
-"foreign_amount": number | null,
-"from_profile_id": number | null,
-"id": number,
-"idempotency_key": string | null,
-"method": string | null,
-"note": string | null,
-"payment_date": string,
-"profile_id": number | null,
-"purpose_code": string | null,
-"quote_currency_code": string,
-"reference": string | null,
-"settlement_currency_code": string,
-"shop_order_id": number | null,
-"source": string,
-"source_amount": number | null,
-"source_currency_code": string | null,
-"source_id": string | null,
-"source_type": string | null,
-"tenant_id": number,
-"to_profile_id": number | null,
-"transaction_rate": number | null,
-"unallocated_amount": number,
-"voided_at": string | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "pays"
-        isOneToOne: true
-        isSetofReturn: false
-      } } |
-{ Args: { "p_allocations"?: Json,"p_cashbook_point_id"?: number,"p_cashbook_point_pot_id"?: number,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_idempotency_key"?: string,"p_instruments"?: Json,"p_note"?: string,"p_profile_id": number,"p_received_on": string,"p_reference"?: string,"p_settlement_currency_code"?: string,"p_shop_order_id"?: number,"p_source"?: string,"p_source_currency_code"?: string,"p_tenant_id": number,"p_transaction_rate"?: number }; Returns: {
               "amount": number,
 "cashbook_point_id": number | null,
 "cashbook_point_pot_id": number | null,
@@ -7986,6 +8239,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"post_pp_purchase_request":
+{ Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
+                           },
 "post_sales_invoice":
 { Args: { "p_invoice_id": number }; Returns: undefined
                            },
@@ -8042,11 +8298,11 @@ isOneToOne: false
 "post_vendor_credit_refund":
 { Args: { "p_amount": number,"p_cash_location_id"?: number,"p_cashbook_point_id"?: number,"p_cashbook_point_pot_id"?: number,"p_credit_note_id": number,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_note"?: string,"p_received_on"?: string,"p_settlement_currency_code"?: string,"p_source_currency_code"?: string,"p_transaction_rate"?: number }; Returns: Json
                            },
+"pp_derive_order_line_status_from_placement":
+{ Args: { "p_placement": string }; Returns: string
+                           },
 "preorder_demand_invoice_items_stale":
 { Args: { "p_document_id": number,"p_document_type": string,"p_invoice_id": number }; Returns: boolean
-                           },
-"preorder_demand_packed_on_delivery_papers":
-{ Args: { "p_document_source_id": number,"p_document_source_type": Database["public"]['Enums']["delivery_paper_source_type"],"p_exclude_delivery_paper_id"?: number,"p_preorder_demand_id": number }; Returns: number
                            },
 "preview_dropship_courier_payin_settlement":
 { Args: { "p_cod_charge": number,"p_delivery_charge": number,"p_net_amount": number,"p_order_id": number }; Returns: Json
@@ -8126,19 +8382,10 @@ isOneToOne: false
 "record_cashbook_manual_transaction_for_staff":
 { Args: { "p_action_type": string,"p_amount": number,"p_category"?: string,"p_counterparty_entity_id"?: number,"p_counterparty_entity_type"?: string,"p_currency_code"?: string,"p_exchange_rate"?: number,"p_note"?: string,"p_payment_method"?: string,"p_primary_entity_id": number,"p_primary_entity_type": string,"p_reference_id"?: string,"p_target_bucket"?: string,"p_tenant_id": number }; Returns: Json
                            },
-"record_delivery_paper_short_pick":
-{ Args: { "p_delivery_paper_id": number,"p_line_id": number,"p_picked_qty": number,"p_reason"?: string,"p_tenant_id": number }; Returns: Json
-                           },
 "record_dropship_courier_bank_transfer":
 { Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
                            },
 "record_dropship_courier_remittance":
-{ Args: { "p_bank_trx_id"?: string,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
-                           } |
-{ Args: { "p_bank_trx_id"?: string,"p_courier_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
-                           } |
-{ Args: { "p_bank_trx_id"?: string,"p_cashbook_point_id"?: number,"p_courier_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
-                           } |
 { Args: { "p_bank_trx_id"?: string,"p_cashbook_point_id"?: number,"p_cod_charge"?: number,"p_courier_charge"?: number,"p_delivery_charge"?: number,"p_method"?: string,"p_net_amount": number,"p_note"?: string,"p_order_id": number,"p_payment_date"?: string,"p_remittance_ref": string }; Returns: Json
                            },
 "record_dropship_recipient_call_no_answer":
@@ -8195,8 +8442,6 @@ isOneToOne: false
 { Args: { "p_cart_item_id": number }; Returns: Json
                            },
 "remove_shop_order_item_stock_pick":
-{ Args: { "p_pick_id": number }; Returns: Json
-                           } |
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_pick_id": number,"p_search"?: string }; Returns: Json
                            },
 "reorder_shipment_progress_flow_stages":
@@ -8368,8 +8613,8 @@ isOneToOne: false
 "rpc_write_off_bill":
 { Args: { "p_amount": number,"p_bill_id": number,"p_reason": string,"p_tenant_id": number }; Returns: Json
                            },
-"save_delivery_paper_detail":
-{ Args: { "p_delivery_paper_id": number,"p_items": Json,"p_tenant_id": number }; Returns: Json
+"save_dropship_management_list_settlement":
+{ Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
                            },
 "save_dropship_settlement_draft":
 { Args: { "p_order_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
@@ -8462,6 +8707,9 @@ isOneToOne: false
 "settle_dropship_courier_ap_via_cod_retention":
 { Args: { "p_amount": number,"p_ap_bill_id": number,"p_order_id": number,"p_receipt_payment_id"?: number,"p_remittance_ref": string }; Returns: number
                            },
+"settle_dropship_courier_ar_from_remittance":
+{ Args: { "p_ar_bill_id": number,"p_order_id": number,"p_order_no": string,"p_receipt_payment_id"?: number,"p_remittance_ref": string }; Returns: number
+                           },
 "settle_shipment_payee":
 { Args: { "p_action": string,"p_amount": number,"p_entity_id": number,"p_entity_type": string,"p_exchange_rate"?: number,"p_shipment_id": number }; Returns: Json
                            },
@@ -8497,6 +8745,9 @@ isOneToOne: false
                            },
 "show_trgm":
 { Args: { "": string }; Returns: (string)[]
+                           },
+"soft_delete_comment":
+{ Args: { "p_comment_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "staff_add_to_shop_cart":
 { Args: { "p_customer_group_id": number,"p_customer_sell_price_amount"?: number,"p_customer_sell_price_currency_id"?: number,"p_global_stock_allocation_id"?: number,"p_global_stock_id"?: number,"p_product_id": number,"p_quantity"?: number,"p_shop_id": number }; Returns: Json
@@ -8563,9 +8814,6 @@ isOneToOne: false
 "stamp_global_shipment_landed_costs":
 { Args: { "p_shipment_id": number }; Returns: number
                            },
-"stock_dispatch_deduct_covers":
-{ Args: { "p_delivery_paper_id": number,"p_qty": number,"p_stock_id": number }; Returns: boolean
-                           },
 "stock_grade_tag_id_for_slug":
 { Args: { "p_slug": string }; Returns: number
                            },
@@ -8575,14 +8823,14 @@ isOneToOne: false
 "submit_dropship_order_from_cart":
 { Args: { "p_cod_charge_amount"?: number,"p_delivery_charge_amount"?: number,"p_delivery_instructions"?: string,"p_discount_amount"?: number,"p_is_prepaid"?: boolean,"p_packing_charge_amount"?: number,"p_print_charge_amount"?: number,"p_profile_id"?: number,"p_recipient_name": string,"p_recipient_pays_cod"?: boolean,"p_recipient_pays_delivery"?: boolean,"p_recipient_phone": string,"p_recipient_phone_secondary"?: string,"p_shipping_address": string,"p_shipping_district"?: string,"p_shipping_post_code"?: string,"p_shipping_thana"?: string,"p_shop_id": number }; Returns: Json
                            },
+"submit_shop_cart_item_resell_discount_request":
+{ Args: { "p_cart_item_id": number,"p_reason": string,"p_requested_price": number }; Returns: Json
+                           },
 "submit_shop_order_from_cart":
 { Args: { "p_cart_id": number,"p_cod_charge_amount"?: number,"p_delivery_charge_amount"?: number,"p_delivery_instructions"?: string,"p_discount_amount"?: number,"p_is_prepaid"?: boolean,"p_packing_charge_amount"?: number,"p_print_charge_amount"?: number,"p_profile_id"?: number,"p_recipient_name": string,"p_recipient_phone": string,"p_recipient_phone_secondary"?: string,"p_shipping_address": string,"p_shipping_district"?: string,"p_shipping_thana"?: string }; Returns: Json
                            },
 "submit_stock_physical_count":
 { Args: { "p_count_id": number }; Returns: Json
-                           },
-"suggest_delivery_paper_last_lot_picks":
-{ Args: { "p_delivery_paper_id": number,"p_lines"?: Json,"p_stock_context_tenant_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "sum_preorder_stock_picks":
 { Args: { "p_stock_picks": Json }; Returns: number
@@ -8590,8 +8838,8 @@ isOneToOne: false
 "sum_preorder_vendor_placements":
 { Args: { "p_placements": Json }; Returns: number
                            },
-"sync_delivery_paper_lines_for_demand":
-{ Args: { "p_preorder_demand_id": number }; Returns: undefined
+"sync_dropship_draft_bills_after_settlement":
+{ Args: { "p_order_id": number }; Returns: Json
                            },
 "sync_dropship_tenant_b2b_invoice_from_order":
 { Args: { "p_order_id": number }; Returns: Json
@@ -8607,9 +8855,6 @@ isOneToOne: false
                            },
 "sync_shipment_ap_bills":
 { Args: { "p_shipment_id": number }; Returns: Json
-                           },
-"sync_shop_order_from_delivery_paper":
-{ Args: { "p_delivery_paper_id": number,"p_paper_status": Database["public"]['Enums']["delivery_paper_status"] }; Returns: undefined
                            },
 "thrift_barcode_sequence_sort_key":
 { Args: { "p_barcode_id": string }; Returns: {
@@ -8723,9 +8968,6 @@ isOneToOne: false
               "id": number,"status": Database["public"]['Enums']["costing_file_status"],"updated_at": string
             }[]
                            },
-"update_delivery_paper_status":
-{ Args: { "p_delivery_paper_id": number,"p_status": string,"p_tenant_id": number }; Returns: Json
-                           },
 "update_draft_bill":
 { Args: { "p_bill_id": number,"p_payload": Json,"p_tenant_id": number }; Returns: Json
                            },
@@ -8751,6 +8993,18 @@ isOneToOne: false
                            },
 "update_payment_instrument_details":
 { Args: { "p_bd_bank_id"?: number,"p_cheque_date"?: string,"p_cheque_number"?: string,"p_instrument_id": number,"p_reference"?: string,"p_tenant_id": number }; Returns: Json
+                           },
+"update_pp_order_line":
+{ Args: { "p_description"?: string,"p_line_id": number,"p_needed_qty": number,"p_request_id": number,"p_tenant_id": number,"p_url": string }; Returns: Json
+                           },
+"update_pp_order_line_staff":
+{ Args: { "p_description"?: string,"p_image_url"?: string,"p_is_added_to_cart"?: boolean,"p_line_id": number,"p_needed_qty": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_pp_supplier_group_id"?: number,"p_product_name"?: string,"p_received_qty"?: number,"p_shipment_id"?: number,"p_tenant_id": number,"p_tracking_url"?: string,"p_unit_price"?: number,"p_url": string }; Returns: Json
+                           },
+"update_pp_order_line_supplier":
+{ Args: { "p_line_id": number,"p_people_group_member_id": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_tenant_id": number }; Returns: Json
+                           },
+"update_pp_purchase_request_instructions":
+{ Args: { "p_bucket_instructions": Json,"p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "update_product_based_costing_items":
 { Args: { "p_items": Json }; Returns: {
@@ -8885,6 +9139,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"update_shop_cart_delivery_details":
+{ Args: { "p_delivery_details": Json,"p_shop_id": number }; Returns: Json
+                           },
 "update_shop_cart_item_price":
 { Args: { "p_cart_item_id": number,"p_price": number }; Returns: Json
                            },
@@ -8979,6 +9236,9 @@ isOneToOne: false
         isSetofReturn: true
       } },
 "upsert_dropship_courier_ap_bill":
+{ Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
+                           },
+"upsert_dropship_courier_ar_bill":
 { Args: { "p_keep_as_draft"?: boolean,"p_order_id": number }; Returns: Json
                            },
 "upsert_global_stock_allocation":
@@ -9485,9 +9745,6 @@ isOneToOne: false
 "user_is_tenant_admin":
 { Args: { "p_tenant_id": number }; Returns: boolean
                            },
-"validate_delivery_paper_line_splits":
-{ Args: { "p_splits": Json }; Returns: boolean
-                           },
 "validate_preorder_stock_picks":
 { Args: { "p_stock_picks": Json }; Returns: boolean
                            },
@@ -9511,7 +9768,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "app_role": "superadmin"|"admin"|"owner"|"staff"|"viewer"|"investor"|"manager"|"cashier","bill_document_kind": "standard"|"credit_note"|"debit_note","bill_settlement_kind": "take"|"condition","cashbook_account_class": "tenant_asset"|"profile_custody","collection_source_type": "billing_profile"|"recipient"|"profile","costing_file_item_status": "pending"|"accepted"|"rejected","costing_file_status": "draft"|"customer_submitted"|"in_review"|"priced"|"offered"|"accepted"|"po_placed"|"cancelled"|"completed","customer_group_role": "admin"|"manager"|"staff","delivery_paper_line_status": "packed"|"accepted"|"conditioned"|"rejected","delivery_paper_source_type": "shop_order"|"pbc_costing_file","delivery_paper_status": "draft"|"packed"|"dispatched"|"delivered"|"cancelled","demand_bucket_source_type": "shop_order_item"|"pbc_costing_item"|"manual","demand_bucket_status": "open"|"popped"|"cancelled","dropship_settlement_charge_payer": "recipient"|"merchant"|"company","dropship_settlement_charge_type": "delivery"|"print"|"packing"|"return"|"cod","dropship_settlement_status": "draft"|"confirmed","global_fulfillment_status": "pending"|"packed"|"shipped"|"delivered","global_invoice_status": "draft"|"proforma_generated"|"issued"|"voided","global_invoice_type": "wholesale"|"retail"|"dropship"|"ap","global_shipment_cost_bucket": "material"|"freight"|"customs"|"handling"|"finance"|"other","global_shipment_cost_component": "subtotal"|"carriage"|"vat_tax"|"misc","global_shipment_cost_type": "product"|"cargo"|"duty"|"insurance"|"labor"|"washing"|"transport"|"handling"|"local","global_shipment_item_add_method": "order"|"costing"|"manual","global_shipment_outcome_kind": "sellable"|"unsellable","global_shipment_outcome_reason": "general"|"vendor_discount"|"missing"|"damaged"|"other"|"ordered","global_shipment_type": "local"|"international"|"transfer"|"thrift","global_source_module": "wholesale"|"retail"|"commerce","investor_payment_method": "cash"|"bank"|"mobile_banking"|"other","investor_transaction_type": "deposit"|"withdrawal"|"profit_payout"|"capital_in"|"capital_adjustment"|"withdrawal_paid"|"profit_reinvest"|"manual_adjustment","invoice_charge_type": "cod"|"packing"|"print"|"delivery"|"other","koba_order_status": "pending"|"confirmed"|"processing"|"shipped"|"delivered"|"cancelled","notification_audience": "child_only"|"parent_only"|"child_and_parent"|"assignee_only","pbc_offer_pricing_mode": "landed_cost_plus"|"gbp_vat_then_profit","preorder_demand_source_type": "shop_order_item"|"pbc_costing_item","profile_party_type": "tenant"|"customer"|"company"|"vendor"|"cargo"|"courier"|"investor"|"staff","retail_billing_mode": "account"|"direct","shipment_investment_status": "active"|"closed"|"cancelled","shop_cart_status": "active"|"converted"|"abandoned","shop_order_mode_enum": "procurement_intent"|"checkout_fixed"|"checkout_wholesale","shop_order_status": "draft"|"submitted"|"cancelled"|"priced"|"negotiating"|"confirmed"|"placed"|"fulfilled"|"processing"|"shipped"|"delivered"|"payment_received"|"ready_for_pickup"|"returned"|"costing_pending"|"countered"|"final_offered"|"procuring"|"ordered"|"packed"|"reseller_paid"|"dispatch"|"closed","shop_type_enum": "vendor_catalog"|"fixed_price"|"dropship","stock_availability": "sellable"|"held"|"unsellable","stock_location_kind": "warehouse"|"zone"|"shelf"|"level"|"bin"|"returns","stock_movement_type": "receive_putaway"|"location_transfer"|"availability_transfer"|"adjustment"|"return_inbound"|"receive_rollback"|"grade_change"|"issue_outbound"|"vendor_return","stock_physical_count_status": "draft"|"counting"|"pending_approval"|"posted"|"cancelled","thrift_condition": "NEW_WITH_TAGS"|"EXCELLENT"|"GOOD"|"FAIR","thrift_delivery_status": "PENDING"|"SHIPPED"|"DELIVERED"|"RETURNED"|"PARTIALLY_RETURNED","thrift_item_status": "SOLD"|"RETURNED","thrift_ledger_source": "INVOICE"|"SHIPMENT"|"OPERATIONAL","thrift_ledger_type": "REVENUE"|"EXPENSE"|"REFUND"|"LOSS","thrift_payment_status": "UNPAID"|"PAID"|"REFUNDED","thrift_return_action": "RESTOCK"|"WRITE_OFF","thrift_section": "MALE"|"FEMALE"|"UNISEX"|"KIDS"|"HOME","thrift_stock_status": "AVAILABLE"|"OUT_OF_STOCK"|"DAMAGED"|"STOLEN"|"SOLD"|"RESERVED","thrift_stock_type": "SINGLE"|"BULK","thrift_transaction_method": "CASH"|"CARD"|"MOBILE_BANKING"|"COD"
+            "app_role": "superadmin"|"admin"|"owner"|"staff"|"viewer"|"investor"|"manager"|"cashier","bill_document_kind": "standard"|"credit_note"|"debit_note","bill_settlement_kind": "take"|"condition","cashbook_account_class": "tenant_asset"|"profile_custody","collection_source_type": "billing_profile"|"recipient"|"profile","costing_file_item_status": "pending"|"accepted"|"rejected","costing_file_status": "draft"|"customer_submitted"|"in_review"|"priced"|"offered"|"accepted"|"po_placed"|"cancelled"|"completed","customer_group_role": "admin"|"manager"|"staff","demand_bucket_source_type": "shop_order_item"|"pbc_costing_item"|"manual","demand_bucket_status": "open"|"popped"|"cancelled","dropship_settlement_charge_payer": "recipient"|"merchant"|"company","dropship_settlement_charge_type": "delivery"|"print"|"packing"|"return"|"cod","dropship_settlement_status": "draft"|"confirmed","global_fulfillment_status": "pending"|"packed"|"shipped"|"delivered","global_invoice_status": "draft"|"proforma_generated"|"issued"|"voided","global_invoice_type": "wholesale"|"retail"|"dropship"|"ap","global_shipment_cost_bucket": "material"|"freight"|"customs"|"handling"|"finance"|"other","global_shipment_cost_component": "subtotal"|"carriage"|"vat_tax"|"misc","global_shipment_cost_type": "product"|"cargo"|"duty"|"insurance"|"labor"|"washing"|"transport"|"handling"|"local","global_shipment_item_add_method": "order"|"costing"|"manual","global_shipment_outcome_kind": "sellable"|"unsellable","global_shipment_outcome_reason": "general"|"vendor_discount"|"missing"|"damaged"|"other"|"ordered","global_shipment_type": "local"|"international"|"transfer"|"thrift","global_source_module": "wholesale"|"retail"|"commerce","investor_payment_method": "cash"|"bank"|"mobile_banking"|"other","investor_transaction_type": "deposit"|"withdrawal"|"profit_payout"|"capital_in"|"capital_adjustment"|"withdrawal_paid"|"profit_reinvest"|"manual_adjustment","invoice_charge_type": "cod"|"packing"|"print"|"delivery"|"other","koba_order_status": "pending"|"confirmed"|"processing"|"shipped"|"delivered"|"cancelled","notification_audience": "child_only"|"parent_only"|"child_and_parent"|"assignee_only","pbc_offer_pricing_mode": "landed_cost_plus"|"gbp_vat_then_profit","preorder_demand_source_type": "shop_order_item"|"pbc_costing_item","profile_party_type": "tenant"|"customer"|"company"|"vendor"|"cargo"|"courier"|"investor"|"staff","retail_billing_mode": "account"|"direct","shipment_investment_status": "active"|"closed"|"cancelled","shop_cart_status": "active"|"converted"|"abandoned","shop_order_mode_enum": "procurement_intent"|"checkout_fixed"|"checkout_wholesale","shop_order_status": "draft"|"submitted"|"cancelled"|"priced"|"negotiating"|"confirmed"|"placed"|"fulfilled"|"processing"|"shipped"|"delivered"|"payment_received"|"ready_for_pickup"|"returned"|"costing_pending"|"countered"|"final_offered"|"procuring"|"ordered"|"packed"|"reseller_paid"|"dispatch"|"closed"|"resell_discount_requested","shop_type_enum": "vendor_catalog"|"fixed_price"|"dropship","stock_availability": "sellable"|"held"|"unsellable","stock_location_kind": "warehouse"|"zone"|"shelf"|"level"|"bin"|"returns","stock_movement_type": "receive_putaway"|"location_transfer"|"availability_transfer"|"adjustment"|"return_inbound"|"receive_rollback"|"grade_change"|"issue_outbound"|"vendor_return","stock_physical_count_status": "draft"|"counting"|"pending_approval"|"posted"|"cancelled","thrift_condition": "NEW_WITH_TAGS"|"EXCELLENT"|"GOOD"|"FAIR","thrift_delivery_status": "PENDING"|"SHIPPED"|"DELIVERED"|"RETURNED"|"PARTIALLY_RETURNED","thrift_item_status": "SOLD"|"RETURNED","thrift_ledger_source": "INVOICE"|"SHIPMENT"|"OPERATIONAL","thrift_ledger_type": "REVENUE"|"EXPENSE"|"REFUND"|"LOSS","thrift_payment_status": "UNPAID"|"PAID"|"REFUNDED","thrift_return_action": "RESTOCK"|"WRITE_OFF","thrift_section": "MALE"|"FEMALE"|"UNISEX"|"KIDS"|"HOME","thrift_stock_status": "AVAILABLE"|"OUT_OF_STOCK"|"DAMAGED"|"STOLEN"|"SOLD"|"RESERVED","thrift_stock_type": "SINGLE"|"BULK","thrift_transaction_method": "CASH"|"CARD"|"MOBILE_BANKING"|"COD"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -9627,7 +9884,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "app_role": ["superadmin", "admin", "owner", "staff", "viewer", "investor", "manager", "cashier"],"bill_document_kind": ["standard", "credit_note", "debit_note"],"bill_settlement_kind": ["take", "condition"],"cashbook_account_class": ["tenant_asset", "profile_custody"],"collection_source_type": ["billing_profile", "recipient", "profile"],"costing_file_item_status": ["pending", "accepted", "rejected"],"costing_file_status": ["draft", "customer_submitted", "in_review", "priced", "offered", "accepted", "po_placed", "cancelled", "completed"],"customer_group_role": ["admin", "manager", "staff"],"delivery_paper_line_status": ["packed", "accepted", "conditioned", "rejected"],"delivery_paper_source_type": ["shop_order", "pbc_costing_file"],"delivery_paper_status": ["draft", "packed", "dispatched", "delivered", "cancelled"],"demand_bucket_source_type": ["shop_order_item", "pbc_costing_item", "manual"],"demand_bucket_status": ["open", "popped", "cancelled"],"dropship_settlement_charge_payer": ["recipient", "merchant", "company"],"dropship_settlement_charge_type": ["delivery", "print", "packing", "return", "cod"],"dropship_settlement_status": ["draft", "confirmed"],"global_fulfillment_status": ["pending", "packed", "shipped", "delivered"],"global_invoice_status": ["draft", "proforma_generated", "issued", "voided"],"global_invoice_type": ["wholesale", "retail", "dropship", "ap"],"global_shipment_cost_bucket": ["material", "freight", "customs", "handling", "finance", "other"],"global_shipment_cost_component": ["subtotal", "carriage", "vat_tax", "misc"],"global_shipment_cost_type": ["product", "cargo", "duty", "insurance", "labor", "washing", "transport", "handling", "local"],"global_shipment_item_add_method": ["order", "costing", "manual"],"global_shipment_outcome_kind": ["sellable", "unsellable"],"global_shipment_outcome_reason": ["general", "vendor_discount", "missing", "damaged", "other", "ordered"],"global_shipment_type": ["local", "international", "transfer", "thrift"],"global_source_module": ["wholesale", "retail", "commerce"],"investor_payment_method": ["cash", "bank", "mobile_banking", "other"],"investor_transaction_type": ["deposit", "withdrawal", "profit_payout", "capital_in", "capital_adjustment", "withdrawal_paid", "profit_reinvest", "manual_adjustment"],"invoice_charge_type": ["cod", "packing", "print", "delivery", "other"],"koba_order_status": ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"],"notification_audience": ["child_only", "parent_only", "child_and_parent", "assignee_only"],"pbc_offer_pricing_mode": ["landed_cost_plus", "gbp_vat_then_profit"],"preorder_demand_source_type": ["shop_order_item", "pbc_costing_item"],"profile_party_type": ["tenant", "customer", "company", "vendor", "cargo", "courier", "investor", "staff"],"retail_billing_mode": ["account", "direct"],"shipment_investment_status": ["active", "closed", "cancelled"],"shop_cart_status": ["active", "converted", "abandoned"],"shop_order_mode_enum": ["procurement_intent", "checkout_fixed", "checkout_wholesale"],"shop_order_status": ["draft", "submitted", "cancelled", "priced", "negotiating", "confirmed", "placed", "fulfilled", "processing", "shipped", "delivered", "payment_received", "ready_for_pickup", "returned", "costing_pending", "countered", "final_offered", "procuring", "ordered", "packed", "reseller_paid", "dispatch", "closed"],"shop_type_enum": ["vendor_catalog", "fixed_price", "dropship"],"stock_availability": ["sellable", "held", "unsellable"],"stock_location_kind": ["warehouse", "zone", "shelf", "level", "bin", "returns"],"stock_movement_type": ["receive_putaway", "location_transfer", "availability_transfer", "adjustment", "return_inbound", "receive_rollback", "grade_change", "issue_outbound", "vendor_return"],"stock_physical_count_status": ["draft", "counting", "pending_approval", "posted", "cancelled"],"thrift_condition": ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],"thrift_delivery_status": ["PENDING", "SHIPPED", "DELIVERED", "RETURNED", "PARTIALLY_RETURNED"],"thrift_item_status": ["SOLD", "RETURNED"],"thrift_ledger_source": ["INVOICE", "SHIPMENT", "OPERATIONAL"],"thrift_ledger_type": ["REVENUE", "EXPENSE", "REFUND", "LOSS"],"thrift_payment_status": ["UNPAID", "PAID", "REFUNDED"],"thrift_return_action": ["RESTOCK", "WRITE_OFF"],"thrift_section": ["MALE", "FEMALE", "UNISEX", "KIDS", "HOME"],"thrift_stock_status": ["AVAILABLE", "OUT_OF_STOCK", "DAMAGED", "STOLEN", "SOLD", "RESERVED"],"thrift_stock_type": ["SINGLE", "BULK"],"thrift_transaction_method": ["CASH", "CARD", "MOBILE_BANKING", "COD"]
+            "app_role": ["superadmin", "admin", "owner", "staff", "viewer", "investor", "manager", "cashier"],"bill_document_kind": ["standard", "credit_note", "debit_note"],"bill_settlement_kind": ["take", "condition"],"cashbook_account_class": ["tenant_asset", "profile_custody"],"collection_source_type": ["billing_profile", "recipient", "profile"],"costing_file_item_status": ["pending", "accepted", "rejected"],"costing_file_status": ["draft", "customer_submitted", "in_review", "priced", "offered", "accepted", "po_placed", "cancelled", "completed"],"customer_group_role": ["admin", "manager", "staff"],"demand_bucket_source_type": ["shop_order_item", "pbc_costing_item", "manual"],"demand_bucket_status": ["open", "popped", "cancelled"],"dropship_settlement_charge_payer": ["recipient", "merchant", "company"],"dropship_settlement_charge_type": ["delivery", "print", "packing", "return", "cod"],"dropship_settlement_status": ["draft", "confirmed"],"global_fulfillment_status": ["pending", "packed", "shipped", "delivered"],"global_invoice_status": ["draft", "proforma_generated", "issued", "voided"],"global_invoice_type": ["wholesale", "retail", "dropship", "ap"],"global_shipment_cost_bucket": ["material", "freight", "customs", "handling", "finance", "other"],"global_shipment_cost_component": ["subtotal", "carriage", "vat_tax", "misc"],"global_shipment_cost_type": ["product", "cargo", "duty", "insurance", "labor", "washing", "transport", "handling", "local"],"global_shipment_item_add_method": ["order", "costing", "manual"],"global_shipment_outcome_kind": ["sellable", "unsellable"],"global_shipment_outcome_reason": ["general", "vendor_discount", "missing", "damaged", "other", "ordered"],"global_shipment_type": ["local", "international", "transfer", "thrift"],"global_source_module": ["wholesale", "retail", "commerce"],"investor_payment_method": ["cash", "bank", "mobile_banking", "other"],"investor_transaction_type": ["deposit", "withdrawal", "profit_payout", "capital_in", "capital_adjustment", "withdrawal_paid", "profit_reinvest", "manual_adjustment"],"invoice_charge_type": ["cod", "packing", "print", "delivery", "other"],"koba_order_status": ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"],"notification_audience": ["child_only", "parent_only", "child_and_parent", "assignee_only"],"pbc_offer_pricing_mode": ["landed_cost_plus", "gbp_vat_then_profit"],"preorder_demand_source_type": ["shop_order_item", "pbc_costing_item"],"profile_party_type": ["tenant", "customer", "company", "vendor", "cargo", "courier", "investor", "staff"],"retail_billing_mode": ["account", "direct"],"shipment_investment_status": ["active", "closed", "cancelled"],"shop_cart_status": ["active", "converted", "abandoned"],"shop_order_mode_enum": ["procurement_intent", "checkout_fixed", "checkout_wholesale"],"shop_order_status": ["draft", "submitted", "cancelled", "priced", "negotiating", "confirmed", "placed", "fulfilled", "processing", "shipped", "delivered", "payment_received", "ready_for_pickup", "returned", "costing_pending", "countered", "final_offered", "procuring", "ordered", "packed", "reseller_paid", "dispatch", "closed", "resell_discount_requested"],"shop_type_enum": ["vendor_catalog", "fixed_price", "dropship"],"stock_availability": ["sellable", "held", "unsellable"],"stock_location_kind": ["warehouse", "zone", "shelf", "level", "bin", "returns"],"stock_movement_type": ["receive_putaway", "location_transfer", "availability_transfer", "adjustment", "return_inbound", "receive_rollback", "grade_change", "issue_outbound", "vendor_return"],"stock_physical_count_status": ["draft", "counting", "pending_approval", "posted", "cancelled"],"thrift_condition": ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],"thrift_delivery_status": ["PENDING", "SHIPPED", "DELIVERED", "RETURNED", "PARTIALLY_RETURNED"],"thrift_item_status": ["SOLD", "RETURNED"],"thrift_ledger_source": ["INVOICE", "SHIPMENT", "OPERATIONAL"],"thrift_ledger_type": ["REVENUE", "EXPENSE", "REFUND", "LOSS"],"thrift_payment_status": ["UNPAID", "PAID", "REFUNDED"],"thrift_return_action": ["RESTOCK", "WRITE_OFF"],"thrift_section": ["MALE", "FEMALE", "UNISEX", "KIDS", "HOME"],"thrift_stock_status": ["AVAILABLE", "OUT_OF_STOCK", "DAMAGED", "STOLEN", "SOLD", "RESERVED"],"thrift_stock_type": ["SINGLE", "BULK"],"thrift_transaction_method": ["CASH", "CARD", "MOBILE_BANKING", "COD"]
           }
         }
 } as const

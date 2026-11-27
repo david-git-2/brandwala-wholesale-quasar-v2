@@ -3,10 +3,22 @@ export type BdtFormatOptions = {
   maximumFractionDigits?: number;
 };
 
+export type CurrencyFormatOptions = BdtFormatOptions;
+
 const DEFAULT_OPTIONS: Required<BdtFormatOptions> = {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 };
+
+const toSafeAmount = (value: number | string | null | undefined): number => {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const normalizeFractionOptions = (options: BdtFormatOptions = {}): Required<BdtFormatOptions> => ({
+  ...DEFAULT_OPTIONS,
+  ...options,
+});
 
 const formatIndianGrouping = (value: number): string => {
   const parts = Math.abs(value).toFixed(2).split('.');
@@ -23,12 +35,8 @@ export const formatAmountBdt = (
   value: number | string | null | undefined,
   options: BdtFormatOptions = {},
 ): string => {
-  const amount = Number(value ?? 0);
-  const safeAmount = Number.isFinite(amount) ? amount : 0;
-  const normalizedOptions = {
-    ...DEFAULT_OPTIONS,
-    ...options,
-  };
+  const safeAmount = toSafeAmount(value);
+  const normalizedOptions = normalizeFractionOptions(options);
 
   if (
     normalizedOptions.minimumFractionDigits === 2 &&
@@ -52,6 +60,7 @@ export const SETTLEMENT_CURRENCY_SYMBOL: Record<string, string> = {
   GBP: '£',
   USD: '$',
   EUR: '€',
+  CNY: '¥',
 };
 
 /** Symbol for UI labels — ignores `currency_symbol` when it is the ISO code. */
@@ -70,15 +79,43 @@ export const settlementCurrencyDisplayLabel = (
   currencySymbol?: string | null,
 ): string => resolveSettlementCurrencySymbol(currencyCode, currencySymbol) ?? (currencyCode || 'BDT').trim().toUpperCase();
 
+/**
+ * Format an amount in any currency.
+ * Uses Indian digit grouping for BDT and standard grouping for foreign currencies;
+ * never uses ৳ unless the resolved currency is BDT.
+ */
+export const formatCurrencyAmount = (
+  value: number | string | null | undefined,
+  currencyCode?: string | null,
+  currencySymbol?: string | null,
+  options: CurrencyFormatOptions = {},
+): string => {
+  const rawCode = currencyCode?.trim().toUpperCase() || '';
+  const symOverride = currencySymbol?.trim() || null;
+  const isSymbolOnlyForeign =
+    !rawCode && symOverride !== null && symOverride !== '৳' && symOverride.toUpperCase() !== 'BDT';
+
+  if (isSymbolOnlyForeign) {
+    const normalizedOptions = normalizeFractionOptions(options);
+    const formatted = new Intl.NumberFormat('en-US', normalizedOptions).format(toSafeAmount(value));
+    return `${symOverride}${formatted}`;
+  }
+
+  const code = rawCode || 'BDT';
+  const formatted =
+    code === 'BDT'
+      ? formatAmountBdt(value, options)
+      : new Intl.NumberFormat('en-US', normalizeFractionOptions(options)).format(toSafeAmount(value));
+
+  const sym = resolveSettlementCurrencySymbol(code, symOverride);
+  if (sym) return `${sym}${formatted}`;
+  return `${formatted} ${code}`;
+};
+
 /** Foreign or BDT settlement leg — never uses ৳ unless currency is BDT. */
 export const formatSettlementCurrencyAmount = (
   value: number | string | null | undefined,
   currencyCode: string,
   currencySymbol?: string | null,
-): string => {
-  const code = (currencyCode || 'BDT').toUpperCase();
-  const formatted = formatAmountBdt(value);
-  const sym = resolveSettlementCurrencySymbol(code, currencySymbol);
-  if (sym) return `${sym}${formatted}`;
-  return `${formatted} ${code}`;
-};
+  options?: CurrencyFormatOptions,
+): string => formatCurrencyAmount(value, currencyCode, currencySymbol, options);

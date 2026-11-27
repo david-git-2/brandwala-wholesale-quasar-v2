@@ -1,6 +1,6 @@
 import { ref, computed, type Ref } from 'vue';
 import { useQuasar, copyToClipboard } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
 import {
   useUpdateStockMutation,

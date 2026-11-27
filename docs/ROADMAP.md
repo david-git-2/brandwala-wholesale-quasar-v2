@@ -92,7 +92,7 @@ Theme: **Platform depth & retirement** — serves **G2**, **G3**
 | Item | Description |
 |------|-------------|
 | PS9 | Retire `global_stock_allocations`; shop/procurement sell from `global_stock_id` / listings |
-| Schema split | Expand declarative domains out of `public.sql` (see [split tracker](../doc/supabase-schema.md)) |
+| Schema split | Expand declarative domains out of `public.sql` (tracked in `supabase/config.toml` `schema_paths`) |
 | Kernel cosmetics | Rename legacy `universal_wallet_*` constraints; dropship `wallet_*` metadata strings |
 | B7 legacy cutover | Tenant cutover chain — drop pre-kernel invoice paths when grep shows zero callers |
 | Thrift TH3 | Hang-tag PDF voucher or drop from PRD |
@@ -115,8 +115,8 @@ Living document — reviewed each quarter. Feature-level IDs and fix steps live 
 
 | Need | Document |
 |------|----------|
-| Module unfinished rows | Each `docs/features/<module>/00-gaps.md` |
-| Money build order (engineers) | [doc/fix/2026-10-12-bills-pays-kernel-plan.md](../doc/fix/2026-10-12-bills-pays-kernel-plan.md) |
+| Module unfinished rows | Each module spec |
+| Money build order (engineers) | [atlas](features/money_bill_bridge/spec.md#atlas) |
 | Bills desk execution plan | [.cursor/plans/bills_desk_nav_apis_619be984.plan.md](../.cursor/plans/bills_desk_nav_apis_619be984.plan.md) |
 | Money target map | [atlas](features/money_bill_bridge/spec.md#atlas) |
 | How to sell (BW / pre-order / Koba / thrift) | [architecture/business-models.md](architecture/business-models.md) |

@@ -64,12 +64,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import InvoicePrintSheet from 'src/modules/finance/submodules/invoice_shared/components/InvoicePrintSheet.vue';
 import type {
   InvoicePrintCharge,
   InvoicePrintModel,
-} from 'src/modules/invoice_shared/types/invoicePrintModel';
+} from 'src/modules/finance/submodules/invoice_shared/types/invoicePrintModel';
 import {
   thriftSalesRepository,
   type ThriftSalesInvoiceDetail,

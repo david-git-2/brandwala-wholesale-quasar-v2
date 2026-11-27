@@ -2,12 +2,12 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showWarningDialog } from 'src/utils/appFeedback';
 import { useTenantStore } from '../stores/tenantStore';
 import { useTenantPreferenceStore } from '../stores/tenantPreferenceStore';
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
-import { resolveCompanyTenant } from '../utils/tenantHierarchy';
+import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/tenant/submodules/membership/types/preferences';
 import type { Tenant } from '../types';
 
 export function useAdminTenantSelection() {
@@ -15,6 +15,7 @@ export function useAdminTenantSelection() {
   const authStore = useAuthStore();
   const tenantStore = useTenantStore();
   const tenantPreferenceStore = useTenantPreferenceStore();
+  const membershipPreferenceStore = useMembershipPreferenceStore();
   const selectingTenantId = ref<number | null>(null);
 
   const selectTenantWorkspace = async (
@@ -106,18 +107,32 @@ export function useAdminTenantSelection() {
 
       tenantPreferenceStore.setPreference(bootstrap.tenant_id, bootstrap.tenant_preference);
 
-      useMembershipPreferenceStore().setPreference(
+      membershipPreferenceStore.setPreference(bootstrap.member_id, bootstrap.member_preference);
+
+      membershipPreferenceStore.patchPreferencePath(
         bootstrap.member_id,
-        bootstrap.member_preference,
+        MEMBERSHIP_UI_PATHS.adminWorkspaceTenant,
+        {
+          id: bootstrap.tenant_id,
+          slug: bootstrap.tenant_slug,
+        },
       );
+
+      const preferenceSave = await membershipPreferenceStore.savePreference(bootstrap.member_id);
+      if (!preferenceSave.success) {
+        showWarningDialog(
+          preferenceSave.error ?? 'Workspace preference could not be saved.',
+          'Preference save failed',
+        );
+      }
 
       if (options?.navigate !== false) {
         if (bootstrap.member_role === 'viewer') {
-          await router.push(`/${bootstrap.tenant_slug}/app/costing/viewer`);
+          await router.push('/app/costing/viewer');
         } else if (options?.destination === 'tenant-details') {
-          await router.push(`/${bootstrap.tenant_slug}/app/tenants/${bootstrap.tenant_id}`);
+          await router.push(`/app/tenants/${bootstrap.tenant_id}`);
         } else {
-          await router.push(`/${bootstrap.tenant_slug}/app/dashboard`);
+          await router.push('/app/dashboard');
         }
       }
 
@@ -138,17 +153,11 @@ export function useAdminTenantSelection() {
       return false;
     }
 
-    const workspaceTenant =
-      resolveCompanyTenant(selectedTenant, [
-        ...tenantStore.items,
-        ...tenantStore.availableAdminTenants,
-      ]) ?? selectedTenant;
-
-    if (authStore.tenant?.id === workspaceTenant.id) {
+    if (authStore.tenant?.id === selectedTenant.id) {
       return true;
     }
 
-    return selectTenantWorkspace(workspaceTenant, { navigate: false });
+    return selectTenantWorkspace(selectedTenant, { navigate: false });
   };
 
   return {

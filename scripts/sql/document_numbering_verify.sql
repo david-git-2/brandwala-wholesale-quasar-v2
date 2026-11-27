@@ -10,6 +10,7 @@ FROM (
     ('ap_bill'),
     ('dropship_b2b_invoice'),
     ('shipment'),
+    ('proxy_shipment'),
     ('stock_movement'),
     ('stock_movement_manual'),
     ('receive_putaway'),

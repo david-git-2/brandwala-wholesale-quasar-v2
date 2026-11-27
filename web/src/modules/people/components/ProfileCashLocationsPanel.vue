@@ -79,7 +79,7 @@
           icon="ph ph-x"
           aria-label="Close"
           :disable="formSaving"
-          @click="closeFormDialog"
+          @click="() => closeFormDialog()"
         />
       </q-card-section>
       <q-card-section>
@@ -127,11 +127,11 @@ import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
 import ProfileCashLocationsPanelBody from './ProfileCashLocationsPanelBody.vue';
 import ProfileCashbookBundleCreateDialog from './ProfileCashbookBundleCreateDialog.vue';
-import type { CashbookPointRow } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
-import { createPayIdempotencyKey } from 'src/modules/bills_pays/repositories/paysRepository';
-import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
+import type { CashbookPointRow } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { cashbookRepository } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { moneyKernelRepository } from 'src/modules/finance/submodules/bills_pays/repositories/moneyKernelRepository';
+import { createPayIdempotencyKey } from 'src/modules/finance/submodules/bills_pays/repositories/paysRepository';
+import { cashbookQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/cashbookQueryKeys';
 import {
   requestConfirmation,
   showErrorNotification,
@@ -217,7 +217,7 @@ const addMutation = useMutation({
     const accountId = cashbookAccountId.value;
     if (accountId == null) throw new Error('Cashbook not ready.');
     await cashbookRepository.createCashbookPoint({
-      parentTenantId: props.booksTenantId,
+      tenantId: props.booksTenantId,
       cashbookAccountId: accountId,
       name: name.trim(),
       currencyCodes: ['BDT'],

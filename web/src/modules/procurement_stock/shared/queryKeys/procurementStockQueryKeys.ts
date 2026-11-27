@@ -40,8 +40,8 @@ export const procurementStockQueryKeys = {
   stockAllocations: (stockId: number) =>
     ['procurementStock', 'stockAllocations', { stockId }] as const,
 
-  childTenants: (parentTenantId: number) =>
-    ['procurementStock', 'childTenants', { parentTenantId }] as const,
+  childTenants: (tenantId: number) =>
+    ['procurementStock', 'childTenants', { tenantId }] as const,
 
   shipments: (tenantId: number, params?: { isArchived?: boolean; search?: string | null; status?: string | null }) =>
     ['procurementStock', 'shipments', { tenantId, ...params }] as const,
@@ -108,44 +108,10 @@ export const procurementStockQueryKeys = {
     limit?: number;
   }) => ['procurementStock', 'demandGroupItems', params] as const,
 
-  fulfillGroups: (params: {
-    tenantId: number;
-    procurementStatus: string;
-    search?: string | null;
-    profileId?: number | null;
-    limit?: number;
-    offset?: number;
-  }) => ['procurementStock', 'fulfillGroups', params] as const,
-
-  fulfillDeliveryPapers: (params: {
-    tenantId: number;
-    procurementStatus: string;
-    search?: string | null;
-    limit?: number;
-    offset?: number;
-  }) => ['procurementStock', 'fulfillDeliveryPapers', params] as const,
-
-  fulfillGroupItems: (params: {
-    tenantId: number;
-    documentType: string;
-    documentId: number;
-    search?: string | null;
-    limit?: number;
-  }) => ['procurementStock', 'fulfillGroupItems', params] as const,
-
-  deliveryPapersForDocument: (params: {
-    tenantId: number;
-    documentType: string;
-    documentId: number;
-  }) => ['procurementStock', 'deliveryPapersForDocument', params] as const,
-
-  deliveryPaperDetail: (params: { tenantId: number; deliveryPaperId: number }) =>
-    ['procurementStock', 'deliveryPaperDetail', params] as const,
-
   dashboard: (tenantId: number) => ['procurementStock', 'dashboard', tenantId] as const,
 
-  batchCodeLists: (parentTenantId: number) =>
-    ['procurementStock', 'batchCodeLists', { parentTenantId }] as const,
+  batchCodeLists: (tenantId: number) =>
+    ['procurementStock', 'batchCodeLists', { tenantId }] as const,
 
   batchCodeList: (listId: number) =>
     ['procurementStock', 'batchCodeList', { listId }] as const,

@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { canAccessModule } from 'src/modules/navigation/modulePermissions';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { canAccessModule } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 import { showWarningDialog } from 'src/utils/appFeedback';
 
 const thriftGuard = {
@@ -45,7 +45,7 @@ const thriftSalesCreateGuard = createAccessGuard({
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/sales',
+    path: '/app/thrift/sales',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: thriftSalesGuard,
     children: [
@@ -98,7 +98,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/thrift/sales/:invoiceId/preview',
+    path: '/app/thrift/sales/:invoiceId/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: thriftSalesGuard,
     children: [

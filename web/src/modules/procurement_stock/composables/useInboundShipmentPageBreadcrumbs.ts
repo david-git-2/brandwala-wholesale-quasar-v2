@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 

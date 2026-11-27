@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { showErrorNotification } from 'src/utils/appFeedback';
 import {
@@ -91,9 +91,9 @@ export function useShipmentBoxWeightGrid(shipmentId: number) {
   const resolveParentTenantId = (): number => {
     const currentTenant =
       tenantStore.selectedTenant ?? tenantStore.items.find((t) => t.id === authStore.tenantId);
-    const parentTenantId = currentTenant?.parent_id ?? authStore.tenantId;
-    if (!parentTenantId) throw new Error('No tenant found');
-    return parentTenantId;
+    const tenantId = currentTenant?.parent_id ?? authStore.tenantId;
+    if (!tenantId) throw new Error('No tenant found');
+    return tenantId;
   };
 
   const resetAddForm = () => {

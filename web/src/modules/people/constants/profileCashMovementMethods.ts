@@ -1,4 +1,4 @@
-import type { WholesaleMethodOption } from 'src/modules/bills_pays/composables/useWholesalePaymentMethodMeta';
+import type { WholesaleMethodOption } from 'src/modules/finance/submodules/bills_pays/composables/useWholesalePaymentMethodMeta';
 
 const PROFILE_METHOD_ORDER = [
   'cash',

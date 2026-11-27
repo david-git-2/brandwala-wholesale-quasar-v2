@@ -171,8 +171,17 @@ function mapStaffShopOrderDetailItemToFlat(item: StaffShopOrderDetailItem): Shop
     unit_sell_price_currency_id: moneyCurrencyId(pricing.sell),
     unit_minimum_sell_price_amount: moneyAmount(pricing.minimum_sell),
     unit_minimum_sell_price_currency_id: moneyCurrencyId(pricing.minimum_sell),
-    customer_sell_price_amount: null,
-    customer_sell_price_currency_id: null,
+    customer_sell_price_amount:
+      moneyAmount(item.pricing.customer_sell) ??
+      moneyAmount(item.pricing.sell),
+    customer_sell_price_currency_id:
+      moneyCurrencyId(item.pricing.customer_sell) ??
+      moneyCurrencyId(item.pricing.sell),
+    requested_resell_discount_price_amount: item.resell_discount?.requested_amount ?? null,
+    requested_resell_discount_price_currency_id:
+      item.resell_discount?.requested_currency?.id ?? null,
+    resell_discount_request_reason: item.resell_discount?.reason ?? null,
+    resell_discount_requested_at: item.resell_discount?.requested_at ?? null,
     customer_offer_amount: offerAmount(negotiation.customer_offer),
     customer_offer_currency_id: offerCurrencyId(negotiation.customer_offer),
     staff_offer_amount: offerAmount(negotiation.staff_offer),
@@ -185,6 +194,8 @@ function mapStaffShopOrderDetailItemToFlat(item: StaffShopOrderDetailItem): Shop
     weight_kg: negotiation.weight_kg,
     cost_price_amount: moneyAmount(pricing.cost),
     cost_price_currency_id: moneyCurrencyId(pricing.cost),
+    cost_price_currency_symbol: pricing.cost?.currency?.symbol ?? null,
+    unit_list_price_currency_symbol: pricing.list?.currency?.symbol ?? null,
     customer_decision_status: negotiation.customer_decision,
     customer_decision_at: negotiation.customer_offer?.at ?? null,
     negotiation_status: negotiation.status,

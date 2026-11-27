@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { storeToRefs } from 'pinia';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { usePickupLocationsStore } from '../stores/pickupLocationsStore';
 import { useDropshipOrderDetailV2Store } from '../stores/dropshipOrderDetailV2Store';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';

@@ -317,8 +317,8 @@
 <script setup lang="ts">
 import { reactive, computed, watch, ref } from 'vue';
 import { QCard } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCashbookPointsQuery } from 'src/modules/bills_pays/composables/useCashbookPointsQuery';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useCashbookPointsQuery } from 'src/modules/finance/submodules/bills_pays/composables/useCashbookPointsQuery';
 import {
   dropshipFinanceRepository,
   type FinanceHubOrderQueueItem,

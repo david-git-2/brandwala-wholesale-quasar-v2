@@ -1,8 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
 import {
   getAppRouteLocation,
   getTenantSlugFromRoute,
+  validateAppRouteTenantSlug,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 
@@ -34,7 +35,7 @@ const tenantRoutes: RouteRecordRaw[] = [
 
   // ADMIN ROUTES
   {
-    path: '/:tenantSlug?/app/tenants',
+    path: '/app/tenants',
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-tenants',
     children: [
@@ -46,20 +47,7 @@ const tenantRoutes: RouteRecordRaw[] = [
           loginRoute: 'admin-login-page',
           requiredScope: 'app',
           allowedRoles: ['admin', 'staff', 'viewer'],
-          validateAccess: ({ authStore, to }) => {
-            if (!authStore.selectedTenant) {
-              return true;
-            }
-
-            const routeTenantSlug = getTenantSlugFromRoute(to);
-            const selectedTenantSlug = authStore.selectedTenant.slug;
-
-            if (routeTenantSlug === selectedTenantSlug) {
-              return true;
-            }
-
-            return getAppRouteLocation(to, selectedTenantSlug);
-          },
+          validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
         }),
       },
       {
@@ -82,20 +70,10 @@ const tenantRoutes: RouteRecordRaw[] = [
               return { name: 'admin-tenant-list' };
             }
 
-            const tenantStore = useTenantStore();
-            const routeTenant =
-              tenantStore.items.find((tenant) => tenant.id === routeTenantId) ?? null;
-            const isCompanyDetails = routeTenantId === selectedTenantId;
-            const isBrandUnderCompany =
-              routeTenant?.parent_id === selectedTenantId ||
-              tenantStore.hierarchyChildRefs.some(
-                (ref) => ref.id === routeTenantId && ref.parent_id === selectedTenantId,
-              );
-
             if (
               Number.isFinite(routeTenantId) &&
               routeTenantSlug === selectedTenantSlug &&
-              (isCompanyDetails || isBrandUnderCompany)
+              routeTenantId === selectedTenantId
             ) {
               return true;
             }
@@ -198,14 +176,14 @@ const tenantRoutes: RouteRecordRaw[] = [
   },
   // ROLE & SETTINGS ROUTES
   {
-    path: '/:tenantSlug?/app/settings',
+    path: '/app/settings',
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-settings',
     children: [
       {
         path: '',
         name: 'app-settings-overview',
-        component: () => import('src/modules/settings/pages/AppSettingsOverviewPage.vue'),
+        component: () => import('src/modules/tenant/submodules/settings/pages/AppSettingsOverviewPage.vue'),
         beforeEnter: createAccessGuard({
           loginRoute: 'admin-login-page',
           requiredScope: 'app',

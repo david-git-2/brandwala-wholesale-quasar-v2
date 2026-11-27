@@ -34,6 +34,7 @@ export interface GlobalStock {
   id: number;
   tenant_id: number;
   shipment_item_id: number;
+  product_id?: number | null;
   shipment_id: number;
   stock_type_id?: number | null;
   quantity: number;
@@ -80,7 +81,15 @@ const listPaginated = async (
   locationId?: number | null,
   availability?: Database['public']['Enums']['stock_availability'] | null,
   shipmentId?: number | null,
-): Promise<PaginatedResult<GlobalStock>> => {
+): Promise<{
+  data: GlobalStock[];
+  meta: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}> => {
   const { data, error } = await db.rpc('list_global_stocks_paginated', {
     p_tenant_id: tenantId,
     p_page: page,

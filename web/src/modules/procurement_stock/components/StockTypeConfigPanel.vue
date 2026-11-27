@@ -142,7 +142,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useDialogPluginComponent, useQuasar, type QTableColumn } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
 import type { GlobalStockType } from '../repositories/globalStockTypeRepository';
 

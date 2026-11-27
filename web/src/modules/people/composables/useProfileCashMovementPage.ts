@@ -1,9 +1,9 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
-import type { MoneyPayKind } from 'src/modules/bills_pays/types/moneyPayDialog';
-import { useCashbookPartyQuery } from 'src/modules/bills_pays/composables/useCashbookPartyQuery';
+import type { MoneyPayKind } from 'src/modules/finance/submodules/bills_pays/types/moneyPayDialog';
+import { useCashbookPartyQuery } from 'src/modules/finance/submodules/bills_pays/composables/useCashbookPartyQuery';
 import { resolveCashbookRouteProfileId } from '../utils/profileMoneyProfileId';
 import { useProfileCashMovementReturn } from './useProfileCashMovementReturn';
 import { useProfileCashMovementSubmit } from './useProfileCashMovementSubmit';
@@ -20,11 +20,7 @@ export function useProfileCashMovementPage(pageKind: Extract<MoneyPayKind, 'depo
   const profileLoadError = ref<string | null>(null);
 
   const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
-  const booksTenantId = computed(() => {
-    const t = authStore.selectedTenant;
-    if (!t) return 0;
-    return t.parent_id ?? t.id;
-  });
+  const booksTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 
   const routeEntityType = computed(() => {
     const raw = route.params.entityType;

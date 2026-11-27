@@ -17,12 +17,12 @@ export const useStockLocationStore = defineStore('stock_location', {
   }),
 
   actions: {
-    async fetchLocations(parentTenantId: number, includeInactive = true) {
+    async fetchLocations(tenantId: number, includeInactive = true) {
       this.loading = true;
       this.error = null;
       try {
         const data = await stockLocationRepository.listStockLocations(
-          parentTenantId,
+          tenantId,
           includeInactive,
         );
         this.items = sortLocations(data);
@@ -34,21 +34,21 @@ export const useStockLocationStore = defineStore('stock_location', {
       }
     },
 
-    async syncLocations(parentTenantId: number, includeInactive = true) {
+    async syncLocations(tenantId: number, includeInactive = true) {
       const data = await stockLocationRepository.listStockLocations(
-        parentTenantId,
+        tenantId,
         includeInactive,
       );
       this.items = sortLocations(data);
     },
 
-    async upsertLocation(parentTenantId: number, payload: UpsertStockLocationPayload) {
+    async upsertLocation(tenantId: number, payload: UpsertStockLocationPayload) {
       this.saving = true;
       this.error = null;
       try {
-        const row = await stockLocationRepository.upsertStockLocation(parentTenantId, payload);
+        const row = await stockLocationRepository.upsertStockLocation(tenantId, payload);
         // Server may promote another default when deactivating / unsetting default
-        await this.syncLocations(parentTenantId, true);
+        await this.syncLocations(tenantId, true);
         return row;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to save location';
@@ -77,12 +77,12 @@ export const useStockLocationStore = defineStore('stock_location', {
       }
     },
 
-    async deleteLocation(parentTenantId: number, id: number) {
+    async deleteLocation(tenantId: number, id: number) {
       this.saving = true;
       this.error = null;
       try {
         await stockLocationRepository.deleteStockLocation(id);
-        await this.syncLocations(parentTenantId, true);
+        await this.syncLocations(tenantId, true);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete location';
         throw err;

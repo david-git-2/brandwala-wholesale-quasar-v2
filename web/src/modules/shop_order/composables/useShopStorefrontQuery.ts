@@ -2,7 +2,7 @@ import { useInfiniteQuery, keepPreviousData, useQueryClient } from '@tanstack/vu
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ShopCatalogItem, Shop, ShopCatalogListCursor } from '../types';
 import {
   seedCustomerShopPermissions,

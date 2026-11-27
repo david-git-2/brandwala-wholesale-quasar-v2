@@ -90,7 +90,7 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useProcurementDemandBuyDocumentsQuery } from '../composables/useProcurementDemandBuyDocumentsQuery';
 import type { ProcurementDemandBuyDocument } from '../repositories/procurementDemandRepository';
 
@@ -107,12 +107,12 @@ watch(searchText, (v) => {
   }, 300);
 });
 
-const parentTenantId = computed(
+const tenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
 );
 
 const listQuery = useProcurementDemandBuyDocumentsQuery({
-  tenantId: parentTenantId,
+  tenantId: tenantId,
   search: debouncedSearch,
 });
 

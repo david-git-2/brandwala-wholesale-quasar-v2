@@ -1,7 +1,7 @@
 <template>
   <span class="tf-status-badge" :class="uniqueClass || `tf-status-badge--${group}`">
     <i :class="icon" aria-hidden="true" />
-    <span :class="{ 'tf-status-badge__strike': group === 'bad' && strike }">{{ label }}</span>
+    <span :class="{ 'tf-status-badge__strike': group === 'bad' && strike }">{{ label ?? status ?? '' }}</span>
   </span>
 </template>
 
@@ -13,7 +13,7 @@ import { normalizeStatus, statusGroup, statusIcon } from 'src/utils/statusMap';
 const props = defineProps<{
   /** Raw status string from any module (see utils/statusMap.ts). */
   status: string | null | undefined;
-  label: string;
+  label?: string;
   strike?: boolean;
   /** Own hue per status (product-based costing) instead of the shared group hue. */
   unique?: 'pbc';

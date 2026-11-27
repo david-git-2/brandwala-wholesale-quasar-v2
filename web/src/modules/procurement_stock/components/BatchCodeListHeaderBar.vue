@@ -44,7 +44,7 @@ import { useBatchCodeListQuery } from '../composables/useBatchCodeQueries';
 const props = withDefaults(
   defineProps<{
     listId: number;
-    parentTenantId: number;
+    tenantId: number;
     showBack?: boolean;
     showDelete?: boolean;
   }>(),
@@ -116,7 +116,7 @@ const onDeleteFile = async () => {
   try {
     await deleteListMutation.mutateAsync({
       listId: props.listId,
-      parentTenantId: props.parentTenantId,
+      tenantId: props.tenantId,
       shipmentId: listMeta.value.shipment_id,
     });
     showSuccessNotification('Batch file deleted');

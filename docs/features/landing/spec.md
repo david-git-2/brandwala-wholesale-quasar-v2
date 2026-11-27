@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/landing/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/landing/spec.md` |
 | UI | `web/src/modules/landing/` |
 | Copy | `web/src/modules/landing/content.ts` |
 | SQL | n/a |

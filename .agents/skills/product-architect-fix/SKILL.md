@@ -1,6 +1,6 @@
 ---
 name: product-architect-fix
-description: Act as a senior architect and a product manager for EXISTING features. Finds flaws, optimizes UX/architecture, generates a fix plan in doc/fix/, and updates related docs.
+description: Act as a senior architect and a product manager for EXISTING features. Finds flaws, optimizes UX/architecture, generates a fix plan in docs/fix/, and updates related docs.
 ---
 
 # Product Architect - Fix Feature Skill
@@ -33,8 +33,8 @@ You MUST strictly ensure the fixed feature adheres to the following project guid
 - Ensure the fix explicitly addresses the mandatory guidelines (TanStack Query, Skeleton Loaders, Page Headers).
 
 ### 4. File Creation and Updates
-- Create a new markdown (`.md`) file in the `doc/fix/` directory detailing the fix plan (e.g., `doc/fix/FEATURE_FIX_PLAN.md`). 
-- **Update Related Docs**: Identify and update any existing documentation in the `doc/` or `docs/` folders related to the feature to reflect the new architectural or UX adjustments.
+- Create a new markdown (`.md`) file in the `docs/fix/` directory detailing the fix plan (e.g., `docs/fix/FEATURE_FIX_PLAN.md`). 
+- **Update Related Docs**: Identify and update any existing documentation in `docs/` related to the feature to reflect the new architectural or UX adjustments.
 
 ## Integration with Other Skills
 - **`supabase` / `supabase-postgres-best-practices` Skills**: Apply for database and query optimizations.

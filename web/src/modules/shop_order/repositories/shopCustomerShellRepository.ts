@@ -1,5 +1,5 @@
 import { supabase } from 'src/boot/supabase';
-import type { ShopLoginGroupRow } from 'src/modules/auth/utils/shopCustomerGroupSession';
+import type { ShopLoginGroupRow } from 'src/modules/workspace/submodules/auth/utils/shopCustomerGroupSession';
 import type { CustomerAccessibleShop } from './shopOrderRepository';
 import type { ActiveCartItem } from './shopCartRepository';
 

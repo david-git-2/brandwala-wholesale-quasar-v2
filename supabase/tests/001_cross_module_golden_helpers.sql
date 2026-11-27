@@ -271,46 +271,50 @@ BEGIN
     v_bdt
   );
 
-  v_bill := public.create_sales_invoice(
-    v_tenant,
-    'INV-DS-' || v_order_no,
-    'dropship'::public.global_invoice_type,
-    v_merchant_profile
-  );
+  DECLARE
+    v_books bigint;
+    v_self bigint;
+    v_rpc jsonb;
+    v_bill_id bigint;
+  BEGIN
+    v_books := public.resolve_books_tenant_id(v_tenant);
+    v_self := public._kernel_tenant_mirror_profile_id(v_books);
+    PERFORM public._test_set_workspace_tenant(v_tenant);
 
-  INSERT INTO public.bill_lines (
-    tenant_id,
-    invoice_id,
-    line_kind,
-    name_snapshot,
-    quantity,
-    sell_price_amount,
-    line_discount_amount,
-    line_total_amount
-  )
-  VALUES (
-    v_bill.tenant_id,
-    v_bill.id,
-    'description',
-    'pgTAP dropship sales',
-    1,
-    1500.00,
-    0,
-    1500.00
-  );
+    v_rpc := public.rpc_create_bill(jsonb_build_object(
+      'tenant_id', v_books,
+      'kind', 'sales_invoice_dropship',
+      'currency_code', 'BDT',
+      'from_profile_id', v_merchant_profile,
+      'to_profile_id', v_self,
+      'counterparty_profile_id', v_merchant_profile,
+      'source_entity', 'public.shop_orders',
+      'source_type', 'shop_order',
+      'source_id', v_order_id::text,
+      'source_key', 'merchant_ar',
+      'note', 'INV-DS-' || v_order_no,
+      'auto_issue', true,
+      'meta', jsonb_build_object(
+        'delivery_kind', 'take',
+        'shop_order_id', v_order_id,
+        'subtotal_amount', 1500.00
+      ),
+      'lines', jsonb_build_array(jsonb_build_object(
+        'item_kind', 'charge',
+        'description', 'pgTAP dropship sales',
+        'quantity', 1,
+        'unit_price', 1500.00,
+        'line_total', 1500.00
+      ))
+    ));
 
-  UPDATE public.bills
-  SET
-    subtotal_amount = 1500.00,
-    total_amount = 1500.00,
-    due_amount = 1500.00,
-    shop_order_id = v_order_id,
-    collection_source = 'profile'::public.collection_source_type,
-    updated_at = now()
-  WHERE id = v_bill.id;
+    v_bill_id := nullif(v_rpc->>'bill_id', '')::bigint;
+    IF v_bill_id IS NULL THEN
+      RAISE EXCEPTION 'golden A merchant AR failed: %', v_rpc;
+    END IF;
 
-  PERFORM public.stamp_bill_kernel_fields(v_bill.id);
-  PERFORM public.issue_bill(v_bill.id);
+    SELECT * INTO v_bill FROM public.bills WHERE id = v_bill_id;
+  END;
 
   UPDATE public.shop_orders
   SET

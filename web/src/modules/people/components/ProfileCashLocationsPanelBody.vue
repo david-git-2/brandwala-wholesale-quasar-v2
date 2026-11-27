@@ -88,7 +88,7 @@
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
 import ProfileLocationBundleBox from './ProfileLocationBundleBox.vue';
-import type { CashbookPointRow } from 'src/modules/bills_pays/repositories/cashbookRepository';
+import type { CashbookPointRow } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
 import type { ProfileCashbookBundleRow } from '../types/profileCashbookBundle';
 
 withDefaults(

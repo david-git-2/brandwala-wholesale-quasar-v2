@@ -110,7 +110,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import ImageLightbox from 'src/components/ImageLightbox.vue';
 

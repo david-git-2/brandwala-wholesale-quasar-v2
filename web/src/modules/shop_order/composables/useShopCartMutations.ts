@@ -7,8 +7,9 @@ import type {
   ActiveCartShopMeta,
   CartChargesPayload,
 } from '../repositories/shopCartRepository';
+import { dropshipCartService } from '../services/dropshipCartService';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import { sumCartSubtotal } from '../utils/cartPriceUtils';
 import {
@@ -17,6 +18,7 @@ import {
   patchDropshipItemResellPrice,
 } from '../utils/dropshipCartCacheUtils';
 import type { DropshipCartData, DropshipReviewCartData } from '../repositories/dropshipCartRepository';
+import type { DropshipCartDeliveryDetails } from '../utils/dropshipCartDeliveryDetails';
 import type { ShopType } from '../types';
 
 export function useShopCartMutations() {
@@ -379,6 +381,91 @@ export function useShopCartMutations() {
     },
   });
 
+  const syncDropshipReviewAfterDiscountChange = (data: DropshipReviewCartData, shopId: number) => {
+    queryClient.setQueryData(
+      shopOrderQueryKeys.dropshipReviewCart(tenantId.value, shopId),
+      data,
+    );
+    const resolvedMeta = resolveShopMetaForCache(shopId);
+    updateDropshipActiveCartsCache(shopId, data, resolvedMeta);
+    void queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
+    });
+  };
+
+  const submitResellDiscountRequestMutation = useMutation({
+    mutationFn: async (params: {
+      cartItemId: number;
+      requestedPrice: number;
+      reason: string;
+      shopId: number;
+    }) => {
+      const res = await dropshipCartService.submitResellDiscountRequest(
+        params.cartItemId,
+        params.requestedPrice,
+        params.reason,
+      );
+      if (!res.success) {
+        handleApiFailure(res, res.error);
+        throw new Error(res.error || 'Failed to submit discount request');
+      }
+      return { data: res.data!, shopId: params.shopId, cartItemId: params.cartItemId };
+    },
+    onSuccess: ({ data, shopId }) => {
+      if (!data) return;
+      syncDropshipReviewAfterDiscountChange(data, shopId);
+      showSuccessNotification('Discount request saved.');
+    },
+  });
+
+  const clearResellDiscountRequestMutation = useMutation({
+    mutationFn: async (params: { cartItemId: number; shopId: number }) => {
+      const res = await dropshipCartService.clearResellDiscountRequest(params.cartItemId);
+      if (!res.success) {
+        handleApiFailure(res, res.error);
+        throw new Error(res.error || 'Failed to remove discount request');
+      }
+      return { data: res.data!, shopId: params.shopId, cartItemId: params.cartItemId };
+    },
+    onSuccess: ({ data, shopId }) => {
+      if (!data) return;
+      syncDropshipReviewAfterDiscountChange(data, shopId);
+      showSuccessNotification('Discount request removed.');
+    },
+  });
+
+  const updateDeliveryDetailsMutation = useMutation({
+    mutationFn: async (params: { shopId: number; deliveryDetails: DropshipCartDeliveryDetails }) => {
+      const res = await dropshipCartService.updateDeliveryDetails(
+        params.shopId,
+        params.deliveryDetails,
+      );
+      if (!res.success) {
+        handleApiFailure(res, res.error);
+        throw new Error(res.error || 'Failed to save delivery details');
+      }
+      return { data: res.data!, shopId: params.shopId };
+    },
+    onSuccess: ({ data, shopId }) => {
+      if (!data) return;
+      syncDropshipReviewAfterDiscountChange(data, shopId);
+      queryClient.setQueryData(
+        shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
+        (old: DropshipCartData | null | undefined) => {
+          if (!old) return old ?? null;
+          return {
+            ...old,
+            cart: {
+              ...old.cart,
+              delivery_details: data.cart.delivery_details,
+              updated_at: data.cart.updated_at,
+            },
+          };
+        },
+      );
+    },
+  });
+
   const updateChargesMutation = useMutation({
     mutationFn: async (params: {
       shopId: number;
@@ -406,6 +493,9 @@ export function useShopCartMutations() {
     updateQtyMutation,
     removeItemMutation,
     updatePriceMutation,
+    submitResellDiscountRequestMutation,
+    clearResellDiscountRequestMutation,
     updateChargesMutation,
+    updateDeliveryDetailsMutation,
   };
 }

@@ -188,7 +188,7 @@ export const courierRemittanceRepository = {
 
   async dispensePayout(payload: DispensePayoutPayload): Promise<DispensePayoutResult> {
     const { paysRepository } = await import(
-      'src/modules/bills_pays/repositories/paysRepository'
+      'src/modules/finance/submodules/bills_pays/repositories/paysRepository'
     );
     if (!payload.cashbookPointId) {
       throw new Error('Choose a cash point for this pay out');

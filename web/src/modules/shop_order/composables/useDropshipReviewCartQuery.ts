@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { dropshipCartService } from '../services/dropshipCartService';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import { seedCustomerShopPermissions } from './useCustomerShopPermissionsQuery';
 import { cartPriceAmount, cartPriceSymbol } from '../utils/cartPriceUtils';
@@ -85,6 +85,12 @@ export function useDropshipReviewCartQuery(shopId: Ref<number | null>) {
   const getMinResellAmount = (item: (typeof items.value)[number]) =>
     cartPriceAmount(item.min_resell_price);
 
+  const getRequestedResellDiscountAmount = (item: (typeof items.value)[number]) => {
+    const price = item.requested_resell_discount_price;
+    if (!price || price.amount == null) return null;
+    return cartPriceAmount(price);
+  };
+
   return {
     ...query,
     cart,
@@ -103,5 +109,6 @@ export function useDropshipReviewCartQuery(shopId: Ref<number | null>) {
     getPurchaseUnitAmount,
     getResellUnitAmount,
     getMinResellAmount,
+    getRequestedResellDiscountAmount,
   };
 }

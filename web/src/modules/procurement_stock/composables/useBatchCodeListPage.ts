@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import type { BatchCodeListRow } from '../repositories/batchCodeRepository';
 import { useBatchCodeListsQuery } from './useBatchCodeQueries';
@@ -18,7 +18,7 @@ export function useBatchCodeListPage() {
     return tenantId;
   };
 
-  const parentTenantId = computed(() => {
+  const tenantId = computed(() => {
     try {
       return resolveParentTenantId();
     } catch {
@@ -26,7 +26,7 @@ export function useBatchCodeListPage() {
     }
   });
 
-  const listsQuery = useBatchCodeListsQuery(parentTenantId);
+  const listsQuery = useBatchCodeListsQuery(tenantId);
 
   const rows = computed(() => listsQuery.data.value ?? []);
   const loading = computed(
@@ -59,6 +59,6 @@ export function useBatchCodeListPage() {
     filteredRows,
     load: refetch,
     itemCountFor,
-    parentTenantId,
+    tenantId,
   };
 }

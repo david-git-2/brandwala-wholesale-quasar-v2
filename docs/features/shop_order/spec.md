@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/shop_order/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/shop_order/spec.md` |
 | UI | `web/src/modules/shop_order/` |
 | SQL | **Split** `supabase/schemas/shop_order/` |
 | State | Vue Query + `shopOrderQueryKeys` |
@@ -16,7 +16,9 @@
 | Need | Path |
 | :--- | :--- |
 | Tables, RPCs | `supabase/schemas/shop_order/` |
+| Resell discount review (planned) | [dropship-resell-discount-approval.md](dropship-resell-discount-approval.md) |
 | Dropship ship/issue | `ship_dropship_order_and_issue_merchant_bill`, remittance RPCs |
+| Courier AR redesign (target) | [dropship-courier-ar-redesign.md](dropship-courier-ar-redesign.md) — gap **SO-CA1** |
 | Picking | `add_shop_order_item_stock_pick` |
 | Pages | `web/src/modules/shop_order/pages/` |
 
@@ -26,9 +28,11 @@
 | :--- | :--- |
 | Surfaces | `shop` storefront; `app` config + dropship desk |
 | In | Shops, carts, catalog/dropship orders, pricing, stock pick, pickup locations, reseller payout, dropship gifts, shop customer stock, auto gifts |
-| Out | Warehouse receive; Koba/thrift; wholesale invoice desk; catalog pack-out on **Delivery paper**; parent invoice engine for dropship |
+| Out | Warehouse receive; Koba/thrift; wholesale invoice desk; parent invoice engine for dropship |
 
-Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. Catalog delivery: Delivery paper + optional proforma; close take/condition/return; then bills. Numbers: [atlas](../money_bill_bridge/spec.md#atlas). End-to-end map: [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md).
+Dropship: pick → ship+issue both bills → deliver → remittance pay in. Later amount changes = credit/debit notes. Packing slip ≠ `sales_invoices` row. **Catalog customer delivery:** bills and stock on money desk / warehouse flows (no delivery paper). Numbers: [atlas](../money_bill_bridge/spec.md#atlas). 
+
+**Money target (locked, not built):** at ship create **draft** **customer AR + courier AR (net remittance)** — not issued, not courier AP. See [dropship-courier-ar-redesign.md](dropship-courier-ar-redesign.md). **As-built code** still issues courier AP until SO-CA1 ships.
 
 ## Terminology (UI & docs)
 
@@ -38,9 +42,10 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 | **Dropshipper** | **Customer** on the dropship shop — buys at wholesale, resells to recipient | `merchant`, `reseller`, `middleman`, shop profile |
 | **End customer** (UI) | Delivery + COD face; code still `recipient_*` | `recipient_*` |
 
-- **Customer invoice** (issued at ship) = supplier → dropshipper; not COD face; not a bill to the recipient.
+- **Customer invoice** (**draft** at ship; issue later) = supplier → dropshipper; not COD face. **Target note:** amount dropshipper **gets after all payment**. [Redesign](dropship-courier-ar-redesign.md).
+- **Courier receivable (target)** = **draft** at ship; **lines** COD − rate − delivery → net; replaces courier AP.
 - **End customer delivery slip** = ops paper; not the customer invoice to the dropshipper.
-- **Dropshipper profit** owed after remittance = profile **cashbook** + payout; not a second AR invoice.
+- **Dropshipper profit** owed after remittance = profile **cashbook** + payout; not a second AR invoice (shown as customer AR note at ship).
 
 ## Personas
 
@@ -48,7 +53,7 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 | :--- | :--- |
 | Storefront customer | Cart, negotiate quotes, confirm qty |
 | Dropshipper | Orders for recipients, track delivery, profit balance / payout |
-| Fulfillment | Pick, packing slip, courier; catalog via Delivery paper |
+| Fulfillment | Pick, packing slip, courier; catalog bills on money desk |
 | Shop admin | Shop types, price visibility, categories |
 
 ## Stories
@@ -56,6 +61,14 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 ### US-1a: Shop dropship checkout (recipient)
 - [x] **Required (UI: end customer):** `recipient_name`, `recipient_phone`, `shipping_address` (`submit_dropship_order_from_cart` + shop delivery page).
 - [x] **Optional:** `shipping_district`, `shipping_thana`, `shipping_post_code`.
+
+### US-1b: Dropship resell discount review (pre-confirm)
+
+**Built (SO-DR4 totals nuance optional)** — [dropship-resell-discount-approval.md](dropship-resell-discount-approval.md). Open gap: spec.md SO-DR4.
+
+- [x] Place with any line resell discount request → order `resell_discount_requested` (not `confirmed`).
+- [x] Staff **approve** (per line accept / adjust) → apply resell → `confirmed` → US-4+ pipeline.
+- [x] Staff **deny** (per line keep listed) **or** cancel order with reason.
 
 ### US-1: Storefront types & tiers
 - [x] `vendor_catalog` / `fixed_price` / `dropship` with group price flags.
@@ -67,13 +80,20 @@ Dropship: pick → ship+issue both bills → deliver → remittance pay in. Late
 - [x] `submitted` → `priced` → `countered` → `final_offered` → `confirmed`.
 - [x] Confirmed qty locks for demand desk.
 - [x] Staff catalog order detail (`app/shop/orders/:id`, vendor catalog): **Download Excel** exports the same PBC-format costing workbook client-side (mapped from order lines + rates). Menu: **With images** / **Without images**. Workbook includes a **Product ID** column (all PBC-format Excel exports).
+- [x] **Multi-bill catalog AR:** Gear **Bills → Create bill** (`app/shop/orders/:id/create-bill`) — per-line **on bills / remaining**, stock pick, Take/Condition, submit creates **draft** wholesale bill from picks (`create_catalog_shop_order_wholesale_draft_bill`).
 
 ### US-3: Dropship fulfillment
 - [x] Pick at `processing` → `shop_order_item_stock_picks`.
-- [x] `ship_dropship_order_and_issue_merchant_bill` at ship (issued customer AR + issued courier AP).
-- [x] Deliver: parcel + COD receivable; remittance remainder → merchant wallet. Amount changes after issue = notes.
+- [x] `ship_dropship_order_and_issue_merchant_bill` at ship — **as-built:** customer AR + **courier AP** (issued). **Target:** **draft** customer AR + **draft** courier AR (net) — [redesign](dropship-courier-ar-redesign.md) / SO-CA1.
+- [x] Deliver: parcel + COD face; remittance remainder → merchant wallet. Amount changes after issue = notes.
 
-Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is single remittance writer.
+Post-ship: **Dropship management** list (`/:slug/app/shop/dropship-management`) — money columns, **Bills** links (**Dropshipper** / **Courier** → bill detail), status actions; **no** per-order settlement detail route. Remittance: `record_dropship_courier_remittance` / finance hub.
+
+**Mark as delivered:** From the management list (`shipped` row) **only** advances `shop_orders.status` → `delivered` (set `delivered_at` if still null). No settlement save or bill side effects on deliver (SO-DL5).
+
+**Delivered-row settlement:** On the management list, `delivered` rows edit **Collected COD**, **Delivery**, and **COD rate** until status becomes **`payment_received`**; **Save** calls `save_dropship_management_list_settlement` → `save_dropship_settlement_draft` + `sync_dropship_draft_bills_after_settlement` (draft customer + courier AR only). **Block save** once status is **`payment_received`** or later; if bills are issued while still `delivered`, RPC sync may fail (use pay-in / bill adjustments). Rows with **`payment_received`** (and later) show **read-only** money cells (no table inputs).
+
+**Payment received (list):** On `delivered` rows, **Payment received** opens a confirm dialog (BDT: COD, fees, courier net, customer AR, dropshipper profit; shows `order_no`). Confirm → optional dirty **Save** → `issue_dropship_tenant_b2b_invoice` + `issue_dropship_courier_ar_for_order` → `record_dropship_courier_remittance` (**main** cashbook, BDT, note includes `order_no`) → status **`payment_received`**. Block if row dirty (save first) or `courier_remittance_ref` already set.
 
 ### US-4: Recipient confirmation call
 - [x] While dropship `status = confirmed`, staff call `recipient_name` / `recipient_phone` (app log only; no auto-dial).
@@ -84,12 +104,18 @@ Post-ship: **Dropship settlement** desk; `record_dropship_courier_remittance` is
 - [x] Reseller sees `cancel_reason` on shop order detail when `cancelled`.
 
 ### US-5: Dropship money layers
+
+**Target (locked):** [dropship-courier-ar-redesign.md](dropship-courier-ar-redesign.md) — two **draft** ARs at ship; remittance auto-clears customer AR. Gap **SO-CA1**.
+
 - [x] **Recipient** — COD face on order only; not a `bills` row ([atlas](../money_bill_bridge/spec.md#atlas)).
-- [x] **Customer invoice** (UI; RPC `ship_dropship_order_and_issue_merchant_bill`) — issued AR to dropshipper at ship. Amount = B2B total, not COD.
-- [x] **Courier AP** — issued we-owe at ship (`upsert_dropship_courier_ap_bill`, `source_type = dropship_courier`). COD receivable still at deliver; tenant cash on **net** remittance pay in (`record_dropship_courier_remittance` → `post_customer_receipt_with_allocations`, `source = courier_remittance`). Remittance requires the customer bill **issued**.
-- [x] **Alloc** — remittance pays customer invoice; remainder → dropshipper **cashbook** (profit), pay out later — not a second AR bill. `payout_settlement_status` stays unpaid until `dispense_middleman_payout_from_tenant`. Money is **bills + pays + cashbook** only (settlement table is ops paper). Post remittance from **settlement desk → Courier pay in** or **Payments → Pay in → Courier**; same `record_dropship_courier_remittance`.
-- [x] **Courier pay in fees** — adjusted delivery/COD at pay in persist on order/settlement (`patch_dropship_courier_fees_for_remittance`). If issued bills differ, `apply_dropship_issued_bill_notes_at_deliver` runs in the same transaction before cash moves. Net allocates to customer AR on **due after notes**; courier AP closes up to retained fees (`settle_dropship_courier_ap_via_cod_retention`, no second cash out), including **debit/credit notes** on the AP paper. UI confirms via `preview_dropship_courier_payin_settlement` (notes + customer cleared + AP settled + **dropshipper receives**). After remittance, settlement desk shows **credited wallet profit** (net remittance − AR cleared); COD-margin on the paper may differ until pay-in.
-- [x] **Settlement desk vs bills** — settlement desk **Save** updates the draft only (no autosave). **Mark as delivered** runs `apply_dropship_issued_bill_notes_at_deliver`: issued customer AR and courier AP stay on the original paper; charge deltas vs settlement become **credit/debit notes** (`create_bill_adjustment`), not a silent rewrite of issued totals.
+- [ ] **Customer invoice at ship** — **target:** **draft** AR to dropshipper (B2B, not COD). **As-built:** issued at ship via `ship_dropship_order_and_issue_merchant_bill`.
+- [ ] **Customer AR note** — **target:** note on that paper = amount dropshipper **gets after all payment**. Not a second AR.
+- [ ] **Courier AR (net) at ship** — **target:** **draft** AR with lines **COD − rate − delivery**. **As-built:** issued courier **AP** via `upsert_dropship_courier_ap_bill` + remittance AP retention.
+- [x] **Alloc / remittance** — pay in (`record_dropship_courier_remittance`); remainder → dropshipper **cashbook**. Remittance requires papers **issued** (drafts from ship must be issued first). Desk: settlement → Courier pay in or Payments → Pay in → Courier.
+- [ ] **Auto customer AR on remittance** — **target:** remittance closes courier AR and **auto allocates** to customer AR. **As-built:** alloc to customer AR + AP retention close.
+- [x] **Fee / settlement deltas** — adjusted fees at pay in; issued papers stay; deltas → **credit/debit notes** (`create_bill_adjustment`), not silent rewrite. Preview: `preview_dropship_courier_payin_settlement`.
+- [x] **Management list** — post-ship orders: COD/fees/B2B bill columns; **Dropshipper** / **Courier** bill links; **`shipped` → Delivered** (status only) or **Returned** (return flow); **`delivered` → Save** settlement (draft bills resync); **`delivered` → Payment received** (confirm remittance, status lock); **`payment_received`** rows: read-only money columns.
+- [x] **Mark as delivered** — status → `delivered` only via `mark_dropship_order_delivered` (**SO-DL5** built). Legacy settlement detail page retired.
 
 ### US-6: Dropship gifts
 - [x] Many **gift** lines per order (`is_gift`); recipient sell/COD unchanged (excluded from resell total).

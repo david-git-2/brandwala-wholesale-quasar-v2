@@ -15,10 +15,16 @@
     </q-list>
   </q-card>
 
-  <div v-else-if="loading && isTableLayout" class="order-table-dashboard" :class="tableLayoutClass">
+  <div
+    v-else-if="loading && isTableLayout"
+    class="order-table-dashboard"
+    :class="tableLayoutClass"
+  >
     <div v-for="n in skeletonCount" :key="n" class="order-table-dashboard__row order-table-dashboard__row--body">
       <q-skeleton type="text" width="80%" height="16px" />
       <q-skeleton type="text" width="70%" height="16px" />
+      <q-skeleton v-if="hasDetailColumns" type="text" width="52px" height="16px" />
+      <q-skeleton v-if="hasDetailColumns" type="text" width="72px" height="16px" class="justify-self-end" />
       <q-skeleton type="text" width="60%" height="16px" />
       <q-skeleton type="text" width="72px" height="22px" class="justify-self-end" />
     </div>
@@ -35,6 +41,8 @@
     <div class="order-table-dashboard__row order-table-dashboard__row--head" aria-hidden="true">
       <span>{{ $t('customer_dashboard.orders_col_id') }}</span>
       <span>{{ $t('customer_dashboard.orders_col_shop') }}</span>
+      <span v-if="hasDetailColumns">{{ $t('customer_dashboard.orders_col_items') }}</span>
+      <span v-if="hasDetailColumns" class="order-table-dashboard__head-total">{{ $t('customer_dashboard.orders_col_total') }}</span>
       <span>{{ $t('customer_dashboard.orders_col_date') }}</span>
       <span class="order-table-dashboard__head-status">{{ $t('customer_dashboard.orders_col_status') }}</span>
     </div>
@@ -43,6 +51,7 @@
       v-for="order in orders"
       :key="order.id"
       class="order-table-dashboard__row order-table-dashboard__row--body cursor-pointer"
+      :class="{ 'order-table-dashboard__row--waiting': layout === 'page' && isWaitingStatus(order.status) }"
       role="button"
       tabindex="0"
       :data-test="`customer-order-row-${order.id}`"
@@ -52,11 +61,22 @@
     >
       <div class="order-table-dashboard__id-cell">
         <div class="order-table-dashboard__id-row">
-          <span class="order-table-dashboard__id">
+          <span class="order-table-dashboard__id tf-num">
             {{ order.order_no }}
           </span>
+          <q-btn
+            v-if="showCopyButton"
+            flat
+            dense
+            size="xs"
+            icon="ph ph-copy"
+            :ripple="false"
+            class="order-table-dashboard__copy-btn"
+            :aria-label="$t('shop_admin.copy_order_no')"
+            @click.stop="copyOrderNo(order.order_no)"
+          />
           <OrderPricingModeBadge
-            v-if="showPricingBadge"
+            v-if="shouldShowPricingBadge(order)"
             :variant="pricingBadgeVariant"
             :subtle-fixed="pricingBadgeSubtleFixed"
             :is-negotiable="!!order.is_negotiable_snapshot"
@@ -64,21 +84,34 @@
           />
         </div>
       </div>
-      <div class="column min-width-0">
+      <div class="order-table-dashboard__shop-cell column min-width-0">
         <span class="order-table-dashboard__shop ellipsis">
           {{ order.shop_name }}
         </span>
-        <span v-if="placementCaption(order)" class="text-caption text-grey-7 ellipsis">
+        <span v-if="placementCaption(order)" class="text-caption tf-text-muted ellipsis">
           {{ placementCaption(order) }}
         </span>
       </div>
-      <span class="order-table-dashboard__date tf-num">
-        {{ formatDate(order.created_at) }}
+      <span v-if="hasDetailColumns" class="order-table-dashboard__items tf-num">
+        {{ formatItemsCount(order.item_count) }}
+      </span>
+      <span v-if="hasDetailColumns" class="order-table-dashboard__total tf-num">
+        {{ formatOrderTotal(order) }}
+      </span>
+      <span class="order-table-dashboard__date tf-num" :title="formatFullDate(order.created_at)">
+        {{ layout === 'page' ? formatRelativeOrShortDate(order.created_at) : formatDate(order.created_at) }}
       </span>
       <div class="order-table-dashboard__status">
         <span class="order-status-pill" :class="statusPillClass(order.status)">
           {{ statusLabel(order.status) }}
         </span>
+        <q-icon
+          v-if="layout === 'page'"
+          name="ph ph-caret-right"
+          size="14px"
+          class="order-table-dashboard__chevron"
+          aria-hidden="true"
+        />
       </div>
     </div>
   </div>
@@ -147,7 +180,7 @@ import { showSuccessNotification } from 'src/utils/appFeedback';
 import {
   isWaitingStatus,
   waitingActionI18nKey,
-} from 'src/modules/dashboard/utils/customerDashboardStatus';
+} from 'src/modules/workspace/submodules/dashboard/utils/customerDashboardStatus';
 import type { ShopOrderStatus, ShopType } from '../types';
 import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
 import { orderPlacementCaption } from '../utils/orderPlacementCaption';
@@ -158,9 +191,13 @@ export type CustomerOrderListRow = {
   shop_name: string;
   shop_id?: number;
   shop_slug?: string;
-  status: ShopOrderStatus | string;
+  status: ShopOrderStatus | (string & {});
   created_at: string;
-  shop_type_snapshot?: ShopType | string | null;
+  item_count?: number | null;
+  total_amount?: number | null;
+  currency_symbol?: string | null;
+  can_see_sell_price?: boolean;
+  shop_type_snapshot?: ShopType | (string & {}) | null;
   is_negotiable_snapshot?: boolean;
   placement_scope?: 'shop' | 'app';
   created_by_email?: string;
@@ -177,6 +214,7 @@ const props = withDefaults(
     pricingBadgeVariant?: 'badge' | 'text';
     /** Softer fixed-pricing chip in table layout (shop orders page). */
     pricingBadgeSubtleFixed?: boolean;
+    showOrderDetailsColumns?: boolean;
     layout?: 'default' | 'dashboard' | 'page';
   }>(),
   {
@@ -186,6 +224,7 @@ const props = withDefaults(
     showPricingBadge: true,
     pricingBadgeVariant: 'badge',
     pricingBadgeSubtleFixed: false,
+    showOrderDetailsColumns: false,
     layout: 'default',
   },
 );
@@ -197,13 +236,53 @@ const emit = defineEmits<{
 const isTableLayout = computed(
   () => props.layout === 'dashboard' || props.layout === 'page',
 );
+const hasDetailColumns = computed(
+  () => props.layout === 'page' && props.showOrderDetailsColumns,
+);
 const tableLayoutClass = computed(() => ({
   'order-table-dashboard--page': props.layout === 'page',
+  'order-table-dashboard--with-details': hasDetailColumns.value,
 }));
 
-const { t, te } = useI18n();
+const i18n = useI18n();
+const { t } = i18n;
 
 const formatDate = (dateStr: string) => date.formatDate(dateStr, 'D MMM YYYY');
+const formatFullDate = (dateStr: string) => date.formatDate(dateStr, 'D MMM YYYY, HH:mm');
+
+const formatRelativeOrShortDate = (dateStr: string) => {
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return formatDate(dateStr);
+  const diffDays = date.getDateDiff(new Date(), parsed, 'days');
+  if (diffDays === 0) return date.formatDate(parsed, 'HH:mm');
+  if (diffDays === 1) return '1d ago';
+  if (diffDays > 1 && diffDays < 7) return `${diffDays}d ago`;
+  return formatDate(dateStr);
+};
+
+const formatItemsCount = (count: number | null | undefined) => {
+  if (count == null || !Number.isFinite(count)) return '—';
+  return t('shop_admin.items_count_value', { count });
+};
+
+const formatOrderTotal = (order: CustomerOrderListRow) => {
+  if (order.can_see_sell_price === false || order.total_amount == null) return '—';
+  const amount = Number(order.total_amount);
+  if (!Number.isFinite(amount)) return '—';
+  const symbol = order.currency_symbol?.trim() || '৳';
+  return `${symbol} ${amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
+const shouldShowPricingBadge = (order: CustomerOrderListRow) => {
+  if (!props.showPricingBadge) return false;
+  if (props.layout === 'page' && props.pricingBadgeSubtleFixed) {
+    return Boolean(order.is_negotiable_snapshot);
+  }
+  return true;
+};
 
 const placementCaption = (order: CustomerOrderListRow) =>
   orderPlacementCaption(t, order.placement_scope, order.created_by_email);
@@ -218,7 +297,7 @@ const statusLabel = (status: string) => {
   const actionKey = waitingActionI18nKey(status);
   if (actionKey) return t(actionKey);
   const key = `shop_admin.status_${status}`;
-  return te(key) ? t(key) : status.replaceAll('_', ' ');
+  return i18n.te(key) ? t(key) : status.replaceAll('_', ' ');
 };
 
 const getStatusColor = (status: string) => {
@@ -247,9 +326,9 @@ const statusPillClass = (status: string) => {
 
 <style scoped>
 .order-table-card {
-  border-radius: 12px;
+  border-radius: var(--tf-radius-sm, 8px);
   background: var(--tf-theme-surface);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--tf-neutral-border);
   box-shadow: none;
 }
 
@@ -288,8 +367,8 @@ const statusPillClass = (status: string) => {
 
 .order-table-dashboard__row {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.85fr) minmax(5.5rem, auto);
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr) minmax(5.5rem, auto) minmax(5.25rem, auto);
+  gap: 0.65rem;
   align-items: center;
   width: 100%;
   text-align: left;
@@ -301,6 +380,16 @@ const statusPillClass = (status: string) => {
     minmax(0, 1fr)
     7.5rem
     minmax(6.5rem, auto);
+}
+
+.order-table-dashboard--with-details .order-table-dashboard__row {
+  grid-template-columns:
+    minmax(0, 1.35fr)
+    minmax(0, 1fr)
+    5.5rem
+    7.5rem
+    6rem
+    minmax(8.5rem, auto);
 }
 
 .order-table-dashboard__row--head {
@@ -317,8 +406,12 @@ const statusPillClass = (status: string) => {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.05em;
-  color: #64748b;
-  border-bottom-color: #e2e8f0;
+  color: var(--tf-neutral-chrome-text);
+  border-bottom-color: var(--tf-neutral-border);
+}
+
+.order-table-dashboard__head-total {
+  text-align: right;
 }
 
 .order-table-dashboard__row--head span:last-child,
@@ -334,18 +427,18 @@ const statusPillClass = (status: string) => {
   transition: background-color var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
 }
 
-.order-table-dashboard--page .order-table-dashboard__row--head {
+.order-table-dashboard--page .order-table-dashboard__row--body {
+  padding: 0.65rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: var(--tf-radius-sm);
   border-bottom-color: var(--tf-neutral-border);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
 }
 
-.order-table-dashboard--page .order-table-dashboard__row--body {
-  padding: 0.55rem 0.35rem;
-  margin: 0 -0.35rem;
-  border-radius: var(--tf-radius-sm);
-  border-bottom-color: #e2e8f0;
-  transition:
-    background-color 0.18s ease,
-    color 0.18s ease;
+.order-table-dashboard--page .order-table-dashboard__row--waiting {
+  background: var(--tf-warning-soft);
 }
 
 .order-table-dashboard__row--body:focus-visible {
@@ -354,11 +447,49 @@ const statusPillClass = (status: string) => {
 }
 
 .order-table-dashboard--page .order-table-dashboard__row--body:hover {
-  background: rgb(248 250 252 / 0.7);
+  background: var(--tf-theme-primary-soft);
 }
 
-body.body--dark .order-table-dashboard--page .order-table-dashboard__row--body:hover {
-  background: rgba(255, 255, 255, 0.05);
+.order-table-dashboard--page .order-table-dashboard__row--waiting:hover {
+  background: var(--tf-warning-soft);
+}
+
+.order-table-dashboard__copy-btn {
+  opacity: 0;
+  color: var(--tf-neutral-muted);
+  transition: opacity var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
+}
+
+.order-table-dashboard__row--body:hover .order-table-dashboard__copy-btn,
+.order-table-dashboard__row--body:focus-within .order-table-dashboard__copy-btn {
+  opacity: 1;
+}
+
+.order-table-dashboard__items {
+  font-size: 0.8125rem;
+  color: var(--tf-neutral-muted);
+  white-space: nowrap;
+}
+
+.order-table-dashboard__total {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tf-neutral-ink);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.order-table-dashboard__chevron {
+  color: var(--tf-neutral-muted);
+  opacity: 0.55;
+  transition:
+    transform var(--tf-dur-fast, 120ms) var(--tf-ease, ease),
+    opacity var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
+}
+
+.order-table-dashboard__row--body:hover .order-table-dashboard__chevron {
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 .order-table-dashboard__link {
@@ -405,16 +536,12 @@ body.body--dark .order-table-dashboard--page .order-table-dashboard__row--body:h
 
 .order-table-dashboard--page .order-table-dashboard__id {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--tf-neutral-ink);
   transition: color var(--tf-dur-fast, 120ms) var(--tf-ease, ease);
 }
 
 .order-table-dashboard--page .order-table-dashboard__row--body:hover .order-table-dashboard__id {
   color: var(--tf-theme-primary);
-}
-
-body.body--dark .order-table-dashboard--page .order-table-dashboard__id {
-  color: var(--tf-neutral-ink);
 }
 
 .order-table-dashboard__shop {
@@ -423,30 +550,70 @@ body.body--dark .order-table-dashboard--page .order-table-dashboard__id {
 }
 
 .order-table-dashboard--page .order-table-dashboard__shop {
-  color: #475569;
-}
-
-body.body--dark .order-table-dashboard--page .order-table-dashboard__shop {
   color: var(--tf-neutral-muted);
 }
 
 .order-table-dashboard__date {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
   color: var(--tf-neutral-muted);
 }
 
 .order-table-dashboard--page .order-table-dashboard__date {
-  color: #475569;
-  font-variant-numeric: tabular-nums;
-}
-
-body.body--dark .order-table-dashboard--page .order-table-dashboard__date {
   color: var(--tf-neutral-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .order-table-dashboard__status {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+@media (max-width: 639px) {
+  .order-table-dashboard--with-details .order-table-dashboard__row--head {
+    display: none;
+  }
+
+  .order-table-dashboard--with-details .order-table-dashboard__row--body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'id status'
+      'shop total'
+      'items date';
+    gap: 0.25rem 0.75rem;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .order-table-dashboard--with-details .order-table-dashboard__id-cell {
+    grid-area: id;
+  }
+
+  .order-table-dashboard--with-details .order-table-dashboard__status {
+    grid-area: status;
+  }
+
+  .order-table-dashboard--with-details .order-table-dashboard__shop-cell {
+    grid-area: shop;
+  }
+
+  .order-table-dashboard--with-details .order-table-dashboard__total {
+    grid-area: total;
+  }
+
+  .order-table-dashboard--with-details .order-table-dashboard__items {
+    grid-area: items;
+  }
+
+  .order-table-dashboard--with-details .order-table-dashboard__date {
+    grid-area: date;
+    text-align: right;
+  }
+
+  .order-table-dashboard__copy-btn {
+    opacity: 1;
+  }
 }
 
 .order-status-pill {
@@ -454,7 +621,7 @@ body.body--dark .order-table-dashboard--page .order-table-dashboard__date {
   align-items: center;
   justify-content: center;
   padding: 2px 10px;
-  border-radius: 9999px;
+  border-radius: var(--tf-radius-sm, 8px);
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.25;

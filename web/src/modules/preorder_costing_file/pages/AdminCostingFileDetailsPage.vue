@@ -1,0 +1,2901 @@
+<template>
+  <q-page class="q-pa-md costing-details-page theme-app">
+    <PageInitialLoader v-if="initialLoading" />
+    <section v-else class="tf-page__stack costing-page">
+      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1 costing-page__header">
+        <div class="costing-page__heading">
+          <h1 class="text-h6 text-weight-bold q-my-none">Costing file details</h1>
+          <p class="text-caption text-grey-8 q-mt-xs q-mb-none">{{ subtitle }}</p>
+        </div>
+
+        <div class="costing-page__toolbar">
+          <q-chip
+            v-if="selectedFile"
+            dense
+            square
+            clickable
+            :disable="savingStatus"
+            :style="statusChipStyle(statusForm)"
+            class="costing-file-status-chip q-px-md q-py-sm"
+          >
+            <span
+              class="status-chip-dot"
+              :style="{ backgroundColor: statusDotColor(statusForm) }"
+            />
+            {{ statusForm }}
+            <q-menu>
+              <q-list dense style="min-width: 180px">
+                <q-item
+                  v-for="option in fileStatuses"
+                  :key="option"
+                  clickable
+                  v-close-popup
+                  @click="handleSaveStatus(option)"
+                >
+                  <q-item-section>{{ option }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-chip>
+
+          <q-btn
+            outline
+            color="primary"
+            icon="ph ph-columns"
+            label="Columns"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+          >
+            <q-menu>
+              <q-list style="min-width: 240px">
+                <q-item>
+                  <q-item-section>
+                    <div class="text-subtitle2">Show Columns</div>
+                  </q-item-section>
+                </q-item>
+                <q-item>
+                  <q-item-section>
+                    <q-checkbox
+                      v-model="allSelectableProductColumnsSelected"
+                      label="Select / Deselect All"
+                    />
+                  </q-item-section>
+                </q-item>
+                <q-item>
+                  <q-item-section>
+                    <q-option-group
+                      v-model="selectedProductColumnNames"
+                      type="checkbox"
+                      :options="productColumnSelectorOptions"
+                    />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+
+          <q-btn
+            color="primary"
+            label="Add item"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            :disable="!selectedFile"
+            @click="addItemDialogOpen = true"
+          />
+          <q-btn
+            v-if="selectedFile?.status === 'offered'"
+            outline
+            color="primary"
+            icon="ph ph-eye"
+            label="Preview"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            @click="openPreview"
+          />
+          <q-btn
+            outline
+            color="primary"
+            icon="ph ph-users"
+            label="Manage viewers"
+            no-caps
+            size="sm"
+            class="pill-btn slim-btn"
+            :disable="!selectedFile"
+            @click="goToViewerManagement"
+          />
+        </div>
+      </q-card>
+      <section v-if="selectedFile?.status === 'draft'" class="costing-page__draft-state">
+        <div class="text-subtitle1">Items not added yet</div>
+        <p class="text-body2 text-grey-7 q-mb-none">
+          Add items now or wait for the customer to add items before continuing this costing file.
+        </p>
+      </section>
+
+      <section v-else-if="selectedFile?.status === 'customer_submitted'" class="tf-page__stack">
+        <div>
+          <div class="text-subtitle1">Submitted items</div>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+            Review the items submitted by the customer before moving this costing file forward.
+          </p>
+        </div>
+
+        <q-card flat class="floating-surface shadow-1 costing-page__table-card">
+          <q-table
+            flat
+            row-key="id"
+            :rows="productRows"
+            :columns="productColumns"
+            :visible-columns="visibleProductColumnNames"
+            :pagination="{ rowsPerPage: 0 }"
+            :loading="loadingItems"
+            hide-bottom
+            class="costing-page__table costing-page__table--product"
+          >
+            <template #body-cell-sl="props">
+              <q-td :props="props" class="costing-page__sl-cell">
+                {{ props.row.sl }}
+              </q-td>
+            </template>
+
+            <template #body-cell-image="props">
+              <q-td :props="props">
+                <div class="costing-page__image-cell">
+                  <q-img
+                    v-if="props.row.imageUrl"
+                    :src="props.row.imageUrl"
+                    fit="contain"
+                    class="costing-page__image"
+                  />
+                  <div v-else class="costing-page__image costing-page__image--placeholder">
+                    No image
+                  </div>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-websiteUrl="props">
+              <q-td :props="props" class="costing-page__link-cell">
+                <q-btn
+                  v-if="props.row.websiteUrl"
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="primary"
+                  icon="ph ph-arrow-up-right"
+                  label="Open link"
+                  class="pill-btn slim-btn costing-page__open-link-btn"
+                  :href="props.row.websiteUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation1="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation2="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-name="props">
+              <q-td :props="props" class="costing-page__name-cell">
+                <span class="costing-page__name-text" :title="props.row.name">
+                  {{ props.row.name }}
+                </span>
+              </q-td>
+            </template>
+
+            <template #body-cell-status="props">
+              <q-td :props="props" class="costing-page__status-cell">
+                <span
+                  class="costing-page__status-pill"
+                  :class="{
+                    'costing-page__status-pill--rejected': props.row.status === 'rejected',
+                  }"
+                >
+                  {{ props.row.status }}
+                </span>
+              </q-td>
+            </template>
+
+            <template #body-cell-priceInWebGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `priceInWebGbp:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                  >
+                    {{ props.row.priceInWebGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`priceInWebGbp:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'priceInWebGbp', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Web price (GBP)"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-productWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `productWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.productWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`productWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'productWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Product wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-packageWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `packageWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.packageWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`packageWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'packageWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Package wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__quantity-cell">
+                  <button
+                    type="button"
+                    class="costing-page__quantity-trigger"
+                    :disabled="savingQuantityItemId === props.row.id"
+                    @click="primeQuantityEditor(props.row.id, props.row.quantity)"
+                  >
+                    {{ props.row.quantity }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="quantityDrafts[props.row.id]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateQuantity"
+                    @before-show="primeQuantityEditor(props.row.id, props.row.quantity)"
+                    @save="saveQuantity(props.row.id, $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="1"
+                      step="1"
+                      label="Quantity"
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-actions="props">
+              <q-td :props="props" auto-width>
+                <q-btn
+                  flat
+                  dense
+                  color="primary"
+                  icon="ph ph-pencil-simple"
+                  round
+                  aria-label="Edit item"
+                  :disable="savingItemId === props.row.id"
+                  @click="openEditDialog(props.row.id)"
+                />
+              </q-td>
+            </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleProductColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getProductTotalsCellClass(column.name)"
+                >
+                  {{ getProductTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-card>
+      </section>
+
+      <section
+        v-else-if="
+          selectedFile?.status === 'in_review' ||
+          selectedFile?.status === 'offered' ||
+          selectedFile?.status === 'accepted' ||
+          selectedFile?.status === 'po_placed'
+        "
+        class="costing-page__pricing-section"
+      >
+        <q-card flat class="floating-surface shadow-1 q-mb-sm">
+          <q-card-section class="q-py-xs">
+            <div class="row items-end justify-between q-col-gutter-sm">
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.conversionRate"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Conversion rate"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.cargoRate1Kg"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Cargo rate < 10 (per KG)"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.cargoRate2Kg"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Cargo rate > 10 (per KG)"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-input
+                  v-model.number="pricingForm.adminProfitRate"
+                  dense
+                  filled
+                  type="number"
+                  class="soft-input"
+                  label="Admin profit rate (%)"
+                />
+              </div>
+              <div class="col-12 col-md-2 row justify-end">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  label="Save"
+                  no-caps
+                  size="sm"
+                  class="pill-btn slim-btn rates-save-btn"
+                  :loading="savingPricing"
+                  :disable="!selectedFile"
+                  @click="handleSavePricing"
+                />
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <q-card flat class="floating-surface shadow-1 costing-page__table-card">
+          <q-table
+            flat
+            row-key="id"
+            :rows="reviewRows"
+            :columns="visibleReviewColumns"
+            :row-class="getReviewRowClass"
+            :pagination="{ rowsPerPage: 0 }"
+            :loading="loadingItems"
+            hide-bottom
+            class="costing-page__table costing-page__table--review"
+          >
+            <template #body-cell-sl="props">
+              <q-td :props="props" class="costing-page__sl-cell">
+                {{ props.row.sl }}
+              </q-td>
+            </template>
+
+            <template #body-cell-image="props">
+              <q-td :props="props">
+                <div class="costing-page__image-cell">
+                  <q-img
+                    v-if="props.row.imageUrl"
+                    :src="props.row.imageUrl"
+                    fit="contain"
+                    class="costing-page__image"
+                  />
+                  <div v-else class="costing-page__image costing-page__image--placeholder">
+                    No image
+                  </div>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-websiteUrl="props">
+              <q-td :props="props" class="costing-page__link-cell">
+                <q-btn
+                  v-if="props.row.websiteUrl"
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="primary"
+                  icon="ph ph-arrow-up-right"
+                  label="Open link"
+                  class="pill-btn slim-btn costing-page__open-link-btn"
+                  :href="props.row.websiteUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation1="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-extraInformation2="props">
+              <q-td :props="props">
+                <div v-html="props.value" class="costing-table__rich-text-cell" />
+              </q-td>
+            </template>
+
+            <template #body-cell-name="props">
+              <q-td :props="props" class="costing-page__name-cell">
+                <div class="row items-center no-wrap justify-between">
+                  <span class="costing-page__name-text" :title="props.row.name">
+                    {{ props.row.name }}
+                  </span>
+                  <q-btn
+                    v-if="
+                      selectedFile?.status === 'accepted' || selectedFile?.status === 'po_placed'
+                    "
+                    icon="ph ph-truck"
+                    :color="shippedItemIds.includes(props.row.id) ? 'negative' : 'primary'"
+                    flat
+                    round
+                    dense
+                    size="sm"
+                    class="q-ml-sm"
+                    @click="onShip(props.row)"
+                  >
+                    <q-tooltip>{{
+                      shippedItemIds.includes(props.row.id) ? 'Added in shipment' : 'Add Shipment'
+                    }}</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-priceInWebGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `priceInWebGbp:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                  >
+                    {{ props.row.priceInWebGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`priceInWebGbp:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'priceInWebGbp',
+                        props.row.priceInWebGbpValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'priceInWebGbp', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Web price (GBP)"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-productWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `productWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.productWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`productWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'productWeight',
+                        props.row.productWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'productWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Product wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-packageWeight="props">
+              <q-td :props="props" class="costing-page__weight-cell costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `packageWeight:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                  >
+                    {{ props.row.packageWeight }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`packageWeight:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'packageWeight',
+                        props.row.packageWeightValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'packageWeight', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="1"
+                      label="Package wt"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-deliveryPriceGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `deliveryPriceGbp:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'deliveryPriceGbp',
+                        props.row.deliveryPriceGbpValue,
+                      )
+                    "
+                  >
+                    {{ props.row.deliveryPriceGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`deliveryPriceGbp:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(
+                        props.row.id,
+                        'deliveryPriceGbp',
+                        props.row.deliveryPriceGbpValue,
+                      )
+                    "
+                    @save="saveItemField(props.row.id, 'deliveryPriceGbp', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Delivery price (GBP)"
+                      hint="Leave empty to clear."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-cargoRateGbp="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__inline-edit-cell">
+                  <button
+                    type="button"
+                    class="costing-page__inline-edit-trigger"
+                    :disabled="savingFieldKey === `cargoRate:${props.row.id}`"
+                    @click="
+                      primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)
+                    "
+                  >
+                    {{ props.row.cargoRateGbp }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="itemFieldDrafts[`cargoRate:${props.row.id}`]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateNullableNumber"
+                    @before-show="
+                      primeItemFieldEditor(props.row.id, 'cargoRate', props.row.cargoRateValue)
+                    "
+                    @save="saveItemField(props.row.id, 'cargoRate', $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      step="0.01"
+                      label="Cargo per KG (GBP)"
+                      hint="Leave empty to use auto rate."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__quantity-cell">
+                  <button
+                    type="button"
+                    class="costing-page__quantity-trigger"
+                    :disabled="savingQuantityItemId === props.row.id"
+                    @click="primeQuantityEditor(props.row.id, props.row.quantity)"
+                  >
+                    {{ props.row.quantity }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="quantityDrafts[props.row.id]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateQuantity"
+                    @before-show="primeQuantityEditor(props.row.id, props.row.quantity)"
+                    @save="saveQuantity(props.row.id, $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="1"
+                      step="1"
+                      label="Quantity"
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-offerPriceBdt="props">
+              <q-td :props="props" class="costing-page__numeric-cell">
+                <div class="costing-page__offer-cell">
+                  <button
+                    type="button"
+                    class="costing-page__offer-trigger"
+                    :disabled="savingOfferItemId === props.row.id"
+                    @click="primeOfferEditor(props.row.id, props.row.offerPriceBdtValue)"
+                  >
+                    {{ props.row.offerPriceBdt }}
+                  </button>
+
+                  <q-popup-edit
+                    v-model="offerDrafts[props.row.id]"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    :validate="validateOfferPrice"
+                    @before-show="primeOfferEditor(props.row.id, props.row.offerPriceBdtValue)"
+                    @save="saveOfferPrice(props.row.id, $event)"
+                    v-slot="scope"
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      autofocus
+                      outlined
+                      min="0"
+                      label="Offer price (BDT)"
+                      hint="Leave empty to use the calculated offer price."
+                    />
+                  </q-popup-edit>
+                </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-actions="props">
+              <q-td :props="props" class="costing-page__actions-cell">
+                <q-btn
+                  flat
+                  dense
+                  color="primary"
+                  icon="ph ph-pencil-simple"
+                  round
+                  aria-label="Edit item"
+                  :disable="savingItemId === props.row.id"
+                  @click="openEditDialog(props.row.id)"
+                />
+
+                <template
+                  v-if="
+                    selectedFile?.status === 'offered' ||
+                    selectedFile?.status === 'accepted' ||
+                    selectedFile?.status === 'po_placed'
+                  "
+                >
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    dense
+                    color="positive"
+                    label="Accept"
+                    class="costing-page__decision-btn costing-page__decision-btn--accept"
+                    :loading="
+                      savingDecisionItemId === props.row.id && savingDecisionStatus === 'accepted'
+                    "
+                    :disable="savingDecisionItemId === props.row.id"
+                    @click="handleDecision(props.row.id, 'accepted')"
+                  />
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    dense
+                    color="negative"
+                    label="Reject"
+                    class="costing-page__decision-btn costing-page__decision-btn--reject"
+                    :loading="
+                      savingDecisionItemId === props.row.id && savingDecisionStatus === 'rejected'
+                    "
+                    :disable="savingDecisionItemId === props.row.id"
+                    @click="handleDecision(props.row.id, 'rejected')"
+                  />
+                </template>
+
+                <q-btn
+                  v-else
+                  flat
+                  dense
+                  color="negative"
+                  icon="ph ph-trash"
+                  round
+                  aria-label="Delete item"
+                  :loading="deletingReviewItemId === props.row.id"
+                  :disable="
+                    selectedFile?.status !== 'in_review' || deletingReviewItemId === props.row.id
+                  "
+                  @click="openDeleteReviewItemDialog(props.row.id)"
+                />
+              </q-td>
+            </template>
+
+            <template #bottom-row>
+              <q-tr class="costing-page__totals-row">
+                <q-td
+                  v-for="column in visibleReviewColumns"
+                  :key="column.name"
+                  class="costing-page__totals-cell"
+                  :class="getReviewTotalsCellClass(column.name)"
+                >
+                  {{ getReviewTotalsValue(column.name) }}
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-card>
+      </section>
+
+      <q-dialog v-model="deleteReviewItemDialogOpen" persistent>
+        <q-card style="min-width: 360px">
+          <q-card-section>
+            <div class="text-h6">Delete item</div>
+          </q-card-section>
+
+          <q-card-section> Delete this costing item from the review table? </q-card-section>
+
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" @click="deleteReviewItemDialogOpen = false" />
+            <q-btn
+              color="negative"
+              unelevated
+              label="Delete"
+              :loading="deletingReviewItemId !== null"
+              @click="confirmDeleteReviewItem"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
+      <AdminCostingFileItemEditDialog
+        v-model="editDialogOpen"
+        :item="editingItem"
+        :loading="savingItemId === editingItem?.id"
+        @save="handleSaveEnrichment"
+      />
+
+      <AddCostingFileItemDialog
+        v-model="addItemDialogOpen"
+        :loading="creatingItem"
+        @save="handleCreateItem"
+      />
+
+      <ShipmentItemCompactDialog
+        v-model="showAddShipmentDialog"
+        :quantity="selectedQuantity"
+        :price-gbp="selectedPriceGbp"
+        :loading="shipmentStore.saving"
+        :default-shipment-id="
+          (selectedFile?.default_shipment_id as number | null | undefined) ?? null
+        "
+        @shipment-change="onDefaultShipmentChange"
+        @save="onSaveShipment"
+      />
+
+      <q-dialog v-model="confirmRemoveShipmentOpen">
+        <q-card style="min-width: 360px">
+          <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
+          <q-card-section> This will remove the selected item from its shipment. </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn
+              color="negative"
+              label="Remove"
+              :loading="shipmentStore.saving"
+              @click="onConfirmRemoveShipment"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+    </section>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import AddCostingFileItemDialog from 'src/modules/preorder_costing_file/components/AddCostingFileItemDialog.vue';
+import AdminCostingFileItemEditDialog from 'src/modules/preorder_costing_file/components/AdminCostingFileItemEditDialog.vue';
+import { useQuasar } from 'quasar';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
+import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
+import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/ShipmentItemCompactDialog.vue';
+import {
+  buildAdminProductRows,
+  buildAdminReviewRows,
+  summarizeAdminProductRows,
+  summarizeAdminReviewRows,
+  type AdminProductRow,
+} from 'src/modules/preorder_costing_file/composables/useCostingFileDetailRows';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useCostingFileStore } from 'src/modules/preorder_costing_file/stores/costingFileStore';
+import type {
+  CostingFileDetails,
+  CostingFileItem,
+  CostingFileItemStatus,
+  CostingFileStatus,
+} from 'src/modules/preorder_costing_file/types';
+import { showSuccessNotification } from 'src/utils/appFeedback';
+import { calculateCostingItem } from 'src/modules/preorder_costing_file/utils/costingCalculations';
+import { useCostingFileDetailBreadcrumbs } from 'src/modules/preorder_costing_file/composables/useCostingFileDetailBreadcrumbs';
+
+const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
+const authStore = useAuthStore();
+const tenantStore = useTenantStore();
+const shipmentStore = useGlobalShipmentStore();
+const costingFileStore = useCostingFileStore();
+const selectedFile = computed<CostingFileDetails | null>(() => costingFileStore.selectedItem);
+useCostingFileDetailBreadcrumbs('admin', () => selectedFile.value);
+const costingFileItems = computed<CostingFileItem[]>(() => costingFileStore.costingFileItems);
+const loadingItems = computed(() => costingFileStore.itemLoading);
+
+const savingStatus = ref(false);
+const savingItemId = ref<number | null>(null);
+const savingPricing = ref(false);
+const savingOfferItemId = ref<number | null>(null);
+const savingQuantityItemId = ref<number | null>(null);
+const savingFieldKey = ref<string | null>(null);
+const savingDecisionItemId = ref<number | null>(null);
+const savingDecisionStatus = ref<CostingFileItemStatus | null>(null);
+const deletingReviewItemId = ref<number | null>(null);
+const deleteReviewItemDialogOpen = ref(false);
+const reviewItemPendingDeleteId = ref<number | null>(null);
+const statusForm = ref<CostingFileStatus>('draft');
+const editDialogOpen = ref(false);
+const addItemDialogOpen = ref(false);
+const initialLoading = ref(true);
+const creatingItem = ref(false);
+const editingItemId = ref<number | null>(null);
+
+const showAddShipmentDialog = ref(false);
+const selectedQuantity = ref<number | null>(null);
+const selectedPriceGbp = ref<number | null>(null);
+const selectedShipItem = ref<CostingFileItem | null>(null);
+const shippedItemIds = ref<number[]>([]);
+const confirmRemoveShipmentOpen = ref(false);
+const pendingRemoveShipItem = ref<CostingFileItem | null>(null);
+const offerDrafts = reactive<Record<number, number | null>>({});
+const quantityDrafts = reactive<Record<number, number | null>>({});
+const itemFieldDrafts = reactive<Record<string, number | null>>({});
+const pricingForm = reactive({
+  cargoRate1Kg: null as number | null,
+  cargoRate2Kg: null as number | null,
+  conversionRate: null as number | null,
+  adminProfitRate: null as number | null,
+});
+
+const fileStatuses = computed<CostingFileStatus[]>(() => {
+  if (authStore.matchedRole === 'staff') {
+    const currentStatus = selectedFile.value?.status;
+
+    if (!currentStatus) {
+      return ['draft', 'in_review'];
+    }
+
+    if (currentStatus === 'draft') {
+      return ['draft', 'in_review'];
+    }
+
+    return [currentStatus];
+  }
+
+  return [
+    'draft',
+    'customer_submitted',
+    'in_review',
+    'offered',
+    'accepted',
+    'po_placed',
+    'cancelled',
+  ];
+});
+
+const subtitle = computed(() =>
+  selectedFile.value
+    ? `${selectedFile.value.name} items and pricing.`
+    : 'Loading costing file details.',
+);
+
+const openPreview = () => {
+  if (
+    !selectedFile.value ||
+    (selectedFile.value.status !== 'offered' &&
+      selectedFile.value.status !== 'accepted' &&
+      selectedFile.value.status !== 'po_placed')
+  ) {
+    return;
+  }
+
+  const targetRoute = router.resolve({
+    name: 'admin-costing-file-preview-page',
+    params: { id: String(selectedFile.value.id) },
+  });
+
+  window.open(targetRoute.href, '_blank', 'noopener,noreferrer');
+};
+
+const statusChipStyle = (currentStatus: string) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') {
+    return {
+      backgroundColor: '#f1f5f9',
+      color: '#475569',
+      border: '1px solid #cbd5e1',
+    };
+  }
+  if (value === 'customer_submitted') {
+    return {
+      backgroundColor: '#e8eaf6',
+      color: '#283593',
+      border: '1px solid #c5cae9',
+    };
+  }
+  if (value === 'in_review') {
+    return {
+      backgroundColor: '#efd399',
+      color: '#6a4a14',
+      border: '1px solid #d8b672',
+    };
+  }
+  if (value === 'offered') {
+    return {
+      backgroundColor: '#c8d8f8',
+      color: '#27487a',
+      border: '1px solid #a9c4f3',
+    };
+  }
+  if (value === 'accepted') {
+    return {
+      backgroundColor: '#d1fae5',
+      color: '#065f46',
+      border: '1px solid #a7f3d0',
+    };
+  }
+  if (value === 'po_placed') {
+    return {
+      backgroundColor: '#c3e8d2',
+      color: '#1f5d3c',
+      border: '1px solid #9fd4b7',
+    };
+  }
+  if (value === 'cancelled') {
+    return {
+      backgroundColor: '#f2c7d0',
+      color: '#6f2b3a',
+      border: '1px solid #e3a6b3',
+    };
+  }
+  return {
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #cbd5e1',
+  };
+};
+
+const statusDotColor = (currentStatus: string) => {
+  const value = (currentStatus ?? '').trim().toLowerCase() || 'pending';
+  if (value === 'draft') return '#64748b';
+  if (value === 'customer_submitted') return '#3f51b5';
+  if (value === 'in_review') return '#9a6a24';
+  if (value === 'offered') return '#3f67b3';
+  if (value === 'accepted') return '#059669';
+  if (value === 'po_placed') return '#2f8b5d';
+  if (value === 'cancelled') return '#a64c62';
+  return '#64748b';
+};
+
+const editingItem = computed<CostingFileItem | null>(
+  () => costingFileItems.value.find((item) => item.id === editingItemId.value) ?? null,
+);
+
+const formatFixed = (value: number | null | undefined) =>
+  value == null ? '' : Number(value).toFixed(2);
+
+const formatWhole = (value: number | null | undefined) =>
+  value == null ? '' : String(Math.round(Number(value)));
+
+const formatPercent = (value: number | null | undefined) =>
+  value == null ? '' : `${Number(value).toFixed(2)}%`;
+
+const productRows = computed(() => buildAdminProductRows(costingFileItems.value));
+const productTotals = computed(() => summarizeAdminProductRows(productRows.value));
+
+const productColumns = [
+  {
+    name: 'actions',
+    label: '',
+    field: 'actions',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px;',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+  },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'width: 280px; min-width: 280px; max-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
+  },
+  {
+    name: 'itemType',
+    label: 'Type',
+    field: 'itemType',
+    align: 'left' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
+  },
+  {
+    name: 'websiteUrl',
+    label: 'Web link',
+    field: 'websiteUrl',
+    align: 'left' as const,
+    style: 'width: 144px; min-width: 144px; max-width: 144px;',
+    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
+  },
+  {
+    name: 'size',
+    label: 'Size',
+    field: 'size',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'color',
+    label: 'Color',
+    field: 'color',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'extraInformation1',
+    label: 'Extra info 1',
+    field: 'extraInformation1',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'extraInformation2',
+    label: 'Extra info 2',
+    field: 'extraInformation2',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+
+  {
+    name: 'priceInWebGbp',
+    label: 'Web price (GBP)',
+    field: 'priceInWebGbp',
+    align: 'left' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'productWeight',
+    label: 'Product wt',
+    field: 'productWeight',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+  {
+    name: 'packageWeight',
+    label: 'Package wt',
+    field: 'packageWeight',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+  {
+    name: 'quantity',
+    label: 'Quantity',
+    field: 'quantity',
+    align: 'left' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+];
+
+const alwaysVisibleProductColumns = ['actions', 'sl', 'image', 'name'] as const;
+const selectableProductColumnNames = productColumns
+  .map((column) => column.name)
+  .filter(
+    (name) =>
+      !alwaysVisibleProductColumns.includes(name as (typeof alwaysVisibleProductColumns)[number]),
+  );
+const selectedProductColumnNames = ref<string[]>([...selectableProductColumnNames]);
+const productColumnSelectorOptions = productColumns
+  .filter((column) => selectableProductColumnNames.includes(column.name))
+  .map((column) => ({ label: column.label, value: column.name }));
+const allSelectableProductColumnsSelected = computed({
+  get: () =>
+    selectableProductColumnNames.every((name) => selectedProductColumnNames.value.includes(name)),
+  set: (checked: boolean) => {
+    selectedProductColumnNames.value = checked ? [...selectableProductColumnNames] : [];
+  },
+});
+const visibleProductColumnNames = computed<string[]>(() => [
+  ...alwaysVisibleProductColumns,
+  ...selectedProductColumnNames.value,
+]);
+const visibleProductColumns = computed(() =>
+  productColumns.filter((column) => visibleProductColumnNames.value.includes(column.name)),
+);
+
+const reviewRows = computed(() =>
+  buildAdminReviewRows(costingFileItems.value, {
+    cargoRate1Kg: pricingForm.cargoRate1Kg,
+    cargoRate2Kg: pricingForm.cargoRate2Kg,
+    conversionRate: pricingForm.conversionRate,
+    adminProfitRate: pricingForm.adminProfitRate,
+  }),
+);
+const reviewTotals = computed(() => summarizeAdminReviewRows(reviewRows.value));
+
+const reviewColumns = [
+  {
+    name: 'sl',
+    label: 'SL',
+    field: 'sl',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px;',
+  },
+  {
+    name: 'image',
+    label: 'Image',
+    field: 'imageUrl',
+    align: 'left' as const,
+    style: 'width: 108px; min-width: 108px;',
+    headerStyle: 'width: 108px; min-width: 108px;',
+  },
+
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'name',
+    align: 'left' as const,
+    style: 'width: 280px; min-width: 280px; max-width: 280px;',
+    headerStyle: 'width: 280px; min-width: 280px; max-width: 280px;',
+  },
+  {
+    name: 'itemType',
+    label: 'Type',
+    field: 'itemType',
+    align: 'left' as const,
+    style: 'width: 110px; min-width: 110px;',
+    headerStyle: 'width: 110px; min-width: 110px;',
+  },
+  {
+    name: 'size',
+    label: 'Size',
+    field: 'size',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'color',
+    label: 'Color',
+    field: 'color',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+  {
+    name: 'extraInformation1',
+    label: 'Extra info 1',
+    field: 'extraInformation1',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'extraInformation2',
+    label: 'Extra info 2',
+    field: 'extraInformation2',
+    align: 'left' as const,
+    style: 'width: 180px; min-width: 180px;',
+    headerStyle: 'width: 180px; min-width: 180px;',
+  },
+  {
+    name: 'quantity',
+    label: 'Qty',
+    field: 'quantity',
+    align: 'left' as const,
+    style: 'width: 56px; min-width: 56px;',
+    headerStyle: 'width: 56px; min-width: 56px;',
+  },
+  {
+    name: 'status',
+    label: 'Status',
+    field: 'status',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px;',
+  },
+
+  {
+    name: 'websiteUrl',
+    label: 'Web URL',
+    field: 'websiteUrl',
+    align: 'left' as const,
+    style: 'width: 144px; min-width: 144px; max-width: 144px;',
+    headerStyle: 'width: 144px; min-width: 144px; max-width: 144px;',
+  },
+  {
+    name: 'productWeight',
+    label: 'Product wt',
+    field: 'productWeight',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'packageWeight',
+    label: 'Package wt',
+    field: 'packageWeight',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'totalWeight',
+    label: 'Total wt',
+    field: 'totalWeight',
+    align: 'left' as const,
+    style: 'width: 60px; min-width: 60px;',
+    headerStyle: 'width: 60px; min-width: 60px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'priceInWebGbp',
+    label: 'Web price (GBP)',
+    field: 'priceInWebGbp',
+    align: 'left' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'deliveryPriceGbp',
+    label: 'Delivery price (GBP)',
+    field: 'deliveryPriceGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'auxiliaryPriceGbp',
+    label: 'Auxiliary price (GBP)',
+    field: 'auxiliaryPriceGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'purchasePriceGbp',
+    label: 'Purchase price (GBP)',
+    field: 'purchasePriceGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'cargoRateGbp',
+    label: 'Cargo per KG (GBP)',
+    field: 'cargoRateGbp',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'costingPriceGbp',
+    label: 'Cost (GBP) per unit',
+    field: 'costingPriceGbp',
+    align: 'left' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'totalCostGbp',
+    label: 'Total cost (GBP)',
+    field: 'totalCostGbp',
+    align: 'left' as const,
+    style: 'width: 94px; min-width: 94px;',
+    headerStyle: 'width: 94px; min-width: 94px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-indigo',
+    headerClasses: 'costing-page__tone-indigo',
+  },
+  {
+    name: 'costingPriceBdt',
+    label: 'Cost (BDT) per unit',
+    field: 'costingPriceBdt',
+    align: 'left' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-amber',
+    headerClasses: 'costing-page__tone-amber',
+  },
+
+  {
+    name: 'totalCostBdt',
+    label: 'Total cost (BDT)',
+    field: 'totalCostBdt',
+    align: 'left' as const,
+    style: 'width: 94px; min-width: 94px;',
+    headerStyle: 'width: 94px; min-width: 94px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-amber',
+    headerClasses: 'costing-page__tone-amber',
+  },
+  {
+    name: 'offerPriceBdt',
+    label: 'Offer price (BDT) per unit',
+    field: 'offerPriceBdt',
+    align: 'left' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-emerald',
+    headerClasses: 'costing-page__tone-emerald',
+  },
+
+  {
+    name: 'totalOfferPriceBdt',
+    label: 'Total offer (BDT)',
+    field: 'totalOfferPriceBdt',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-emerald',
+    headerClasses: 'costing-page__tone-emerald',
+  },
+  {
+    name: 'profitRate',
+    label: 'Profit rate',
+    field: 'profitRate',
+    align: 'left' as const,
+    style: 'width: 74px; min-width: 74px;',
+    headerStyle: 'width: 74px; min-width: 74px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'profitAmount',
+    label: 'Profit amount (BDT) per unit',
+    field: 'profitAmount',
+    align: 'left' as const,
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-amber',
+    headerClasses: 'costing-page__tone-amber',
+  },
+  {
+    name: 'totalProfitBdt',
+    label: 'Total profit (BDT)',
+    field: 'totalProfitBdt',
+    align: 'left' as const,
+    style: 'width: 96px; min-width: 96px;',
+    headerStyle: 'width: 96px; min-width: 96px; white-space: normal; line-height: 1.15;',
+    classes: 'costing-page__tone-amber',
+    headerClasses: 'costing-page__tone-amber',
+  },
+  {
+    name: 'averageProfitRate',
+    label: 'Avg profit rate',
+    field: 'averageProfitRate',
+    align: 'left' as const,
+    style: 'width: 88px; min-width: 88px;',
+    headerStyle: 'width: 88px; min-width: 88px; white-space: normal; line-height: 1.15;',
+  },
+  {
+    name: 'actions',
+    label: '',
+    field: 'actions',
+    align: 'right' as const,
+    style: 'width: 72px; min-width: 72px;',
+    headerStyle: 'width: 72px; min-width: 72px;',
+  },
+];
+
+const visibleReviewColumns = computed(() => {
+  const selectedNames = new Set(visibleProductColumnNames.value);
+  return reviewColumns.filter((column) => {
+    if (column.name === 'actions') {
+      return (
+        selectedFile.value?.status === 'in_review' ||
+        selectedFile.value?.status === 'offered' ||
+        selectedFile.value?.status === 'accepted' ||
+        selectedFile.value?.status === 'po_placed'
+      );
+    }
+    const isShared = productColumns.some((col) => col.name === column.name);
+    if (!isShared) {
+      return true;
+    }
+    return selectedNames.has(column.name);
+  });
+});
+
+const getProductTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'actions':
+    case 'image':
+      return '';
+    case 'sl':
+      return 'Total';
+    case 'name':
+      return `${productRows.value.length} Items`;
+    case 'priceInWebGbp':
+      return formatFixed(productTotals.value.priceInWebGbp);
+    case 'productWeight':
+      return formatWhole(productTotals.value.productWeight);
+    case 'packageWeight':
+      return formatWhole(productTotals.value.packageWeight);
+    case 'quantity':
+      return formatWhole(productTotals.value.quantity);
+    default:
+      return '';
+  }
+};
+
+const getReviewTotalsValue = (columnName: string) => {
+  switch (columnName) {
+    case 'sl':
+      return 'Total';
+    case 'name':
+      return `${reviewRows.value.length} Items`;
+    case 'quantity':
+      return formatWhole(reviewTotals.value.quantity);
+    case 'productWeight':
+      return formatWhole(reviewTotals.value.productWeight);
+    case 'packageWeight':
+      return formatWhole(reviewTotals.value.packageWeight);
+    case 'totalWeight':
+      return formatWhole(reviewTotals.value.totalWeight);
+    case 'priceInWebGbp':
+      return formatFixed(reviewTotals.value.priceInWebGbp);
+    case 'deliveryPriceGbp':
+      return formatFixed(reviewTotals.value.deliveryPriceGbp);
+    case 'auxiliaryPriceGbp':
+      return formatFixed(reviewTotals.value.auxiliaryPriceGbp);
+    case 'purchasePriceGbp':
+      return formatFixed(reviewTotals.value.purchasePriceGbp);
+    case 'cargoRateGbp':
+      return formatFixed(reviewTotals.value.cargoRateGbp);
+    case 'costingPriceGbp':
+      return formatFixed(reviewTotals.value.costingPriceGbp);
+    case 'costingPriceBdt':
+      return formatWhole(reviewTotals.value.costingPriceBdt);
+    case 'offerPriceBdt':
+      return formatWhole(reviewTotals.value.offerPriceBdt);
+    case 'totalCostGbp':
+      return formatFixed(reviewTotals.value.totalCostGbp);
+    case 'totalCostBdt':
+      return formatWhole(reviewTotals.value.totalCostBdt);
+    case 'totalOfferPriceBdt':
+      return formatWhole(reviewTotals.value.totalOfferPriceBdt);
+    case 'profitRate':
+      return formatPercent(reviewTotals.value.profitRate);
+    case 'profitAmount':
+      return formatWhole(reviewTotals.value.profitAmount);
+    case 'totalProfitBdt':
+      return formatWhole(reviewTotals.value.totalProfitBdt);
+    case 'averageProfitRate':
+      return formatPercent(reviewTotals.value.averageProfitRate);
+    default:
+      return '';
+  }
+};
+
+const getProductTotalsCellClass = (columnName: string) => {
+  if (columnName === 'priceInWebGbp') {
+    return 'costing-page__tone-indigo';
+  }
+
+  return '';
+};
+
+const getReviewTotalsCellClass = (columnName: string) => {
+  if (
+    [
+      'priceInWebGbp',
+      'deliveryPriceGbp',
+      'auxiliaryPriceGbp',
+      'purchasePriceGbp',
+      'costingPriceGbp',
+      'totalCostGbp',
+    ].includes(columnName)
+  ) {
+    return 'costing-page__tone-indigo';
+  }
+
+  if (['costingPriceBdt', 'totalCostBdt', 'profitAmount', 'totalProfitBdt'].includes(columnName)) {
+    return 'costing-page__tone-amber';
+  }
+
+  if (['offerPriceBdt', 'totalOfferPriceBdt'].includes(columnName)) {
+    return 'costing-page__tone-emerald';
+  }
+
+  return '';
+};
+
+const getReviewRowClass = (row: { status?: string | null }) =>
+  row.status === 'rejected' ? 'costing-page__rejected-row' : '';
+
+const loadFile = async () => {
+  const fileId = Number(route.params.id);
+  if (!fileId) return;
+
+  await costingFileStore.fetchCostingFileWithItems(fileId);
+};
+
+const goToViewerManagement = async () => {
+  if (!selectedFile.value) {
+    return;
+  }
+
+  await router.push({
+    name: 'admin-costing-file-viewers-page',
+    params: { id: String(selectedFile.value.id) },
+  });
+};
+
+const handleSaveStatus = async (value: CostingFileStatus | null = statusForm.value) => {
+  if (!selectedFile.value || !value || value === selectedFile.value.status) return;
+
+  savingStatus.value = true;
+  try {
+    statusForm.value = value;
+    const result = await costingFileStore.updateCostingFileStatus({
+      id: selectedFile.value.id,
+      status: value,
+    });
+
+    if (!result.success) {
+      statusForm.value = selectedFile.value.status;
+    }
+  } finally {
+    savingStatus.value = false;
+  }
+};
+
+const openEditDialog = (itemId: number) => {
+  editingItemId.value = itemId;
+  editDialogOpen.value = true;
+};
+
+const primeOfferEditor = (itemId: number, fallbackValue: number | null) => {
+  if (offerDrafts[itemId] !== undefined) return;
+
+  const item = costingFileItems.value.find((entry) => entry.id === itemId);
+  offerDrafts[itemId] = item?.offer_price_override_bdt ?? fallbackValue ?? null;
+};
+
+const primeQuantityEditor = (itemId: number, fallbackValue: number | string) => {
+  if (quantityDrafts[itemId] !== undefined) return;
+
+  const item = costingFileItems.value.find((entry) => entry.id === itemId);
+  quantityDrafts[itemId] = item?.quantity ?? Number(fallbackValue);
+};
+
+const itemFieldKey = (
+  itemId: number,
+  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp' | 'cargoRate',
+) => `${field}:${itemId}`;
+
+const primeItemFieldEditor = (
+  itemId: number,
+  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp' | 'cargoRate',
+  fallbackValue: number | null,
+) => {
+  const key = itemFieldKey(itemId, field);
+  if (itemFieldDrafts[key] !== undefined) return;
+
+  const item = costingFileItems.value.find((entry) => entry.id === itemId);
+  if (field === 'productWeight')
+    itemFieldDrafts[key] = item?.product_weight ?? fallbackValue ?? null;
+  if (field === 'packageWeight')
+    itemFieldDrafts[key] = item?.package_weight ?? fallbackValue ?? null;
+  if (field === 'priceInWebGbp')
+    itemFieldDrafts[key] = item?.price_in_web_gbp ?? fallbackValue ?? null;
+  if (field === 'deliveryPriceGbp')
+    itemFieldDrafts[key] = item?.delivery_price_gbp ?? fallbackValue ?? null;
+  if (field === 'cargoRate') itemFieldDrafts[key] = item?.cargo_rate ?? fallbackValue ?? null;
+};
+
+const validateQuantity = (value: number | string | null) => {
+  const normalized = Number(value);
+  return Number.isInteger(normalized) && normalized >= 1;
+};
+
+const validateNullableNumber = (value: number | null) => value == null || value >= 0;
+
+const saveQuantity = async (itemId: number, value: number | string | null) => {
+  const normalized = Number(value);
+  if (!Number.isInteger(normalized) || normalized < 1) return;
+
+  savingQuantityItemId.value = itemId;
+  try {
+    await costingFileStore.updateCostingFileItem({
+      id: itemId,
+      quantity: normalized,
+    });
+  } finally {
+    savingQuantityItemId.value = null;
+    delete quantityDrafts[itemId];
+  }
+};
+
+const saveItemField = async (
+  itemId: number,
+  field: 'productWeight' | 'packageWeight' | 'priceInWebGbp' | 'deliveryPriceGbp' | 'cargoRate',
+  value: number | null,
+) => {
+  const key = itemFieldKey(itemId, field);
+  savingFieldKey.value = key;
+  try {
+    const normalizedValue = value == null ? null : Number(value);
+    await costingFileStore.updateCostingFileItem({
+      id: itemId,
+      [field]: normalizedValue,
+    });
+  } finally {
+    savingFieldKey.value = null;
+    delete itemFieldDrafts[key];
+  }
+};
+
+const validateOfferPrice = (value: number | null) => value == null || value >= 0;
+
+const saveOfferPrice = async (itemId: number, value: number | null) => {
+  savingOfferItemId.value = itemId;
+  try {
+    await costingFileStore.updateCostingFileItemOffer({
+      id: itemId,
+      offerPriceOverrideBdt: value == null ? null : Number(value),
+    });
+  } finally {
+    savingOfferItemId.value = null;
+    delete offerDrafts[itemId];
+  }
+};
+
+const handleSaveEnrichment = async (payload: {
+  id: number;
+  name: string | null;
+  itemType: string | null;
+  productWeight: number | null;
+  packageWeight: number | null;
+  imageUrl: string | null;
+  priceInWebGbp: number | null;
+  deliveryPriceGbp: number | null;
+}) => {
+  savingItemId.value = payload.id;
+  try {
+    const result = await costingFileStore.updateCostingFileItem({
+      id: payload.id,
+      name: payload.name,
+      itemType: payload.itemType,
+      productWeight: payload.productWeight,
+      packageWeight: payload.packageWeight,
+      imageUrl: payload.imageUrl,
+      priceInWebGbp: payload.priceInWebGbp,
+      deliveryPriceGbp: payload.deliveryPriceGbp,
+    });
+
+    if (result.success) {
+      editDialogOpen.value = false;
+    }
+  } finally {
+    savingItemId.value = null;
+  }
+};
+
+const handleCreateItem = async (payload: {
+  websiteUrl: string;
+  quantity: number;
+  name: string;
+  itemType: string | null;
+  size: string | null;
+  color: string | null;
+  extraInformation1: string | null;
+  extraInformation2: string | null;
+  imageUrl: string;
+  productWeight: number;
+  packageWeight: number;
+  priceInWebGbp: number;
+  deliveryPriceGbp: number;
+}) => {
+  if (!selectedFile.value) {
+    return;
+  }
+
+  creatingItem.value = true;
+  try {
+    const result = await costingFileStore.createCostingFileItem({
+      costingFileId: selectedFile.value.id,
+      websiteUrl: payload.websiteUrl,
+      quantity: payload.quantity,
+      name: payload.name,
+      itemType: payload.itemType,
+      size: payload.size,
+      color: payload.color,
+      extraInformation1: payload.extraInformation1,
+      extraInformation2: payload.extraInformation2,
+      imageUrl: payload.imageUrl,
+      productWeight: payload.productWeight,
+      packageWeight: payload.packageWeight,
+      priceInWebGbp: payload.priceInWebGbp,
+      deliveryPriceGbp: payload.deliveryPriceGbp,
+      status: 'pending',
+    });
+
+    if (result.success) {
+      addItemDialogOpen.value = false;
+    }
+  } finally {
+    creatingItem.value = false;
+  }
+};
+
+const handleDecision = async (itemId: number, status: CostingFileItemStatus) => {
+  if (
+    selectedFile.value?.status !== 'offered' &&
+    selectedFile.value?.status !== 'accepted' &&
+    selectedFile.value?.status !== 'po_placed'
+  ) {
+    return;
+  }
+
+  savingDecisionItemId.value = itemId;
+  savingDecisionStatus.value = status;
+  try {
+    const result = await costingFileStore.updateCostingFileItemStatus({ id: itemId, status });
+
+    if (!result.success) {
+      return;
+    }
+
+    showSuccessNotification(`Item ${status}.`);
+  } finally {
+    savingDecisionItemId.value = null;
+    savingDecisionStatus.value = null;
+  }
+};
+
+const openDeleteReviewItemDialog = (itemId: number) => {
+  if (selectedFile.value?.status !== 'in_review') {
+    return;
+  }
+
+  reviewItemPendingDeleteId.value = itemId;
+  deleteReviewItemDialogOpen.value = true;
+};
+
+const confirmDeleteReviewItem = async () => {
+  const itemId = reviewItemPendingDeleteId.value;
+
+  if (selectedFile.value?.status !== 'in_review' || itemId == null) {
+    return;
+  }
+
+  if (selectedFile.value?.status !== 'in_review') {
+    return;
+  }
+
+  deletingReviewItemId.value = itemId;
+  try {
+    await costingFileStore.deleteCostingFileItem({ id: itemId });
+    deleteReviewItemDialogOpen.value = false;
+    reviewItemPendingDeleteId.value = null;
+  } finally {
+    deletingReviewItemId.value = null;
+  }
+};
+
+const handleSavePricing = async () => {
+  if (!selectedFile.value) return;
+
+  savingPricing.value = true;
+  try {
+    await costingFileStore.updateCostingFilePricing({
+      id: selectedFile.value.id,
+      cargoRate1Kg: pricingForm.cargoRate1Kg,
+      cargoRate2Kg: pricingForm.cargoRate2Kg,
+      conversionRate: pricingForm.conversionRate,
+      adminProfitRate: pricingForm.adminProfitRate,
+    });
+  } finally {
+    savingPricing.value = false;
+  }
+};
+
+watch(
+  selectedFile,
+  (file) => {
+    if (file) {
+      statusForm.value = file.status;
+      pricingForm.cargoRate1Kg = file.cargo_rate_1kg;
+      pricingForm.cargoRate2Kg = file.cargo_rate_2kg;
+      pricingForm.conversionRate = file.conversion_rate;
+      pricingForm.adminProfitRate = file.admin_profit_rate;
+    }
+  },
+  { immediate: true },
+);
+
+watch(editDialogOpen, (isOpen) => {
+  if (!isOpen) {
+    editingItemId.value = null;
+  }
+});
+
+watch(addItemDialogOpen, (isOpen) => {
+  if (!isOpen) {
+    creatingItem.value = false;
+  }
+});
+
+const refreshShippedItemIndicators = () => {
+  shippedItemIds.value = costingFileItems.value
+    .filter((item) => item.assigned_shipment_id != null)
+    .map((item) => item.id);
+};
+
+watch(
+  costingFileItems,
+  () => {
+    refreshShippedItemIndicators();
+  },
+  { immediate: true, deep: true },
+);
+
+const openShipmentDialog = (row: AdminProductRow) => {
+  const item = costingFileItems.value.find((i) => i.id === row.id);
+  if (!item) return;
+  selectedShipItem.value = item;
+  selectedQuantity.value = item.quantity ?? null;
+
+  const calculated = calculateCostingItem(
+    {
+      cargoRate1Kg: pricingForm.cargoRate1Kg,
+      cargoRate2Kg: pricingForm.cargoRate2Kg,
+      cargoRateOverride: item.cargo_rate,
+      cargoRateIsManual: item.cargo_rate != null,
+      conversionRate: pricingForm.conversionRate,
+      adminProfitRate: pricingForm.adminProfitRate,
+      offerPriceOverrideBdt: item.offer_price_override_bdt,
+    },
+    {
+      productWeight: item.product_weight,
+      packageWeight: item.package_weight,
+      priceInWebGbp: item.price_in_web_gbp,
+      deliveryPriceGbp: item.delivery_price_gbp,
+      customerProfitRate: item.customer_profit_rate,
+      itemType: item.item_type,
+    },
+  );
+
+  selectedPriceGbp.value = calculated.itemPriceGbp ?? null;
+  showAddShipmentDialog.value = true;
+};
+
+const onShip = (row: AdminProductRow) => {
+  const item = costingFileItems.value.find((i) => i.id === row.id);
+  if (!item) return;
+
+  if (shippedItemIds.value.includes(item.id)) {
+    pendingRemoveShipItem.value = item;
+    confirmRemoveShipmentOpen.value = true;
+    return;
+  }
+
+  openShipmentDialog(row);
+};
+
+const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
+
+const findShipmentItemForCostingItem = async (item: CostingFileItem) => {
+  if (item.assigned_shipment_id == null) {
+    return null;
+  }
+
+  const items = await globalShipmentRepository.listShipmentItems(item.assigned_shipment_id);
+  const shipmentItems = (items ?? []).filter((entry) => entry.add_method === 'costing');
+  const itemName = normalizeText(item.name);
+  const matched =
+    shipmentItems.find((entry) => {
+      return (
+        normalizeText(entry.name) === itemName ||
+        normalizeText(entry.image_url) === normalizeText(item.image_url)
+      );
+    }) ?? null;
+
+  return matched;
+};
+
+const onConfirmRemoveShipment = async () => {
+  const item = pendingRemoveShipItem.value;
+  if (!item) {
+    confirmRemoveShipmentOpen.value = false;
+    return;
+  }
+
+  const shipmentItem = await findShipmentItemForCostingItem(item);
+  if (!shipmentItem) {
+    $q.notify({
+      type: 'warning',
+      message: 'No linked shipment item found.',
+    });
+    await costingFileStore.updateCostingFileItem({
+      id: item.id,
+      assigned_shipment_id: null,
+    });
+    confirmRemoveShipmentOpen.value = false;
+    pendingRemoveShipItem.value = null;
+    refreshShippedItemIndicators();
+    return;
+  }
+
+  try {
+    await shipmentStore.deleteShipmentItem(shipmentItem.id);
+  } catch {
+    return;
+  }
+
+  await costingFileStore.updateCostingFileItem({
+    id: item.id,
+    assigned_shipment_id: null,
+  });
+
+  confirmRemoveShipmentOpen.value = false;
+  pendingRemoveShipItem.value = null;
+  refreshShippedItemIndicators();
+};
+
+const onSaveShipment = async (data: {
+  shipment_id: number;
+  quantity?: number | null;
+  price_gbp?: number | null;
+  save_as_default?: boolean;
+}) => {
+  const rowItem = selectedShipItem.value;
+  if (!rowItem) {
+    return;
+  }
+
+  const quantity = Math.max(0, Number(data.quantity) || 0);
+  if (quantity <= 0) {
+    return;
+  }
+
+  let newItem;
+  try {
+    newItem = await shipmentStore.addShipmentItem({
+      shipment_id: data.shipment_id,
+      product_id: null,
+      vendor_id: null,
+      name: rowItem.name ?? '',
+      ordered_quantity: quantity,
+      image_url: rowItem.image_url ?? null,
+      add_method: 'costing',
+      purchase_price: data.price_gbp ?? 0,
+      product_weight: rowItem.product_weight ?? 0,
+      package_weight: rowItem.package_weight ?? 0,
+      barcode: null,
+      product_code: null,
+      source_child_tenant_id: null,
+      source_type: null,
+      source_id: null,
+    });
+  } catch {
+    return;
+  }
+
+  if (!newItem) {
+    return;
+  }
+
+  await costingFileStore.updateCostingFileItem({
+    id: rowItem.id,
+    assigned_shipment_id: data.shipment_id,
+  });
+
+  showAddShipmentDialog.value = false;
+  selectedShipItem.value = null;
+  selectedQuantity.value = null;
+  selectedPriceGbp.value = null;
+};
+
+const onDefaultShipmentChange = async (shipmentId: number | null) => {
+  if (!selectedFile.value) {
+    return;
+  }
+
+  const currentDefault = selectedFile.value.default_shipment_id ?? null;
+  if (currentDefault === shipmentId) {
+    return;
+  }
+
+  await costingFileStore.updateCostingFile({
+    id: selectedFile.value.id,
+    default_shipment_id: shipmentId,
+  });
+};
+
+onMounted(async () => {
+  try {
+    await loadFile();
+    const tenantId = tenantStore.selectedTenant?.id;
+    if (tenantId) {
+      await shipmentStore.fetchShipments(tenantId);
+    }
+  } finally {
+    initialLoading.value = false;
+  }
+});
+</script>
+
+<style scoped>
+.costing-page {
+  display: grid;
+  gap: 1.25rem;
+}
+.hero-surface {
+  border-radius: 16px;
+}
+
+.pill-btn {
+  border-radius: 8px;
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.rates-save-btn {
+  min-width: 90px;
+}
+
+.soft-input :deep(.q-field__control) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.costing-file-status-chip {
+  border-radius: 6px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.status-chip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.costing-page > * {
+  min-width: 0;
+}
+
+.costing-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+.costing-page__heading {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.costing-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.costing-page__toolbar :deep(.q-field) {
+  min-width: 220px;
+}
+
+.costing-page__draft-state {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem 0;
+}
+
+.costing-page__pricing-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.costing-page__table-card {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.costing-page__pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.costing-page__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.costing-page__field--action {
+  align-self: end;
+}
+
+.costing-page__field-label {
+  font-size: 0.675rem;
+  font-weight: 600;
+  color: var(--tf-theme-ink);
+}
+
+.costing-page__pricing-input {
+  max-width: 140px;
+}
+
+.costing-page__field-label--ghost {
+  opacity: 0;
+  user-select: none;
+}
+
+.costing-page__pricing-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.costing-page__table {
+  min-width: 0;
+  max-width: 100%;
+  height: clamp(400px, calc(100vh - 300px), 82vh);
+  background: var(--tf-theme-base, #eef2f5);
+}
+
+.costing-page__table :deep(.q-table__middle) {
+  height: 100%;
+  max-height: 100% !important;
+  overflow: auto;
+}
+
+.costing-page__table :deep(.q-table) {
+  min-width: max-content;
+  width: max-content;
+}
+
+.costing-page__table :deep(table) {
+  table-layout: fixed;
+  min-width: max-content;
+  width: max-content;
+}
+
+.costing-page__table :deep(.q-table thead tr th) {
+  position: sticky;
+  z-index: 2;
+  background: var(--tf-theme-surface, #fff);
+}
+
+.costing-page__table :deep(.q-table thead tr:first-child th) {
+  top: 0;
+  z-index: 1;
+}
+
+.costing-page__table :deep(.q-table th),
+.costing-page__table :deep(.q-table td) {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.costing-page__table--review :deep(.q-table td:first-child),
+.costing-page__table--review :deep(.q-table th:first-child) {
+  position: sticky;
+  left: 0;
+}
+
+.costing-page__table--review :deep(.q-table td:nth-child(2)),
+.costing-page__table--review :deep(.q-table th:nth-child(2)) {
+  position: sticky;
+  left: 60px;
+}
+
+.costing-page__table--review :deep(.q-table td:first-child) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--review :deep(.q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--review :deep(.q-table tr:first-child th:first-child) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--review :deep(.q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(2)),
+.costing-page__table--product :deep(.q-table th:nth-child(2)) {
+  position: sticky;
+  left: 0;
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(3)),
+.costing-page__table--product :deep(.q-table th:nth-child(3)) {
+  position: sticky;
+  left: 60px;
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(2)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--product :deep(.q-table td:nth-child(3)) {
+  z-index: 1;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--product :deep(.q-table tr:first-child th:nth-child(2)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 94%, #f8f9fa 6%);
+}
+
+.costing-page__table--product :deep(.q-table tr:first-child th:nth-child(3)) {
+  z-index: 4;
+  background: color-mix(in srgb, var(--tf-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+.costing-page__table--review :deep(.costing-page__rejected-row > td) {
+  background: #fff7f8;
+  border-top: 1px solid #efb2bc;
+  border-bottom: 1px solid #efb2bc;
+}
+
+.costing-page__table--review :deep(.costing-page__rejected-row > td:first-child) {
+  border-left: 1px solid #efb2bc;
+}
+
+.costing-page__table--review :deep(.costing-page__rejected-row > td:last-child) {
+  border-right: 1px solid #efb2bc;
+}
+
+.costing-page__status-cell {
+  width: 96px;
+  min-width: 96px;
+}
+
+.costing-page__status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tf-theme-primary) 10%, white);
+  color: var(--tf-theme-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.costing-page__status-pill--rejected {
+  background: #fbe3e6;
+  color: #a33b49;
+}
+
+.costing-page__actions-cell {
+  white-space: nowrap;
+}
+
+.costing-page__decision-btn {
+  border-radius: 8px;
+  min-width: 66px;
+}
+
+.costing-page__decision-btn--accept {
+  background: #ddf4e7 !important;
+  color: #1f6a43 !important;
+}
+
+.costing-page__decision-btn--reject {
+  background: #fbe3e6 !important;
+  color: #a33b49 !important;
+}
+
+.costing-page__sl-cell {
+  width: 60px;
+  max-width: 60px;
+  white-space: nowrap;
+}
+
+.costing-page__image-cell {
+  width: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.costing-page__image {
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--tf-theme-surface);
+}
+
+.costing-page__image :deep(.q-img__image) {
+  object-fit: contain !important;
+  object-position: center;
+}
+
+.costing-page__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--tf-theme-border);
+  color: var(--tf-theme-muted);
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.costing-page__link-cell {
+  width: 144px;
+  max-width: 144px;
+}
+
+.costing-page__link {
+  display: inline-block;
+  max-width: 144px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tf-theme-primary);
+  text-decoration: none;
+}
+
+.costing-page__open-link-btn {
+  white-space: nowrap;
+}
+
+.costing-page__name-cell {
+  width: 280px;
+  max-width: 280px;
+}
+
+.costing-page__name-text {
+  display: inline-block;
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.costing-page__weight-cell {
+  width: 72px;
+  max-width: 72px;
+  white-space: nowrap;
+}
+
+.costing-page__numeric-cell {
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.costing-page__offer-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  width: 100%;
+}
+
+.costing-page__quantity-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  width: 100%;
+}
+
+.costing-page__quantity-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--tf-theme-ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.costing-page__quantity-trigger:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.costing-page__inline-edit-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+}
+
+.costing-page__inline-edit-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.costing-page__inline-edit-trigger:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.costing-page__offer-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  justify-content: center;
+  text-align: center;
+}
+
+.costing-page__offer-trigger:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.costing-page__offer-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tf-theme-primary) 12%, white);
+  color: var(--tf-theme-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.costing-page :deep(.costing-page__tone-indigo) {
+  background: #e6f4ea;
+  color: #1f6a43;
+}
+
+.costing-page :deep(.costing-page__tone-amber) {
+  background: #fff8e1;
+  color: #7a5313;
+}
+
+.costing-page :deep(.costing-page__tone-emerald) {
+  background: #f3e5f5;
+  color: #6b2f7a;
+}
+
+.costing-page :deep(th.costing-page__tone-indigo),
+.costing-page :deep(th.costing-page__tone-amber),
+.costing-page :deep(th.costing-page__tone-emerald) {
+  font-weight: 700;
+}
+
+.costing-page :deep(th.costing-page__tone-indigo) {
+  background: #e6f4ea !important;
+  color: #1f6a43 !important;
+}
+
+.costing-page :deep(th.costing-page__tone-amber) {
+  background: #fff8e1 !important;
+  color: #7a5313 !important;
+}
+
+.costing-page :deep(th.costing-page__tone-emerald) {
+  background: #f3e5f5 !important;
+  color: #6b2f7a !important;
+}
+
+.costing-page__totals-row {
+  background: inherit;
+}
+
+.costing-page__totals-cell {
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.costing-page :deep(.q-table th:nth-child(4)),
+.costing-page :deep(.q-table td:nth-child(4)) {
+  width: 56px;
+  max-width: 56px;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .costing-page__header {
+    flex-direction: column;
+  }
+
+  .costing-page__toolbar {
+    justify-content: stretch;
+  }
+
+  .costing-page__toolbar > * {
+    width: 100%;
+  }
+
+  .costing-page__pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .costing-page__field-label--ghost {
+    display: none;
+  }
+
+  .costing-page__pricing-actions > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 599px) {
+  .costing-page__image-cell {
+    width: 72px;
+  }
+
+  .costing-page__image {
+    width: 72px;
+    height: 72px;
+  }
+}
+</style>

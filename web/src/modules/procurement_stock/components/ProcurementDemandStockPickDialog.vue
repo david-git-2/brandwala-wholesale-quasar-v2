@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { globalRepository } from 'src/modules/global/repositories/globalRepository';
-import type { StockNetworkQuery, StockNetworkRow } from 'src/modules/global/types';
+import { globalRepository } from 'src/modules/procurement_stock/submodules/global_stock/repositories/globalRepository';
+import type { StockNetworkQuery, StockNetworkRow } from 'src/modules/procurement_stock/submodules/global_stock/types';
 import { parseSupabaseError, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { createDemandPickClientKey } from '../utils/demandStockPickClientKey';
 
@@ -38,7 +38,7 @@ const props = defineProps<{
   productName: string;
   needQuantity: number;
   initialPicks?: DemandStockPickSelection[];
-  /** Delivery paper: qty fields only; Apply commits picks (no per-lot Add). */
+  /** Qty fields only; Apply commits picks (no per-lot Add). */
   hidePerLotAddButton?: boolean;
 }>();
 

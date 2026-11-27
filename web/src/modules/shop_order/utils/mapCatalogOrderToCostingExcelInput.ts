@@ -1,9 +1,9 @@
-import type { BuildCostingExcelInput } from 'src/modules/product_based_costing/utils/buildCostingExcelWorkbook';
-import type { ProductBasedCostingFile, ProductBasedCostingItem } from 'src/modules/product_based_costing/types';
+import type { BuildCostingExcelInput } from 'src/modules/shop_order/submodules/product_based_costing/utils/buildCostingExcelWorkbook';
+import type { ProductBasedCostingFile, ProductBasedCostingItem } from 'src/modules/shop_order/submodules/product_based_costing/types';
 import {
   PBC_FALLBACK_BUY_CURRENCY_CODE,
   PBC_FALLBACK_SELL_CURRENCY_CODE,
-} from 'src/modules/product_based_costing/utils/pbcFileCurrencies';
+} from 'src/modules/shop_order/submodules/product_based_costing/utils/pbcFileCurrencies';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import {
   getFinalOfferUnitAmount,
@@ -11,6 +11,7 @@ import {
   getProductWeightGm,
   type CatalogRatesParams,
 } from './catalogPricingUtils';
+import { resolveCatalogPurchaseCurrencySymbol, resolveCatalogSellCurrencySymbol } from './resolveCatalogOrderCurrency';
 
 const SYMBOL_TO_CODE: Record<string, string> = {
   '£': 'GBP',
@@ -56,11 +57,11 @@ function mapLineToPbcItem(
     product_id: item.product_id,
     name: item.name,
     image_url: item.image_url,
-    note: item.note,
+    note: item.note ?? null,
     quantity: item.quantity,
     confirmed_quantity: item.confirmed_quantity ?? item.quantity,
-    barcode: item.barcode,
-    product_code: item.sku,
+    barcode: item.barcode ?? null,
+    product_code: item.sku ?? null,
     brand: item.brand,
     vendor_code: null,
     market_code: null,
@@ -81,11 +82,11 @@ export function mapCatalogOrderToCostingExcelInput(
 ): BuildCostingExcelInput {
   const now = new Date().toISOString();
   const buyCode = currencyCodeFromSymbol(
-    order.shop_buy_currency_symbol,
+    resolveCatalogPurchaseCurrencySymbol(order, items),
     PBC_FALLBACK_BUY_CURRENCY_CODE,
   );
   const sellCode = currencyCodeFromSymbol(
-    order.shop_sell_currency_symbol,
+    resolveCatalogSellCurrencySymbol(order),
     PBC_FALLBACK_SELL_CURRENCY_CODE,
   );
 

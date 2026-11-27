@@ -1,9 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
 
 const thriftStockRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/stocks',
+    path: '/app/thrift/stocks',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',

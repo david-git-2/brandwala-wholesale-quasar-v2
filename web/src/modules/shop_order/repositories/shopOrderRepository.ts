@@ -1,6 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 import type {
   Shop,
+  ShopType,
   CreateShopPayload,
   UpdateShopPayload,
   ShopOrder,
@@ -17,7 +18,7 @@ import type {
   ShopCategory,
 } from '../types';
 import type { ShopCustomerAccessPageBundle } from '../types/shopCustomerAccessPage';
-import type { Vendor } from 'src/modules/vendor/types';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import type { StaffShopOrderDetailResponse, StaffShopOrderItemsPageCursor } from '../types/staffShopOrderDetail';
 import {
   mapStaffShopOrderDetailToFlat,
@@ -25,9 +26,24 @@ import {
 } from '../utils/staffShopOrderDetailMapper';
 import { mapDropshipOrderDetailV2Response } from '../utils/dropshipOrderDetailV2Mapper';
 import { mapDropshipManagementOrderResponse } from '../utils/dropshipManagementOrderMapper';
+import { moneyKernelRepository } from 'src/modules/finance/submodules/bills_pays/repositories/moneyKernelRepository';
+import { buildShopOrderKernelDraftBillPayload } from '../utils/buildShopOrderKernelDraftBillPayload';
+import {
+  buildCatalogBillKernelLineFromPick,
+  catalogBillLineRowToKernelLine,
+  type CatalogBillLineSourceRow,
+  kernelLinesToJson,
+  kernelLinesWithoutStockPick,
+  mergeCatalogPickIntoKernelLines,
+  findCatalogBillLineForProductStock,
+  findCatalogBillLineForSourceStock,
+  removeCatalogKernelLineForProductStock,
+  setCatalogKernelLineQtyAbsoluteByProductStock,
+} from '../utils/catalogBillKernelLines';
 import type {
   DropshipCourierBankTransferPayload,
   DropshipManagementOrderView,
+  DropshipManagementListSettlementPayload,
   DropshipReturnFinalizePayload,
   DropshipSettlementDraftPayload,
 } from '../types/dropshipManagementOrder';
@@ -35,7 +51,6 @@ import type {
 const listShops = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -60,7 +75,6 @@ const listShops = async (
 const listShopsAppPage = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -100,7 +114,7 @@ const mapShopSetupBundleShop = (raw: Record<string, unknown>): Shop => {
     typeof raw.tenant_slug === 'string' ? raw.tenant_slug : (raw.tenant_slug as string | null);
   const { tenant_slug: _drop, tenant: _tenant, ...rest } = raw;
   return {
-    ...(rest as Shop),
+    ...(rest as unknown as Shop),
     tenant_slug: tenantSlug ?? null,
   };
 };
@@ -367,7 +381,7 @@ export type CustomerAccessibleShop = {
   tenant_id: number;
   name: string;
   slug: string;
-  shop_type: string;
+  shop_type: ShopType;
   order_mode: string;
   is_negotiable: boolean;
   can_see_buy_price: boolean;
@@ -516,13 +530,19 @@ const customerConfirmShopOrder = async (orderId: number): Promise<void> => {
 
 const listCustomerShopOrders = async (
   tenantId: number,
-  opts: { limit?: number; offset?: number; statusBucket?: string | null } = {},
+  opts: {
+    limit?: number;
+    offset?: number;
+    statusBucket?: string | null;
+    shopType?: import('../types').ShopType | null;
+  } = {},
 ): Promise<CustomerOrderListItem[]> => {
   const { data, error } = await supabase.rpc('list_customer_shop_orders', {
     p_tenant_id: tenantId,
     p_limit: opts.limit ?? 20,
     p_offset: opts.offset ?? 0,
     p_status_bucket: opts.statusBucket ?? null,
+    ...(opts.shopType ? { p_shop_type: opts.shopType } : {}),
   });
   if (error) throw error;
   return (data as CustomerOrderListItem[] | null) ?? [];
@@ -531,7 +551,6 @@ const listCustomerShopOrders = async (
 const listShopOrdersForStaff = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -554,7 +573,6 @@ const listShopOrdersForStaff = async (
 const listShopOrdersStaffPage = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     search?: string | null;
     status?: string | null;
@@ -592,7 +610,6 @@ const listShopOrdersStaffPage = async (
 const listDropshipShopOrdersForStaff = async (
   tenantId: number,
   opts: {
-    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -648,19 +665,6 @@ const getShopOrderById = async (
   return mapStaffShopOrderDetailToFlat(parseStaffShopOrderDetailResponse(data));
 };
 
-const listShopOrderDeliveryPaperQtyByItem = async (
-  tenantId: number,
-  orderId: number,
-) => {
-  const { data, error } = await supabase.rpc('list_shop_order_delivery_paper_qty_by_item', {
-    p_tenant_id: tenantId,
-    p_order_id: orderId,
-  });
-  if (error) throw error;
-  const payload = (data ?? {}) as { by_order_item_id?: Record<string, unknown[]> };
-  return payload.by_order_item_id ?? {};
-};
-
 const getDropshipOrderDetailV2 = async (tenantId: number, orderId: number) => {
   const { data, error } = await supabase.rpc('get_dropship_order_detail_v2', {
     p_tenant_id: tenantId,
@@ -689,6 +693,20 @@ const saveDropshipSettlementDraft = async (
   payload: DropshipSettlementDraftPayload,
 ) => {
   const { data, error } = await supabase.rpc('save_dropship_settlement_draft', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return data;
+};
+
+const saveDropshipManagementListSettlement = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipManagementListSettlementPayload,
+) => {
+  const { data, error } = await supabase.rpc('save_dropship_management_list_settlement', {
     p_tenant_id: tenantId,
     p_order_id: orderId,
     p_payload: payload,
@@ -739,6 +757,15 @@ const markDropshipOrderReturnedFromSettlement = async (
 
 const issueDropshipTenantB2bInvoice = async (tenantId: number, orderId: number) => {
   const { data, error } = await supabase.rpc('issue_dropship_tenant_b2b_invoice', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  return data;
+};
+
+const issueDropshipCourierArForOrder = async (tenantId: number, orderId: number) => {
+  const { data, error } = await supabase.rpc('issue_dropship_courier_ar_for_order', {
     p_tenant_id: tenantId,
     p_order_id: orderId,
   });
@@ -954,10 +981,10 @@ const buildDropshipReadyForPickupDeskPayload = (
     courier_order_ref: input.order.order_no,
     recipient_name: input.order.recipient_name,
     recipient_phone: input.order.recipient_phone,
-    recipient_phone_secondary: input.order.recipient_phone_secondary,
+    recipient_phone_secondary: input.order.recipient_phone_secondary ?? null,
     shipping_address: input.order.shipping_address,
-    shipping_district: input.order.shipping_district,
-    shipping_thana: input.order.shipping_thana,
+    shipping_district: input.order.shipping_district ?? null,
+    shipping_thana: input.order.shipping_thana ?? null,
   },
 });
 
@@ -1026,15 +1053,84 @@ export type ListStockForOrderItemPickMeta = {
   [key: string]: unknown;
 };
 
+export type ShopOrderBillLineForProductStockRow = {
+  bill_id: number;
+  line_id: number;
+  product_id: number;
+  global_stock_id: number | null;
+  quantity: number;
+  invoice_status: string;
+  line_meta?: Record<string, unknown> | null;
+};
+
+export type ShopOrderBillLinesForProductStockResult = {
+  success?: boolean;
+  error?: string;
+  order_id?: number;
+  product_id?: number;
+  global_stock_id?: number;
+  lines?: ShopOrderBillLineForProductStockRow[];
+  total_quantity?: number;
+};
+
+const parseShopOrderBillLinesForProductStock = (
+  raw: unknown,
+): ShopOrderBillLinesForProductStockResult => {
+  const payload = (raw ?? {}) as Record<string, unknown>;
+  const linesRaw = payload.lines;
+  const lines = Array.isArray(linesRaw)
+    ? linesRaw.map((row) => {
+        const r = row as Record<string, unknown>;
+        return {
+          bill_id: Number(r.bill_id),
+          line_id: Number(r.line_id),
+          product_id: Number(r.product_id),
+          global_stock_id: r.global_stock_id == null ? null : Number(r.global_stock_id),
+          quantity: Number(r.quantity ?? 0),
+          invoice_status: typeof r.invoice_status === 'string' ? r.invoice_status : 'draft',
+          line_meta: (r.line_meta as Record<string, unknown> | null) ?? null,
+        };
+      })
+    : [];
+  return {
+    success: payload.success as boolean | undefined,
+    error: typeof payload.error === 'string' ? payload.error : undefined,
+    order_id: typeof payload.order_id === 'number' ? payload.order_id : undefined,
+    product_id: typeof payload.product_id === 'number' ? payload.product_id : undefined,
+    global_stock_id:
+      typeof payload.global_stock_id === 'number' ? payload.global_stock_id : undefined,
+    lines,
+    total_quantity:
+      typeof payload.total_quantity === 'number' ? Number(payload.total_quantity) : undefined,
+  };
+};
+
+const listShopOrderBillLinesForProductStock = async (params: {
+  tenantId: number;
+  orderId: number;
+  productId: number;
+  globalStockId: number;
+}): Promise<ShopOrderBillLinesForProductStockResult> => {
+  const { data, error } = await supabase.rpc('list_shop_order_bill_lines_for_product_stock', {
+    p_tenant_id: params.tenantId,
+    p_order_id: params.orderId,
+    p_product_id: params.productId,
+    p_global_stock_id: params.globalStockId,
+  });
+  if (error) throw error;
+  return parseShopOrderBillLinesForProductStock(data);
+};
+
 const listStockForOrderItemPick = async (
   orderItemId: number,
-  opts: { search?: string | null; limit?: number; offset?: number } = {},
+  opts: { productId?: number | null; search?: string | null; limit?: number; offset?: number } = {},
 ): Promise<{ data: OrderItemPickStockRow[]; meta: ListStockForOrderItemPickMeta }> => {
   const { data, error } = await supabase.rpc('list_stock_for_order_item_pick', {
     p_order_item_id: orderItemId,
     p_search: opts.search?.trim() || null,
     p_limit: opts.limit ?? 50,
     p_offset: opts.offset ?? 0,
+    p_product_id: opts.productId ?? undefined,
   });
   if (error) throw error;
   const payload = (data ?? {}) as { data?: OrderItemPickStockRow[]; meta?: ListStockForOrderItemPickMeta };
@@ -1220,6 +1316,28 @@ const clearShopOrderItemUnavailable = async (orderItemId: number) => {
   });
   if (error) throw error;
   return data as { success?: boolean };
+};
+
+export type DropshipResellDiscountLineResolution = 'use_requested' | 'use_listed' | 'custom';
+
+export type FinalizeDropshipResellDiscountLineInput = {
+  order_item_id: number;
+  resolution: DropshipResellDiscountLineResolution;
+  approved_resell_amount?: number | null;
+};
+
+const finalizeDropshipResellDiscountReview = async (
+  tenantId: number,
+  orderId: number,
+  lines: FinalizeDropshipResellDiscountLineInput[],
+) => {
+  const { data, error } = await supabase.rpc('finalize_dropship_resell_discount_review', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_lines: lines,
+  });
+  if (error) throw error;
+  return data;
 };
 
 const cancelShopOrderDropship = async (orderId: number, reason: string | null) => {
@@ -1688,6 +1806,491 @@ const updateCatalogOrderItem = async (
   }
 };
 
+export type ShopOrderBillItemCoverageRow = {
+  order_item_id: number;
+  target_quantity: number;
+  billed_quantity: number;
+  remaining_quantity: number;
+  picked_quantity: number;
+};
+
+export type ShopOrderBillItemCoverageResult = {
+  success?: boolean;
+  error?: string;
+  order_id?: number;
+  bills_count?: number;
+  items?: ShopOrderBillItemCoverageRow[];
+};
+
+const parseShopOrderBillItemCoverage = (raw: unknown): ShopOrderBillItemCoverageResult => {
+  const payload = (raw ?? {}) as Record<string, unknown>;
+  return {
+    success: payload.success as boolean | undefined,
+    error: typeof payload.error === 'string' ? payload.error : undefined,
+    order_id: typeof payload.order_id === 'number' ? payload.order_id : undefined,
+    bills_count: typeof payload.bills_count === 'number' ? payload.bills_count : undefined,
+    items: Array.isArray(payload.items) ? (payload.items as ShopOrderBillItemCoverageRow[]) : [],
+  };
+};
+
+const getShopOrderBillItemCoverage = async (
+  tenantId: number,
+  orderId: number,
+): Promise<ShopOrderBillItemCoverageResult> => {
+  const { data, error } = await supabase.rpc('get_shop_order_bill_item_coverage_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  return parseShopOrderBillItemCoverage(data);
+};
+
+export type CreateCatalogShopOrderDraftBillResult = {
+  success?: boolean;
+  error?: string;
+  invoice_id?: number;
+  invoice_no?: string | null;
+  invoice_status?: string | null;
+  settlement_kind?: string | null;
+  order_id?: number;
+};
+
+const createCatalogShopOrderWholesaleDraftBill = async (
+  tenantId: number,
+  orderId: number,
+  settlementKind: 'take' | 'condition',
+): Promise<CreateCatalogShopOrderDraftBillResult> => {
+  const { data, error } = await supabase.rpc('create_catalog_shop_order_wholesale_draft_bill', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_settlement_kind: settlementKind,
+  });
+  if (error) throw error;
+  return (data ?? {}) as CreateCatalogShopOrderDraftBillResult;
+};
+
+export type CreateShopOrderKernelDraftBillResult = {
+  success: boolean;
+  error?: string;
+  bill_id?: number;
+  invoice_no?: string | null;
+  status?: string | null;
+};
+
+type ShopOrderKernelDraftBillSource = Pick<
+  ShopOrder,
+  'id' | 'profile_id' | 'recipient_name' | 'recipient_phone' | 'shipping_address'
+>;
+
+const createShopOrderKernelDraftBill = async (
+  deskTenantId: number,
+  order: ShopOrderKernelDraftBillSource,
+): Promise<CreateShopOrderKernelDraftBillResult> => {
+  if (order.profile_id == null || order.profile_id <= 0) {
+    return { success: false, error: 'order billing profile is required' };
+  }
+
+  const { data: booksRaw, error: booksErr } = await supabase.rpc('resolve_books_tenant_id', {
+    p_tenant_id: deskTenantId,
+  });
+  if (booksErr) throw booksErr;
+  const booksTenantId = Number(booksRaw);
+  if (!Number.isFinite(booksTenantId) || booksTenantId <= 0) {
+    return { success: false, error: 'books tenant could not be resolved' };
+  }
+
+  const { data: mirrorRaw, error: mirrorErr } = await supabase.rpc(
+    '_kernel_tenant_mirror_profile_id',
+    { p_books_tenant_id: booksTenantId },
+  );
+  if (mirrorErr) throw mirrorErr;
+  const tenantMirrorProfileId = Number(mirrorRaw);
+  if (!Number.isFinite(tenantMirrorProfileId) || tenantMirrorProfileId <= 0) {
+    return { success: false, error: 'tenant billing profile is required' };
+  }
+
+  const sourceKey = `catalog_wholesale:${crypto.randomUUID()}`;
+  const payload = buildShopOrderKernelDraftBillPayload({
+    booksTenantId,
+    orderId: order.id,
+    customerProfileId: order.profile_id,
+    tenantMirrorProfileId,
+    sourceKey,
+    recipientName: order.recipient_name,
+    recipientPhone: order.recipient_phone,
+    recipientAddress: order.shipping_address,
+  });
+
+  const created = await moneyKernelRepository.createBill(payload);
+  if (!created.bill_id) {
+    return { success: false, error: created.error ?? 'rpc_create_bill failed' };
+  }
+  if (created.status && created.status !== 'draft') {
+    return { success: false, error: 'bill was not created as draft' };
+  }
+
+  return {
+    success: true,
+    bill_id: created.bill_id,
+    invoice_no: created.invoice_no ?? null,
+    status: created.status ?? 'draft',
+  };
+};
+
+const parseCatalogBillLineMeta = (rawMeta: unknown): Record<string, unknown> | null => {
+  if (rawMeta && typeof rawMeta === 'object' && !Array.isArray(rawMeta)) {
+    return rawMeta as Record<string, unknown>;
+  }
+  if (typeof rawMeta === 'string' && rawMeta.trim()) {
+    try {
+      const parsed = JSON.parse(rawMeta) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const loadCatalogDraftBillLineRows = async (billId: number): Promise<CatalogBillLineSourceRow[]> => {
+  const { data, error } = await supabase.rpc('list_catalog_draft_bill_lines', {
+    p_bill_id: billId,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as {
+    success?: boolean;
+    error?: string;
+    lines?: Array<Record<string, unknown>>;
+  };
+  if (!payload.success) {
+    throw new Error(payload.error ?? 'list_catalog_draft_bill_lines failed');
+  }
+  return (payload.lines ?? []).map((row) => ({
+    global_stock_id: row.global_stock_id == null ? null : Number(row.global_stock_id),
+    name_snapshot: (row.name_snapshot as string | null | undefined) ?? null,
+    quantity: Number(row.quantity ?? 0),
+    sell_price_amount: Number(row.sell_price_amount ?? 0),
+    line_total_amount: Number(row.line_total_amount ?? 0),
+    shipment_item_id: row.shipment_item_id == null ? null : Number(row.shipment_item_id),
+    product_id: row.product_id == null ? null : Number(row.product_id),
+    line_meta: parseCatalogBillLineMeta(row.line_meta),
+  }));
+};
+
+const syncCatalogDraftBillKernelLines = async (
+  booksTenantId: number,
+  billId: number,
+  kernelLines: Record<string, unknown>[],
+  metaPatch?: Record<string, unknown>,
+) => {
+  const updated = await moneyKernelRepository.updateDraftBillV2(booksTenantId, billId, {
+    lines: kernelLinesToJson(kernelLines),
+    currency_code: 'BDT',
+    ...(metaPatch ? { meta: metaPatch as import('src/types/database.types').Json } : {}),
+  });
+  if (!updated.bill_id) {
+    throw new Error(updated.error ?? 'rpc_update_draft_bill_v2 failed');
+  }
+};
+
+export type CatalogDraftBillSettlement = {
+  settlement_kind: 'take' | 'condition';
+  invoice_status: string | null;
+};
+
+const parseCatalogBillSettlementKind = (
+  raw: string | null | undefined,
+): 'take' | 'condition' => (raw === 'condition' ? 'condition' : 'take');
+
+const getCatalogDraftBillSettlement = async (
+  deskTenantId: number,
+  billId: number,
+): Promise<CatalogDraftBillSettlement> => {
+  const { data, error } = await supabase.rpc('get_catalog_shop_order_bill_summary', {
+    p_tenant_id: deskTenantId,
+    p_bill_id: billId,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as {
+    success?: boolean;
+    error?: string;
+    settlement_kind?: string | null;
+    invoice_status?: string | null;
+  };
+  if (!payload.success) {
+    throw new Error(payload.error ?? 'get_catalog_shop_order_bill_summary failed');
+  }
+  return {
+    settlement_kind: parseCatalogBillSettlementKind(payload.settlement_kind),
+    invoice_status: payload.invoice_status ?? null,
+  };
+};
+
+export type PatchCatalogDraftBillSettlementResult = {
+  success?: boolean;
+  error?: string;
+  bill_id?: number;
+  settlement_kind?: 'take' | 'condition';
+};
+
+const patchCatalogDraftBillSettlement = async (
+  deskTenantId: number,
+  billId: number,
+  settlementKind: 'take' | 'condition',
+): Promise<PatchCatalogDraftBillSettlementResult> => {
+  const { data, error } = await supabase.rpc('patch_catalog_draft_bill_settlement', {
+    p_tenant_id: deskTenantId,
+    p_bill_id: billId,
+    p_settlement_kind: settlementKind,
+  });
+  if (error) throw error;
+  return (data ?? {}) as PatchCatalogDraftBillSettlementResult;
+};
+
+type ResolvedOrderItemStockPick = { pickId: number; pickedQty: number };
+
+const getOrderItemStockPick = async (
+  orderItemId: number,
+  globalStockId: number,
+): Promise<ResolvedOrderItemStockPick | null> => {
+  const { data, error } = await supabase
+    .from('shop_order_item_stock_picks')
+    .select('id, quantity')
+    .eq('order_item_id', orderItemId)
+    .eq('global_stock_id', globalStockId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.id) return null;
+  return {
+    pickId: Number(data.id),
+    pickedQty: Math.max(0, Math.trunc(Number(data.quantity ?? 0))),
+  };
+};
+
+const resolveOrderItemStockPick = async (
+  orderItemId: number,
+  stockRow: OrderItemPickStockRow,
+  billLinePickId?: number,
+): Promise<ResolvedOrderItemStockPick | null> => {
+  const rowPickId = Number(stockRow.pick_id ?? 0);
+  const rowPicked = Math.max(0, Math.trunc(Number(stockRow.already_picked ?? 0)));
+  if (rowPickId > 0) {
+    return { pickId: rowPickId, pickedQty: rowPicked };
+  }
+  const fromDb = await getOrderItemStockPick(orderItemId, stockRow.global_stock_id);
+  if (fromDb) return fromDb;
+  if (billLinePickId != null && billLinePickId > 0) {
+    return { pickId: billLinePickId, pickedQty: rowPicked };
+  }
+  return null;
+};
+
+/** Add warehouse hold only when existing pick qty is below the bill line qty needed. */
+const ensureCatalogBillStockPick = async (
+  orderItemId: number,
+  stockRow: OrderItemPickStockRow,
+  billLineQty: number,
+  billLinePickId?: number,
+): Promise<{ pickId: number; pickRes?: StockPickMutationResult }> => {
+  const target = Math.max(1, Math.trunc(billLineQty));
+  const resolved = await resolveOrderItemStockPick(orderItemId, stockRow, billLinePickId);
+  if (resolved && resolved.pickedQty >= target) {
+    return { pickId: resolved.pickId };
+  }
+
+  const existingPickId = resolved?.pickId ?? 0;
+  const existingPicked = resolved?.pickedQty ?? 0;
+  const addQty = existingPickId > 0 && existingPicked > 0 ? target - existingPicked : target;
+  if (addQty <= 0 && existingPickId > 0) {
+    return { pickId: existingPickId };
+  }
+
+  const pickRes = await addShopOrderItemStockPick(orderItemId, stockRow.global_stock_id, addQty);
+  if (!pickRes.success) {
+    throw new Error('Pick failed');
+  }
+  const pickId = pickRes.pick_id ?? existingPickId;
+  if (pickId <= 0) {
+    throw new Error('Pick id missing');
+  }
+  return { pickId, pickRes };
+};
+
+const syncCatalogBillKernelLineQty = async (params: {
+  booksTenantId: number;
+  billId: number;
+  orderItem: ShopOrderItem;
+  stockRow: OrderItemPickStockRow;
+  productId: number;
+  stockId: number;
+  targetQty: number;
+  pickId: number;
+  existingRows?: CatalogBillLineSourceRow[];
+}): Promise<void> => {
+  const existingRows = params.existingRows ?? (await loadCatalogDraftBillLineRows(params.billId));
+  const kernelLines = existingRows.map(catalogBillLineRowToKernelLine);
+  const match = findCatalogBillLineForProductStock(existingRows, params.productId, params.stockId);
+
+  if (match && params.targetQty > 0) {
+    const updated = setCatalogKernelLineQtyAbsoluteByProductStock(
+      kernelLines,
+      params.productId,
+      params.stockId,
+      params.targetQty,
+      {
+        shop_order_item_id: params.orderItem.id,
+        shop_order_item_stock_pick_id: params.pickId,
+        source_global_stock_id: params.stockId,
+      },
+    );
+    await syncCatalogDraftBillKernelLines(params.booksTenantId, params.billId, updated);
+    return;
+  }
+
+  if (params.targetQty <= 0) {
+    const without = removeCatalogKernelLineForProductStock(
+      kernelLines,
+      params.productId,
+      params.stockId,
+    );
+    await syncCatalogDraftBillKernelLines(params.booksTenantId, params.billId, without);
+    return;
+  }
+
+  const newLine = buildCatalogBillKernelLineFromPick({
+    orderItem: params.orderItem,
+    stockRow: params.stockRow,
+    quantity: params.targetQty,
+    pickId: params.pickId,
+    billStockId: params.stockId,
+  });
+  const merged = mergeCatalogPickIntoKernelLines(
+    kernelLines,
+    params.orderItem.id,
+    params.stockId,
+    newLine,
+  );
+  await syncCatalogDraftBillKernelLines(params.booksTenantId, params.billId, merged);
+};
+
+const appendCatalogDraftBillLineFromPick = async (params: {
+  booksTenantId: number;
+  billId: number;
+  orderItem: ShopOrderItem;
+  stockRow: OrderItemPickStockRow;
+  quantity: number;
+}): Promise<StockPickMutationResult> => {
+  const { pickId, pickRes } = await ensureCatalogBillStockPick(
+    params.orderItem.id,
+    params.stockRow,
+    params.quantity,
+    undefined,
+  );
+  const resolvedPickRes: StockPickMutationResult = pickRes ?? { success: true, pick_id: pickId };
+
+  await syncCatalogBillKernelLineQty({
+    booksTenantId: params.booksTenantId,
+    billId: params.billId,
+    orderItem: params.orderItem,
+    stockRow: { ...params.stockRow, pick_id: pickId, already_picked: params.quantity },
+    productId: Number(params.orderItem.product_id ?? 0),
+    stockId: Number(params.stockRow.global_stock_id),
+    targetQty: params.quantity,
+    pickId,
+  });
+  return resolvedPickRes;
+};
+
+const removeCatalogDraftBillLineFromPick = async (params: {
+  booksTenantId: number;
+  billId: number;
+  pickId: number;
+}): Promise<StockPickMutationResult> => {
+  const pickRes = await removeShopOrderItemStockPick(params.pickId);
+  if (!pickRes.success) {
+    throw new Error('Remove pick failed');
+  }
+  const existingRows = await loadCatalogDraftBillLineRows(params.billId);
+  const kernelLines = kernelLinesWithoutStockPick(
+    existingRows.map(catalogBillLineRowToKernelLine),
+    params.pickId,
+  );
+  await syncCatalogDraftBillKernelLines(params.booksTenantId, params.billId, kernelLines);
+  return pickRes;
+};
+
+const setCatalogDraftBillLineQtyFromStock = async (params: {
+  booksTenantId: number;
+  billId: number;
+  orderItem: ShopOrderItem;
+  stockRow: OrderItemPickStockRow;
+  quantity: number | null | undefined;
+}): Promise<StockPickMutationResult | { success: true; noop?: true }> => {
+  const raw = params.quantity;
+  const parsed =
+    raw == null || (typeof raw === 'string' && raw.trim() === '') ? 0 : Math.trunc(Number(raw));
+  const targetQty = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+
+  const existingRows = await loadCatalogDraftBillLineRows(params.billId);
+  const productId = Number(params.orderItem.product_id ?? 0);
+  const stockId = Number(params.stockRow.global_stock_id);
+  const match = findCatalogBillLineForProductStock(existingRows, productId, stockId);
+  const currentQty = match ? Number(match.quantity ?? 0) : 0;
+  const pickId = match ? Number(match.line_meta?.shop_order_item_stock_pick_id ?? 0) : 0;
+
+  if (targetQty === 0) {
+    await syncCatalogBillKernelLineQty({
+      booksTenantId: params.booksTenantId,
+      billId: params.billId,
+      orderItem: params.orderItem,
+      stockRow: params.stockRow,
+      productId,
+      stockId,
+      targetQty: 0,
+      pickId: pickId > 0 ? pickId : 0,
+      existingRows,
+    });
+    return { success: true };
+  }
+
+  if (targetQty === currentQty) return { success: true, noop: true };
+
+  const { pickId: nextPickId, pickRes } = await ensureCatalogBillStockPick(
+    params.orderItem.id,
+    params.stockRow,
+    targetQty,
+    pickId > 0 ? pickId : undefined,
+  );
+
+  await syncCatalogBillKernelLineQty({
+    booksTenantId: params.booksTenantId,
+    billId: params.billId,
+    orderItem: params.orderItem,
+    stockRow: params.stockRow,
+    productId,
+    stockId,
+    targetQty,
+    pickId: nextPickId,
+    existingRows,
+  });
+
+  return pickRes ?? { success: true, pick_id: nextPickId };
+};
+
+/** Release picks on draft bill lines (held → sellable), then delete the kernel draft. */
+const deleteCatalogShopOrderDraftBill = async (billId: number): Promise<void> => {
+  const { data, error } = await supabase.rpc('delete_catalog_shop_order_draft_bill', {
+    p_bill_id: billId,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as { success?: boolean };
+  if (!payload.success) {
+    throw new Error('Failed to delete catalog draft bill');
+  }
+};
+
 const recalcShopDisplayQuantities = async (shopId: number): Promise<number> => {
   const { data, error } = await supabase.rpc('recalc_shop_display_quantities', {
     p_shop_id: shopId,
@@ -1730,14 +2333,15 @@ export const shopOrderRepository = {
   listShopOrdersStaffPage,
   listDropshipShopOrdersForStaff,
   getShopOrderById,
-  listShopOrderDeliveryPaperQtyByItem,
   getDropshipOrderDetailV2,
   getDropshipManagementOrder,
   saveDropshipSettlementDraft,
+  saveDropshipManagementListSettlement,
   previewDropshipDeliverBillNotes,
   markDropshipOrderDelivered,
   markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,
+  issueDropshipCourierArForOrder,
   shipDropshipOrderAndIssueMerchantBill,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,
@@ -1745,10 +2349,22 @@ export const shopOrderRepository = {
   buildDropshipReadyForPickupDeskPayload,
   commitDropshipReadyForPickupBundle,
   listStockForOrderItemPick,
+  listShopOrderBillLinesForProductStock,
   addShopOrderItemStockPick,
   removeShopOrderItemStockPick,
+  getShopOrderBillItemCoverage,
+  createCatalogShopOrderWholesaleDraftBill,
+  createShopOrderKernelDraftBill,
+  loadCatalogDraftBillLineRows,
+  getCatalogDraftBillSettlement,
+  patchCatalogDraftBillSettlement,
+  appendCatalogDraftBillLineFromPick,
+  removeCatalogDraftBillLineFromPick,
+  setCatalogDraftBillLineQtyFromStock,
+  deleteCatalogShopOrderDraftBill,
   markShopOrderItemUnavailable,
   clearShopOrderItemUnavailable,
+  finalizeDropshipResellDiscountReview,
   cancelShopOrderDropship,
   recordDropshipRecipientCallNoAnswer,
   confirmDropshipRecipientCall,

@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
+import { useModuleStore } from 'src/modules/tenant/submodules/feature_catalog/stores/moduleStore';
 import { useTenantModuleStore } from '../stores/tenantModuleStore';
 import type { TenantModuleSubmodule } from '../types';
 

@@ -13,14 +13,16 @@ const props = withDefaults(
   isConfirmingOrder?: boolean;
   isPlacingProcurement?: boolean;
   isFulfillingToInvoice?: boolean;
-  canDeleteLines?: boolean;
-  selectedLineIds?: number[];
-  isRemovingLines?: boolean;
+    canDeleteLines?: boolean;
+    selectedLineIds?: number[];
+    isRemovingLines?: boolean;
+    hideFooterActions?: boolean;
 }>(),
   {
     canDeleteLines: false,
     selectedLineIds: () => [],
     isRemovingLines: false,
+    hideFooterActions: false,
   },
 );
 
@@ -195,7 +197,7 @@ function toggleSelectAll(val: boolean) {
     </q-card>
 
     <!-- Action Buttons Panel -->
-    <div class="q-mt-md row items-center justify-between">
+    <div v-if="!hideFooterActions" class="q-mt-md row items-center justify-between">
       <div>
         <q-btn
           v-if="order.status === 'cancelled'"

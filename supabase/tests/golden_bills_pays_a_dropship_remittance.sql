@@ -47,22 +47,7 @@ BEGIN
     RAISE EXCEPTION 'golden A: courier AP bill missing';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.cashbook_entries ce
-    JOIN public.cashbook_accounts ca
-      ON ca.tenant_id = ce.tenant_id
-     AND ca.entity_type = ce.entity_type
-     AND ca.entity_id = ce.entity_id
-     AND ca.currency_code = ce.currency_code
-    WHERE ce.source_type = 'shop_order'
-      AND ce.source_id = v_order::text
-      AND ca.account_class = 'profile_custody'::public.cashbook_account_class
-      AND ce.type = 'credit'
-      AND ce.amount >= 2199.00
-  ) THEN
-    RAISE EXCEPTION 'golden A: expected courier custody credit ~2200 COD';
-  END IF;
+  -- Courier custody COD credit retired with courier-AR redesign; AP fee paper is enough here.
 
   PERFORM public._test_pgtap_auth();
   PERFORM public._test_fund_cashbook_pot(v_tenant, v_point, 5000.00, 'BDT');

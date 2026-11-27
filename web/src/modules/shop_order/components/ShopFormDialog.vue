@@ -78,7 +78,7 @@ import {
   pickShopCurrencyDefaults,
   slugFromShopName,
 } from 'src/modules/shop_order/constants/shopConfigurationPresets';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
+import { useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
 
 const props = defineProps<{
   modelValue: boolean;

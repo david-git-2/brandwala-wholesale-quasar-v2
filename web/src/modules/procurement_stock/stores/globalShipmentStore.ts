@@ -8,7 +8,6 @@ import {
   type GlobalShipment,
   type GlobalShipmentItem,
   type ShipmentItemOutcome,
-  type SettleShipmentPayeeParams,
   type ShipmentProgressFlow,
   type ShipmentProgressFlowStage,
   type ShipmentProgressTag,
@@ -55,10 +54,10 @@ import type {
   UpdateShipmentSectionPayload,
 } from '../types/shipmentSection';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
-import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
+import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCostingCache } from 'src/modules/procurement_stock/submodules/global_stock/composables/useShipmentItemsCostingCache';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useCargoCompanyStore } from './cargoCompanyStore';
 import { shouldSyncShipmentApBills } from '../utils/shipmentUpdateApSync';
 
@@ -73,7 +72,7 @@ const COST_AFFECTING_SHIPMENT_FIELDS = new Set(['received_weight', 'total_weight
 
 const localCostsFromCostEntries = (
   entries: GlobalShipmentCostEntry[],
-  parentTenantId: number,
+  tenantId: number,
 ): GlobalShipmentLocalCost[] =>
   entries
     .filter((e) => e.cost_bucket === LOCAL_COST_BUCKET && !e.is_capitalizable)
@@ -81,7 +80,7 @@ const localCostsFromCostEntries = (
       const meta = (entry.metadata ?? {}) as { description?: string };
       return {
         id: entry.id,
-        tenant_id: entry.tenant_id ?? parentTenantId,
+        tenant_id: entry.tenant_id ?? tenantId,
         shipment_id: entry.shipment_id,
         section_id: entry.section_id ?? null,
         description: entry.description?.trim() || meta.description?.trim() || '',
@@ -249,7 +248,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               cargoCompanyId,
             );
 
-        if (useWorkspace && 'vendors' in result && result.vendors.length > 0) {
+        if (
+          useWorkspace &&
+          'vendors' in result &&
+          Array.isArray(result.vendors) &&
+          result.vendors.length > 0
+        ) {
           const vendorStore = useVendorStore();
           vendorStore.items = result.vendors.map((v) => ({
             id: v.id,
@@ -264,7 +268,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
             website: null,
           }));
         }
-        if (useWorkspace && 'cargoCompanies' in result && result.cargoCompanies.length > 0) {
+        if (
+          useWorkspace &&
+          'cargoCompanies' in result &&
+          Array.isArray(result.cargoCompanies) &&
+          result.cargoCompanies.length > 0
+        ) {
           const cargoCompanyStore = useCargoCompanyStore();
           cargoCompanyStore.seedFromListReference(tenantId, result.cargoCompanies);
         }
@@ -316,7 +325,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         }
         this.archivedRows = allArchived;
         this.archivedTotal = archivedBadgeTotal;
-        return result.data;
+        return allArchived;
       } catch (err: unknown) {
         console.error('Failed to load archived shipments', err);
         return [];
@@ -1818,12 +1827,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.error = null;
       try {
         const shipment = this.currentShipment?.id === payload.shipment_id ? this.currentShipment : null;
-        const parentTenantId =
+        const tenantId =
           payload.tenant_id ??
           shipment?.tenant_id ??
           (this.currentShipmentSections[0]?.tenant_id as number | undefined);
 
-        if (!parentTenantId) {
+        if (!tenantId) {
           throw new Error('Tenant ID is required to create a section');
         }
 
@@ -1843,7 +1852,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
         const newSection = await shipmentSectionRepository.create({
           ...payload,
-          tenant_id: parentTenantId,
+          tenant_id: tenantId,
           vendor_id: vendorId,
           sort_order: payload.sort_order ?? maxSortOrder + 1,
         });

@@ -38,7 +38,7 @@
           {{ $t('shop_admin.members') }}
         </div>
 
-        <div v-if="loading" class="q-gutter-y-sm">
+        <div v-if="membersQuery.isLoading.value" class="q-gutter-y-sm">
           <q-skeleton v-for="n in 3" :key="n" type="rect" height="56px" class="rounded-borders" />
         </div>
 
@@ -54,8 +54,9 @@
           <q-item v-for="member in sortedMembers" :key="member.id" class="q-py-sm">
             <q-item-section>
               <q-item-label class="text-weight-medium text-grey-9">
-                {{ member.email }}
+                {{ member.name }}
               </q-item-label>
+              <q-item-label caption class="text-grey-7">{{ member.email }}</q-item-label>
               <q-item-label caption class="text-capitalize">{{ member.role }}</q-item-label>
             </q-item-section>
             <q-item-section side>
@@ -74,10 +75,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
-import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
-import type { CustomerGroupMember } from 'src/modules/tenant/types';
+import { useCustomerMembersQuery } from 'src/modules/people/submodules/customer/composables/useCustomerQuery';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -88,31 +88,18 @@ defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
 }>();
 
-const groupStore = useCustomerGroupStore();
-const groupId = computed(() => props.group?.id ?? 0);
-const members = ref<CustomerGroupMember[]>([]);
-const loading = ref(false);
-
-const sortedMembers = computed(() =>
-  [...members.value].sort((a, b) => a.email.localeCompare(b.email)),
+const customerGroupId = computed(() =>
+  props.modelValue && props.group?.id ? props.group.id : null,
 );
 
-const loadMembers = async () => {
-  if (!groupId.value) return;
-  loading.value = true;
-  try {
-    const result = await groupStore.fetchCustomerGroupMembersByGroup(groupId.value);
-    members.value = result.success ? (result.data ?? groupStore.members) : [];
-  } finally {
-    loading.value = false;
-  }
-};
+const membersQuery = useCustomerMembersQuery(customerGroupId);
+const members = computed(() => membersQuery.data.value ?? []);
 
-watch(
-  () => [props.modelValue, groupId.value] as const,
-  ([open, id]) => {
-    if (open && id) void loadMembers();
-  },
+const sortedMembers = computed(() =>
+  [...members.value].sort((a, b) => {
+    const byName = a.name.localeCompare(b.name);
+    return byName !== 0 ? byName : a.email.localeCompare(b.email);
+  }),
 );
 </script>
 

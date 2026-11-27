@@ -271,7 +271,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
-import { productRepository } from 'src/modules/products/repositories/productRepository';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
 import {
   browseManualCatalogProducts,
   productRowToCatalogItem,
@@ -515,14 +515,12 @@ const onBulkAddCodes = async () => {
     }
 
     if (added > 0) {
-      showSuccessNotification(
-        t('shop_admin.manual_catalog_bulk_add_success', '{n} item(s) added', { n: added }),
-      );
+      showSuccessNotification(t('shop_admin.manual_catalog_bulk_add_success', { n: added }));
       bulkCodesText.value = missing.length > 0 ? missing.join('\n') : '';
     }
     if (missing.length) {
       showErrorNotification(
-        t('shop_admin.manual_catalog_bulk_add_missing', 'No match: {codes}', {
+        t('shop_admin.manual_catalog_bulk_add_missing', {
           codes: missing.slice(0, 8).join(', '),
         }),
       );

@@ -7,13 +7,13 @@ description: >-
   domain folder to extract (tag, thrift, procurement, wallet, shop, …).
 ---
 
-Read **[doc/supabase-schema.md](../../../doc/supabase-schema.md)** first.
+Read **[docs/architecture/database.md](../../../docs/architecture/database.md)** and `supabase/config.toml` (`schema_paths`) first.
 
 ## Which module
 
 1. If the user named a domain, use that.
-2. Else use the first **Pending** row in `doc/supabase-schema.md`.
-3. **One domain per session.** Stop when that row is updated.
+2. Else inspect `supabase/schemas/public.sql` and `supabase/config.toml` (`schema_paths`) for the next unsplit domain.
+3. **One domain per session.** Stop when `supabase/config.toml` is updated.
 
 Name prefixes (grep `supabase/schemas/public.sql`; table names in `docs/features/<module>/spec.md` if needed):
 
@@ -39,7 +39,7 @@ Name prefixes (grep `supabase/schemas/public.sql`; table names in `docs/features
 4. Keep `_extensions.sql`. Do not dump into `supabase/.dumps/`.
 5. Add paths to `supabase/config.toml` `schema_paths` (types → tables → RPCs → RLS). Run `pnpm run backend:schema:sync -- split_<domain>`. **Not allowed:** unexpected `DROP` of other modules’ objects — fix `public.sql` and re-sync.
 6. Move-only: **do not** commit a generated migration / do not `db push`.
-7. Mark the domain **Split** in `doc/supabase-schema.md`.
+7. Verify `supabase/config.toml` (`schema_paths`) and `docs/architecture/database.md` reflect the split domain.
 
 ## Do not
 

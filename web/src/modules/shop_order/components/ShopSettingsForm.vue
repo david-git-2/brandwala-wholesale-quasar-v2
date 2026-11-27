@@ -1,12 +1,5 @@
 <template>
-  <div ref="formRootRef" @focusout="onFormFocusOut">
-    <div
-      v-if="saveStatus"
-      class="text-caption text-grey-7 q-mb-sm text-right"
-      data-test="shop-setup-save-status"
-    >
-      {{ saveStatus }}
-    </div>
+  <div>
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
         <div class="text-subtitle2 text-weight-medium">{{ $t('shop_admin.shop_details_section') }}</div>
@@ -403,10 +396,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { showErrorNotification } from 'src/utils/appFeedback';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useSaveShopMutation } from '../composables/useShopMutations';
 import type {
   Shop,
@@ -419,9 +412,9 @@ import {
   derivedShopIsNegotiable,
   getAllowedOrderModes,
 } from 'src/modules/shop_order/constants/shopConfigurationPresets';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import { productService } from 'src/modules/products/services/productService';
-import type { Vendor } from 'src/modules/vendor/types';
+import { useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';
 
 type ShopForm = {
@@ -509,102 +502,98 @@ function shopToForm(shop: Shop): ShopForm {
 }
 
 const form = reactive<ShopForm>(shopToForm(props.shop));
-const formRootRef = ref<HTMLElement | null>(null);
-const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
-const saveStatus = ref('');
-const lastSavedPayloadKey = ref('');
-let skipAutoSave = true;
-let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-let savedStatusTimer: ReturnType<typeof setTimeout> | undefined;
+const { mutateAsync: saveShopAsync, isPending: isSaving } = useSaveShopMutation();
+const lastSavedSnapshot = ref('');
 
-function payloadKey(payload: UpdateShopPayload): string {
-  return JSON.stringify(payload);
-}
-
-function syncSavedSnapshot(): void {
-  const payload = buildPayload();
-  if (payload) {
-    lastSavedPayloadKey.value = payloadKey(payload);
-  }
-}
-
-function setSaveStatus(message: string): void {
-  saveStatus.value = message;
-  if (savedStatusTimer) clearTimeout(savedStatusTimer);
-  if (message) {
-    savedStatusTimer = setTimeout(() => {
-      saveStatus.value = '';
-    }, 2000);
-  }
-}
-
-function saveIfChanged(): void {
-  if (skipAutoSave || isSaving.value) return;
-
-  const payload = buildPayload();
-  if (!payload) return;
-
-  const key = payloadKey(payload);
-  if (key === lastSavedPayloadKey.value) return;
-
-  saveStatus.value = t('shop_admin.shop_setup_saving');
-  saveShopMutation(payload, {
-    onSuccess: () => {
-      lastSavedPayloadKey.value = key;
-      setSaveStatus(t('shop_admin.shop_setup_autosaved'));
-    },
-    onError: (err: Error) => {
-      saveStatus.value = '';
-      showErrorNotification(err.message || t('shop_admin.shop_setup_save_failed'));
-    },
+function formDraftSnapshot(): string {
+  return JSON.stringify({
+    id: form.id,
+    tenant_id: form.tenant_id,
+    name: form.name.trim(),
+    slug: form.slug.trim(),
+    description: (form.description || '').trim(),
+    category_ids: [...(form.category_ids || [])].sort((a, b) => a - b),
+    shop_type: form.shop_type,
+    vendor_code: form.vendor_code.trim(),
+    order_mode: form.order_mode,
+    is_negotiable: derivedShopIsNegotiable(form.shop_type),
+    show_stock_quantity: form.show_stock_quantity,
+    is_active: form.is_active,
+    allow_delivery: form.allow_delivery,
+    buy_currency_id: form.buy_currency_id,
+    sell_currency_id: form.sell_currency_id,
+    pricing_method: form.pricing_method,
+    markup_percentage: Number(form.markup_percentage || 0),
+    quantity_display_mode: form.quantity_display_mode,
+    display_quantity_add: Number(form.display_quantity_add ?? 6),
+    default_print_charge_amount: Number(form.default_print_charge_amount || 0),
+    default_packing_charge_amount: Number(form.default_packing_charge_amount || 0),
+    deduct_charges_from_margin: form.deduct_charges_from_margin,
+    deduct_print_from_margin: form.deduct_print_from_margin,
+    deduct_packing_from_margin: form.deduct_packing_from_margin,
+    vendor_filters: form.vendor_filters
+      ? form.vendor_filters.map((vf) => ({
+          vendor_code: vf.vendor_code,
+          brands: [...(vf.brands || [])].sort(),
+        }))
+      : null,
+    min_available_units: Number(form.min_available_units ?? 0),
   });
 }
 
-function scheduleAutoSave(): void {
-  if (skipAutoSave) return;
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => saveIfChanged(), 600);
+function syncSavedSnapshot(): void {
+  lastSavedSnapshot.value = formDraftSnapshot();
 }
 
-function onFormFocusOut(event: FocusEvent): void {
-  const root = formRootRef.value;
-  const next = event.relatedTarget as Node | null;
-  if (root && next && root.contains(next)) return;
-  saveIfChanged();
+const isDirty = computed(() => formDraftSnapshot() !== lastSavedSnapshot.value);
+
+function clearErrors(): void {
+  errors.name = undefined;
+  errors.slug = undefined;
+  errors.vendor_code = undefined;
+  errors.buy_currency_id = undefined;
+  errors.sell_currency_id = undefined;
+  errors.markup_percentage = undefined;
+  errors.min_available_units = undefined;
+}
+
+function discard(): void {
+  clearErrors();
+  Object.assign(form, shopToForm(props.shop));
+  form.vendor_filters?.forEach((vf) => {
+    void loadBrandsForVendor(vf.vendor_code);
+  });
+  syncSavedSnapshot();
+}
+
+async function save(): Promise<boolean> {
+  if (isSaving.value) return false;
+  const payload = buildPayload();
+  if (!payload) return false;
+  try {
+    await saveShopAsync(payload);
+    syncSavedSnapshot();
+    showSuccessNotification(t('shop_admin.shop_setup_saved'));
+    return true;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : t('shop_admin.shop_setup_save_failed');
+    showErrorNotification(message);
+    return false;
+  }
 }
 
 watch(
   () => props.shop,
   (shop) => {
-    skipAutoSave = true;
     Object.assign(form, shopToForm(shop));
     form.vendor_filters?.forEach((vf) => {
       void loadBrandsForVendor(vf.vendor_code);
     });
     syncSavedSnapshot();
-    queueMicrotask(() => {
-      skipAutoSave = false;
-    });
   },
 );
 
-watch(
-  form,
-  () => {
-    scheduleAutoSave();
-  },
-  { deep: true },
-);
-
-onUnmounted(() => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  if (savedStatusTimer) clearTimeout(savedStatusTimer);
-});
-
-queueMicrotask(() => {
-  syncSavedSnapshot();
-  skipAutoSave = false;
-});
+syncSavedSnapshot();
 
 function cloneVendorFilters(shop: Shop): Array<{ vendor_code: string; brands: string[] }> {
   if (shop.vendor_filters && shop.vendor_filters.length > 0) {
@@ -776,7 +765,7 @@ const loadVendors = async () => {
     return;
   }
   loadingVendors.value = true;
-  const { vendorService } = await import('src/modules/vendor/services/vendorService');
+  const { vendorService } = await import('src/modules/people/submodules/vendor/services/vendorService');
   const result = await vendorService.listVendors(form.tenant_id);
   vendors.value = result.success && result.data ? result.data : [];
   loadingVendors.value = false;
@@ -922,5 +911,11 @@ function buildPayload(): UpdateShopPayload | null {
   };
 }
 
-defineExpose({ buildPayload });
+defineExpose({
+  buildPayload,
+  isDirty,
+  isSaving,
+  save,
+  discard,
+});
 </script>

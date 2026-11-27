@@ -9,7 +9,7 @@ export function orderPlacementCaption(
   if (scope === 'app') {
     const email = createdByEmail?.trim();
     if (email) {
-      return t('shop_admin.order_placed_from_app_by', 'Placed from app · {email}', { email });
+      return t('shop_admin.order_placed_from_app_by', { email });
     }
     return t('shop_admin.order_placement_scope_app', 'Placed from app');
   }

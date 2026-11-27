@@ -2,14 +2,13 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import AppResizableOverlayPanel from 'src/components/ui/AppResizableOverlayPanel.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import {
   BOOKS_CUSTOMER_GROUPS_STALE_MS,
   seedBooksCustomerGroups,
 } from '../utils/booksCustomerGroupsCache';
-import { resolveBooksTenantId } from 'src/modules/tenant/utils/resolveBooksTenantId';
 import type { Shop } from '../types';
 import { showErrorNotification, showSuccessNotification, parseSupabaseError } from 'src/utils/appFeedback';
 
@@ -72,7 +71,7 @@ const loadCustomers = async () => {
     });
     seedBooksCustomerGroups(
       queryClient,
-      resolveBooksTenantId(scopeTenantId.value, authStore.selectedTenant?.parent_id),
+      scopeTenantId.value,
       bundle.customer_groups,
     );
     accessRows.value = bundle.access_overrides;

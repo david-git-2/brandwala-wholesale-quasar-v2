@@ -31,6 +31,7 @@
           variant="compact"
           compact-layout="header"
           :order="order"
+          :items="items"
           :saving="savingRates"
           @save-rates="emit('save-rates', $event)"
           @change-rates="emit('change-rates', $event)"
@@ -127,7 +128,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ShopOrder } from '../types';
+import type { ShopOrder, ShopOrderItem } from '../types';
 import CatalogOrderColumnSelectorButton from './CatalogOrderColumnSelectorButton.vue';
 import CatalogOrderRatesBar from './CatalogOrderRatesBar.vue';
 import CatalogOrderStatusWorkflowBar from './CatalogOrderStatusWorkflowBar.vue';
@@ -136,6 +137,7 @@ import { isCatalogStaffReadOnly } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
+  items?: ShopOrderItem[];
   isLoading?: boolean;
   visibleColumns?: string[];
   canDownloadExcel?: boolean;

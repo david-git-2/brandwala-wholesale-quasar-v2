@@ -92,7 +92,6 @@
         <UserProfileMenu @sign-out="onMobileSignOut" />
       </div>
 
-      <TaskSearchDialog v-if="searchDialogOpen" v-model="searchDialogOpen" />
       <GlobalStockSearchDialog v-if="stockSearchDialogOpen" v-model="stockSearchDialogOpen" />
     </template>
 
@@ -106,17 +105,18 @@ import { computed, onMounted, ref } from 'vue';
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
 import AppBreadcrumbs from 'src/components/navigation/AppBreadcrumbs.vue';
 import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useAppWorkspaceLinks } from 'src/modules/workspace/submodules/navigation/useWorkspaceNavigation';
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection';
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
+import { readLegacyWorkspaceSelection, useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { filterCompanyTenants } from 'src/modules/tenant/utils/tenantHierarchy';
+import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
+import { MEMBERSHIP_UI_PATHS } from 'src/modules/tenant/submodules/membership/types/preferences';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useAppearance } from 'src/composables/useAppearance';
-import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue';
-import GlobalStockSearchDialog from 'src/modules/global/components/GlobalStockSearchDialog.vue';
-import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
-import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
+import GlobalStockSearchDialog from 'src/modules/procurement_stock/submodules/global_stock/components/GlobalStockSearchDialog.vue';
+import NotificationBell from 'src/modules/workspace/submodules/notifications/components/NotificationBell.vue';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/workspace/submodules/notifications/notificationsFeature';
 
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
@@ -128,20 +128,17 @@ const { reconcilePreferences } = useAppearance();
 const { links } = useAppWorkspaceLinks();
 
 const workspaceShellRef = ref<InstanceType<typeof WorkspaceShell> | null>(null);
-const searchDialogOpen = ref(false);
 const stockSearchDialogOpen = ref(false);
 
 const onMobileSignOut = () => {
   workspaceShellRef.value?.openSignOutDialog();
 };
 
-const logoutTo = computed(() =>
-  authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
-);
+const logoutTo = computed(() => '/app/login');
 const selectedTenantId = computed(() => tenantStore.selectedTenantId);
 
 const tenantOptions = computed(() =>
-  tenantStore.availableAdminTenants.map((tenant) => ({
+  filterCompanyTenants(tenantStore.availableAdminTenants).map((tenant) => ({
     label: tenant.name,
     value: tenant.id,
   })),
@@ -151,7 +148,7 @@ const selectedTenantLabel = computed(() => {
   const selectedOption =
     tenantOptions.value.find((option) => option.value === selectedTenantId.value) ?? null;
 
-  return selectedOption?.label ?? 'Select company';
+  return selectedOption?.label ?? tenantStore.selectedTenant?.name ?? 'Select company';
 });
 const { ensureSelectedTenantWorkspace, selectTenantWorkspace, selectingTenantId } =
   useAdminTenantSelection();
@@ -176,6 +173,39 @@ onMounted(() => {
       await tenantStore.hydrateHierarchyChildRefs();
     }
 
+    if (authStore.membershipId) {
+      await membershipPreferenceStore.ensureLoaded(
+        authStore.membershipId,
+        authStore.user?.email ?? null,
+        authStore.tenantId,
+      );
+    }
+
+    const appliedFromPreference = tenantStore.applyWorkspaceFromPreference(
+      membershipPreferenceStore.preference,
+    );
+
+    if (!appliedFromPreference) {
+      const legacy = readLegacyWorkspaceSelection();
+      const legacyTenant =
+        legacy == null
+          ? null
+          : (tenantStore.availableAdminTenants.find((tenant) => tenant.id === legacy.id) ?? null);
+
+      if (legacyTenant) {
+        tenantStore.setSelectedTenant({ id: legacyTenant.id, slug: legacyTenant.slug });
+
+        if (authStore.membershipId) {
+          membershipPreferenceStore.patchPreferencePath(
+            authStore.membershipId,
+            MEMBERSHIP_UI_PATHS.adminWorkspaceTenant,
+            { id: legacyTenant.id, slug: legacyTenant.slug },
+          );
+          await membershipPreferenceStore.savePreference(authStore.membershipId);
+        }
+      }
+    }
+
     await ensureSelectedTenantWorkspace();
 
     if (authStore.tenantId) {
@@ -190,11 +220,6 @@ onMounted(() => {
     }
 
     if (authStore.membershipId) {
-      await membershipPreferenceStore.ensureLoaded(
-        authStore.membershipId,
-        authStore.user?.email ?? null,
-        authStore.tenantId,
-      );
       await reconcilePreferences(authStore.membershipId, membershipPreferenceStore.preference);
     }
   })();

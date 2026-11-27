@@ -426,7 +426,6 @@ function getDocTreeSlug(doc: DocItem): string {
   }
   if (doc.path.startsWith('docs/features/')) {
     if (doc.badge === 'PRD') return 'spec';
-    if (doc.badge === 'Gaps') return '00-gaps';
     if (doc.badge === 'Fix Plan') return 'fix-plan';
   }
   if (fileName === 'README') return 'Overview';

@@ -1,4 +1,4 @@
-import type { Vendor } from 'src/modules/vendor/types';
+import type { Vendor } from 'src/modules/people/submodules/vendor/types';
 
 export interface ShipmentSectionMetadata {
   invoice_number?: string | undefined;

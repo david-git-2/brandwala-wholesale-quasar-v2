@@ -1,0 +1,341 @@
+<template>
+  <q-page class="q-pa-md admin-access-control-role-grants-page">
+    <!-- Header -->
+    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center q-col-gutter-sm">
+          <div class="col-auto">
+            <q-btn flat round dense icon="ph ph-arrow-left" color="primary" @click="goBack" />
+          </div>
+          <div class="col">
+            <div class="text-h6 text-weight-bold">
+              Grants Matrix: {{ role?.name || 'Loading...' }}
+            </div>
+            <div class="text-caption text-grey-8">
+              Configure fine-grained module × action access rights. Platform-scoped controls are
+              hidden.
+            </div>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <q-banner v-if="pageError" class="bg-negative text-white q-mb-md" rounded>
+      {{ pageError }}
+    </q-banner>
+
+    <div v-if="loading" class="row justify-center q-my-lg">
+      <q-spinner-dots size="40px" color="primary" />
+    </div>
+
+    <!-- Grant Matrix Grouped by Module -->
+    <div v-else-if="groupedActions.length === 0" class="text-center text-grey-6 q-my-xl">
+      No enabled modules for this tenant. Add modules under Access Control → Modules first.
+    </div>
+
+    <div v-else class="row q-col-gutter-md">
+      <div v-for="mod in groupedActions" :key="mod.displayKey" class="col-12 col-md-6">
+        <q-card flat class="floating-surface shadow-1 full-height">
+          <q-card-section class="bg-grey-2 q-py-sm">
+            <div class="row items-center no-wrap q-gutter-sm">
+              <div class="col">
+                <div class="text-subtitle1 text-weight-bold text-grey-9">
+                  {{ mod.displayTitle }}
+                </div>
+                <div class="text-caption text-grey-6">Module key: {{ mod.grantModuleKey }}</div>
+              </div>
+              <div class="col-auto row items-center q-gutter-xs">
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="positive"
+                  label="All on"
+                  :disable="isSectionBusy(mod.displayKey) || isSectionFullyAllowed(mod)"
+                  @click="setSectionGrants(mod, true)"
+                />
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="grey-8"
+                  label="All off"
+                  :disable="isSectionBusy(mod.displayKey) || isSectionFullyDenied(mod)"
+                  @click="setSectionGrants(mod, false)"
+                />
+                <q-spinner
+                  v-if="isSectionBusy(mod.displayKey)"
+                  size="xs"
+                  color="primary"
+                />
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section class="q-py-xs">
+            <q-list separator>
+              <q-item v-for="act in mod.actions" :key="act.action" class="q-py-xs">
+                <q-item-section>
+                  <q-item-label class="text-weight-medium text-grey-8 text-capitalize">
+                    {{ act.action }}
+                  </q-item-label>
+                  <q-item-label v-if="act.description" caption class="text-grey-6">
+                    {{ act.description }}
+                  </q-item-label>
+                </q-item-section>
+
+                <q-item-section side>
+                  <q-toggle
+                    :model-value="isAllowed(act.module_key, act.action)"
+                    color="positive"
+                    :disable="
+                      savingMap[act.module_key + ':' + act.action] || isSectionBusy(mod.displayKey)
+                    "
+                    @update:model-value="(val) => toggleGrant(act.module_key, act.action, val)"
+                  >
+                    <q-spinner
+                      v-if="savingMap[act.module_key + ':' + act.action]"
+                      size="xs"
+                      color="positive"
+                    />
+                  </q-toggle>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { supabase } from 'src/boot/supabase';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { showSuccessNotification } from 'src/utils/appFeedback';
+import {
+  formatModuleKey,
+  groupActionsForGrantMatrix,
+  type GrantDisplayGroup,
+} from 'src/modules/tenant/submodules/access_control/utils/grantDisplayGroups';
+
+const props = defineProps<{
+  id: number;
+}>();
+
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+
+usePageBreadcrumbs(() => {
+  const tenantSlug =
+    authStore.tenantSlug || (route.params.tenantSlug as string | undefined) || null;
+  const hubPath = tenantSlug ? `/${tenantSlug}/app/access-control` : '/app/access-control';
+  const rolesPath = tenantSlug ? `/${tenantSlug}/app/access-control/roles` : '/app/access-control/roles';
+
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    { label: 'Access Control', to: hubPath },
+    { label: 'Roles', to: rolesPath },
+    { label: role.value?.name || 'Role' },
+    { label: 'Grants' },
+  ];
+});
+
+const role = ref<any>(null);
+const grants = ref<any[]>([]);
+const moduleActions = ref<any[]>([]);
+/** Live tenant-enabled module keys (incl. expanded submodules). */
+const tenantActiveModuleKeys = ref<string[]>([]);
+const loading = ref(false);
+const pageError = ref<string | null>(null);
+
+// Track individual toggles currently saving to DB
+const savingMap = ref<Record<string, boolean>>({});
+/** Section-level bulk save in progress (keyed by displayKey). */
+const sectionSavingMap = ref<Record<string, boolean>>({});
+
+const loadData = async () => {
+  loading.value = true;
+  pageError.value = null;
+
+  try {
+    // 1. Fetch role details
+    const { data: roleData, error: roleError } = await supabase.rpc('get_tenant_role_detail', {
+      p_role_id: props.id,
+    });
+
+    if (roleError) {
+      pageError.value = roleError.message;
+      return;
+    }
+
+    role.value = roleData;
+
+    const tenantId = authStore.tenantId;
+    if (!tenantId) {
+      pageError.value = 'Tenant context is required.';
+      return;
+    }
+
+    const [actionsResult, keysResult, grantsResult] = await Promise.all([
+      supabase.rpc('list_configurable_module_actions', {
+        p_scope: roleData.scope,
+        p_tenant_id: tenantId,
+      }),
+      supabase.rpc('get_active_module_keys_for_tenant', {
+        p_tenant_id: tenantId,
+      }),
+      supabase.rpc('list_tenant_role_grants', {
+        p_tenant_role_id: props.id,
+      }),
+    ]);
+
+    if (actionsResult.error) {
+      pageError.value = actionsResult.error.message;
+      return;
+    }
+    if (keysResult.error) {
+      pageError.value = keysResult.error.message;
+      return;
+    }
+    if (grantsResult.error) {
+      pageError.value = grantsResult.error.message;
+      return;
+    }
+
+    moduleActions.value = actionsResult.data || [];
+    tenantActiveModuleKeys.value = keysResult.data || [];
+    grants.value = grantsResult.data || [];
+  } catch (err: any) {
+    pageError.value = err.message || 'Failed to load grants data';
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Group actions for modules currently enabled on this tenant only
+const groupedActions = computed(() => {
+  const allowed = new Set(tenantActiveModuleKeys.value);
+  const activeActions = moduleActions.value.filter((action) => allowed.has(action.module_key));
+  return groupActionsForGrantMatrix(activeActions);
+});
+
+const isAllowed = (moduleKey: string, action: string): boolean => {
+  const grant = grants.value.find((g) => g.module_key === moduleKey && g.action === action);
+  return grant ? Boolean(grant.allowed) : false;
+};
+
+const isSectionBusy = (displayKey: string): boolean => Boolean(sectionSavingMap.value[displayKey]);
+
+const isSectionFullyAllowed = (mod: GrantDisplayGroup): boolean =>
+  mod.actions.every((act) => isAllowed(act.module_key, act.action));
+
+const isSectionFullyDenied = (mod: GrantDisplayGroup): boolean =>
+  mod.actions.every((act) => !isAllowed(act.module_key, act.action));
+
+const applyLocalGrant = (moduleKey: string, action: string, allowed: boolean) => {
+  const existingIndex = grants.value.findIndex(
+    (g) => g.module_key === moduleKey && g.action === action,
+  );
+
+  if (existingIndex >= 0) {
+    grants.value[existingIndex] = {
+      ...grants.value[existingIndex],
+      allowed,
+    };
+    return;
+  }
+
+  grants.value.push({
+    tenant_role_id: props.id,
+    module_key: moduleKey,
+    action,
+    allowed,
+  });
+};
+
+const upsertGrant = async (moduleKey: string, action: string, allowed: boolean) => {
+  const { error } = await supabase.rpc('upsert_tenant_role_grant', {
+    p_tenant_role_id: props.id,
+    p_module_key: moduleKey,
+    p_action: action,
+    p_allowed: allowed,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  applyLocalGrant(moduleKey, action, allowed);
+};
+
+const toggleGrant = async (moduleKey: string, action: string, allowed: boolean) => {
+  const key = `${moduleKey}:${action}`;
+  savingMap.value[key] = true;
+  pageError.value = null;
+
+  try {
+    await upsertGrant(moduleKey, action, allowed);
+    showSuccessNotification(`Grant rules updated for ${formatModuleKey(moduleKey)}: ${action}`);
+  } catch (err: any) {
+    pageError.value = err.message || 'Failed to update grant rule';
+  } finally {
+    savingMap.value[key] = false;
+  }
+};
+
+const setSectionGrants = async (mod: GrantDisplayGroup, allowed: boolean) => {
+  const targets = mod.actions.filter((act) => isAllowed(act.module_key, act.action) !== allowed);
+  if (targets.length === 0) return;
+
+  sectionSavingMap.value[mod.displayKey] = true;
+  pageError.value = null;
+
+  for (const act of targets) {
+    savingMap.value[`${act.module_key}:${act.action}`] = true;
+  }
+
+  try {
+    await Promise.all(targets.map((act) => upsertGrant(act.module_key, act.action, allowed)));
+    showSuccessNotification(
+      `${allowed ? 'Enabled' : 'Disabled'} all actions for ${mod.displayTitle}`,
+    );
+  } catch (err: any) {
+    pageError.value = err.message || 'Failed to update section grants';
+  } finally {
+    for (const act of targets) {
+      savingMap.value[`${act.module_key}:${act.action}`] = false;
+    }
+    sectionSavingMap.value[mod.displayKey] = false;
+  }
+};
+
+const goBack = () => {
+  const tenantSlug = authStore.tenantSlug;
+  const backRoute = tenantSlug
+    ? `/${tenantSlug}/app/access-control/roles`
+    : '/app/access-control/roles';
+  void router.push(backRoute);
+};
+
+onMounted(() => {
+  void loadData();
+});
+</script>
+
+<style scoped>
+.hero-surface {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+</style>

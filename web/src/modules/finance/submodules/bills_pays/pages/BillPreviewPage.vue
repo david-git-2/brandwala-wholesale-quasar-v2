@@ -1,0 +1,569 @@
+<template>
+  <q-page class="bill-preview-page q-pa-sm">
+    <div class="row items-center justify-between q-mb-md no-print">
+      <q-btn flat dense no-caps icon="ph ph-arrow-left" label="Back" @click="goBack" />
+      <div class="row items-center q-gutter-sm">
+        <q-select
+          v-model="selectedBrandId"
+          :options="brandOptions"
+          option-value="id"
+          option-label="name"
+          emit-value
+          map-options
+          outlined
+          dense
+          label="Letterhead brand"
+          style="min-width: 200px"
+        />
+        <q-btn unelevated dense no-caps color="primary" icon="ph ph-printer" label="Print" @click="onPrint" />
+        <q-btn flat dense no-caps label="Manage brands" @click="goBrands" />
+      </div>
+    </div>
+
+    <div v-if="detailQuery.isPending.value" class="flex flex-center q-pa-xl">
+      <q-spinner color="primary" size="32px" />
+    </div>
+
+    <div v-else-if="bill" class="preview-sheet q-pa-lg">
+      <div class="row justify-between q-mb-lg">
+        <template v-if="isApBill">
+          <div class="col-grow column q-gutter-y-sm">
+            <ApBillPartiesBlock :bill="bill" />
+            <BillKernelSourceChips
+              :source-type="bill.source_type"
+              :source-id="bill.source_id"
+              :source-key="bill.source_key ?? bill.ap_kind"
+              :ap-kind="bill.ap_kind"
+              :shipment-id="billShipmentId"
+            />
+          </div>
+          <div class="col-auto text-right">
+            <div v-if="documentTitle" class="text-subtitle1 text-weight-bold">{{ documentTitle }}</div>
+            <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
+            <div v-if="parentInvoiceNo" class="text-caption text-grey-8">
+              Against {{ parentInvoiceNo }}
+            </div>
+            <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
+            <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
+            <div v-if="billSettlementCurrencyLabel" class="text-caption text-grey-7">
+              {{ billSettlementCurrencyLabel }}
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <div class="col-5">
+            <div class="text-overline text-grey-7">From</div>
+            <div class="text-h6 text-weight-bold">{{ fromPartyName }}</div>
+            <div v-if="fromPartyAddress" class="text-body2 text-grey-8 q-mt-xs whitespace-pre-line">
+              {{ fromPartyAddress }}
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="text-overline text-grey-7">To</div>
+            <div class="text-subtitle1 text-weight-bold">{{ toPartyName }}</div>
+            <div v-if="toPartyAddress" class="text-caption text-grey-7 whitespace-pre-line">
+              {{ toPartyAddress }}
+            </div>
+            <div v-if="toPartyPhone" class="text-caption text-grey-7">{{ toPartyPhone }}</div>
+          </div>
+          <div class="col-auto text-right">
+            <div v-if="documentTitle" class="text-subtitle1 text-weight-bold">{{ documentTitle }}</div>
+            <div class="text-h6 text-weight-bold">{{ bill.invoice_no }}</div>
+            <div v-if="parentInvoiceNo" class="text-caption text-grey-8">
+              Against {{ parentInvoiceNo }}
+            </div>
+            <div class="text-caption text-grey-7">{{ bill.invoice_date }}</div>
+            <div v-if="bill.due_date" class="text-caption">Due {{ bill.due_date }}</div>
+          </div>
+        </template>
+      </div>
+
+      <BillKernelSourceChips
+        v-if="showArKernelSource && bill"
+        class="q-mb-md"
+        :source-type="bill.source_type"
+        :source-id="bill.source_id != null ? String(bill.source_id) : null"
+        :source-key="bill.source_key"
+        :shop-order-id="deliveryPaperShopOrderId"
+      />
+
+      <div v-if="isAdjustmentBill && adjustmentReason" class="q-mb-md">
+        <div class="text-overline text-grey-7">Reason</div>
+        <div class="text-body2">{{ adjustmentReason }}</div>
+      </div>
+
+      <template v-if="isAdjustmentBill">
+        <BillAdjustmentLinesTable
+          :lines="adjustmentLineRows"
+          :header-total-bdt="bill.total_amount"
+        />
+        <div class="row justify-end q-mt-md">
+          <div class="totals-panel">
+            <div class="total-row text-weight-bold">
+              <span>Total (books)</span>
+              <span>{{ formatAmountBdt(bill.total_amount) }}</span>
+            </div>
+            <div class="total-row">
+              <span>Paid</span>
+              <span>{{ formatAmountBdt(bill.paid_amount) }}</span>
+            </div>
+            <div class="total-row text-weight-bold">
+              <span>Due</span>
+              <span>{{ formatAmountBdt(bill.due_amount) }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="isApBill && !isManualComposeApBill">
+        <ApBillPaper
+          :channel-meta="bill.channel_meta"
+          :ap-kind="bill.source_key ?? bill.ap_kind"
+          :total-amount="bill.total_amount"
+        />
+        <div class="row justify-end q-mt-md">
+          <div class="totals-panel">
+            <template v-if="apCurrencyBalances">
+              <div
+                v-for="(group, gIdx) in apCurrencyBalances"
+                :key="group.currency_code"
+                :class="{ 'ap-bill-balance-group--spaced': gIdx > 0 }"
+              >
+                <div
+                  v-if="apCurrencyBalances.length > 1"
+                  class="text-caption text-weight-bold text-grey-8 q-mb-xs text-uppercase"
+                  style="letter-spacing: 0.04em"
+                >
+                  {{ settlementCurrencyDisplayLabel(group.currency_code) }}
+                </div>
+                <div class="total-row">
+                  <span>Total</span><span class="font-mono">{{ group.totalLabel }}</span>
+                </div>
+                <div v-if="group.conversionRate" class="total-row text-caption text-grey-7">
+                  <span>Rate</span>
+                  <span class="font-mono">
+                    {{ group.conversionRate }} BDT per 1 {{ settlementCurrencyDisplayLabel(group.currency_code) }}
+                  </span>
+                </div>
+                <div class="total-row">
+                  <span>Paid</span>
+                  <div class="column items-end">
+                    <span class="font-mono">{{ group.paidLabel }}</span>
+                    <span v-if="group.paidBdtLabel" class="text-caption text-grey-7 font-mono">
+                      {{ group.paidBdtLabel }} BDT
+                    </span>
+                  </div>
+                </div>
+                <div class="total-row text-weight-bold">
+                  <span>Due</span>
+                  <div class="column items-end">
+                    <span class="font-mono">{{ group.dueLabel }}</span>
+                    <span v-if="group.dueBdtLabel" class="text-caption text-grey-7 font-mono">
+                      {{ group.dueBdtLabel }} BDT
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div v-else class="total-row text-weight-bold">
+              <span>Total</span><span>{{ formatAmountBdt(bill.total_amount) }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <q-markup-table flat dense class="preview-lines">
+          <thead>
+            <tr>
+              <th class="text-left">Item</th>
+              <th class="text-right">Qty</th>
+              <th class="text-right">Sell</th>
+              <th class="text-right">Disc.</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="line in lines" :key="line.id">
+              <td class="preview-line-item-cell">
+                <BillLineItemDisplay
+                  :name="line.name_snapshot"
+                  :global-stock-id="line.global_stock_id > 0 ? line.global_stock_id : null"
+                  :shipment-item-id="line.shipment_item_id ?? null"
+                  :shipment-id="line.shipment_id ?? null"
+                />
+              </td>
+              <td class="text-right">{{ line.quantity }}</td>
+              <td class="text-right">{{ formatDeskAmount(line.sell_price_amount) }}</td>
+              <td class="text-right">{{ formatDeskAmount(line.line_discount_amount) }}</td>
+              <td class="text-right">{{ formatDeskAmount(line.line_total_amount) }}</td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+
+        <div class="row justify-end q-mt-md">
+          <div class="totals-panel">
+            <div v-if="billLinesQuantityTotal > 0" class="total-row">
+              <span>Total qty</span>
+              <span class="font-mono">{{ formatBillQuantityTotal(billLinesQuantityTotal) }}</span>
+            </div>
+            <div v-if="bill.discount_amount" class="total-row">
+              <span>Discount</span><span>{{ formatDeskAmount(bill.discount_amount) }}</span>
+            </div>
+            <div v-if="bill.shipping_charge" class="total-row">
+              <span>Shipping</span><span>{{ formatDeskAmount(bill.shipping_charge) }}</span>
+            </div>
+            <div v-if="bill.wrapping_charge" class="total-row">
+              <span>Wrapping</span><span>{{ formatDeskAmount(bill.wrapping_charge) }}</span>
+            </div>
+            <div v-if="bill.print_charge" class="total-row">
+              <span>Print</span><span>{{ formatDeskAmount(bill.print_charge) }}</span>
+            </div>
+            <div class="total-row text-weight-bold">
+              <span>Total</span><span>{{ formatDeskAmount(bill.total_amount) }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div v-if="hasBillComment" class="q-mt-md bill-preview-note">
+        <div class="text-overline text-grey-7">Note</div>
+        <div class="rich-text-body text-caption text-grey-9" v-html="billCommentHtml" />
+      </div>
+
+      <div class="q-mt-lg flex flex-center column">
+        <BarcodeRenderer :value="bill.invoice_no" :height="48" :display-value="true" />
+      </div>
+    </div>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useQuery } from '@tanstack/vue-query';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { formatAmountBdt, formatSettlementCurrencyAmount, settlementCurrencyDisplayLabel } from 'src/utils/currency';
+import { useBillDetailBundleQuery } from '../composables/useBillDetailBundleQuery';
+import { kernelBillLinesToStockRows } from '../utils/kernelBillLinesToStockRows';
+import { formatBillQuantityTotal, sumBillLineQuantities } from '../utils/billLineQuantityTotal';
+import { isDeliveryPaperOutcomeBillSource } from '../utils/billRoutes';
+import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from 'src/modules/finance/submodules/bills_pays/types/invoice';
+import { billsRepository, type InvoiceBrand } from '../repositories/billsRepository';
+import BarcodeRenderer from 'src/modules/thrift/barcode/components/BarcodeRenderer.vue';
+import BillLineItemDisplay from '../components/BillLineItemDisplay.vue';
+import ApBillPaper from '../components/ApBillPaper.vue';
+import BillAdjustmentLinesTable from '../components/BillAdjustmentLinesTable.vue';
+import type { BillLineDisplayRow } from '../repositories/billLinesRepository';
+import ApBillPartiesBlock from '../components/ApBillPartiesBlock.vue';
+import BillKernelSourceChips from '../components/BillKernelSourceChips.vue';
+import { useBillDetailQuery } from '../composables/useBillDetailQuery';
+import { billsQueryKeys } from '../services/billsQueryKeys';
+import { apBillCurrencyBalances } from '../utils/parseApBillPaper';
+import { shipmentIdFromBill } from '../utils/shipmentApBillSource';
+import {
+  billNoteHasVisibleContent,
+  billNoteHtml,
+} from '../utils/billNoteDisplay';
+
+const BRAND_STORAGE_KEY = 'bills_pays_last_invoice_brand_id';
+
+const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+
+const billId = computed(() => {
+  const raw = route.params.billId;
+  const id = Number(typeof raw === 'string' ? raw : '');
+  return Number.isFinite(id) && id > 0 ? id : null;
+});
+
+const { detailQuery, itemsQuery, billLinesQuery } = useBillDetailQuery(billId);
+
+const tenantId = computed(() => {
+  const t = authStore.selectedTenant;
+  if (!t) return null;
+  return t.parent_id ?? t.id;
+});
+
+const bundleQuery = useBillDetailBundleQuery(billId, tenantId);
+
+const brandsQuery = useQuery({
+  queryKey: computed(() => billsQueryKeys.brands(tenantId.value)),
+  queryFn: () =>
+    billsRepository.listBillBrands({ tenant_id: tenantId.value! }),
+  enabled: computed(() => tenantId.value != null),
+  staleTime: 60_000,
+});
+
+const brandOptions = computed(() => brandsQuery.data.value ?? []);
+const selectedBrandId = ref<number | null>(null);
+
+const selectedBrand = computed(() =>
+  brandOptions.value.find((b) => b.id === selectedBrandId.value) ?? brandOptions.value[0],
+);
+
+watch(
+  brandOptions,
+  (brands) => {
+    if (!brands.length) return;
+    const storageKey = `${BRAND_STORAGE_KEY}_${tenantId.value ?? 0}`;
+    const stored = localStorage.getItem(storageKey);
+    const storedId = stored ? Number(stored) : NaN;
+    if (Number.isFinite(storedId) && brands.some((b) => b.id === storedId)) {
+      selectedBrandId.value = storedId;
+    } else {
+      selectedBrandId.value = brands[0].id;
+    }
+  },
+  { immediate: true },
+);
+
+watch(selectedBrandId, (id) => {
+  if (id == null || tenantId.value == null) return;
+  localStorage.setItem(`${BRAND_STORAGE_KEY}_${tenantId.value}`, String(id));
+});
+
+const bill = computed(() => detailQuery.data.value as GlobalInvoiceDetail | undefined);
+
+const billCommentHtml = computed(() => billNoteHtml(bill.value?.note));
+const hasBillComment = computed(() => billNoteHasVisibleContent(bill.value?.note));
+const billShipmentId = computed(() => shipmentIdFromBill(bill.value) ?? null);
+const isApBill = computed(() => bill.value?.invoice_type === 'ap');
+const isManualComposeApBill = computed(
+  () => isApBill.value && bill.value?.source_type === 'compose',
+);
+
+const billDocumentKind = computed(() => {
+  const b = bill.value as { document_kind?: string } | undefined;
+  return b?.document_kind ?? 'standard';
+});
+const isAdjustmentBill = computed(() => billDocumentKind.value !== 'standard');
+const documentTitle = computed(() => {
+  if (billDocumentKind.value === 'credit_note') return 'Credit note';
+  if (billDocumentKind.value === 'debit_note') return 'Debit note';
+  return null;
+});
+const parentInvoiceNo = computed(() => {
+  const meta = bill.value?.channel_meta as Record<string, unknown> | null;
+  const adj = meta?.adjustment as Record<string, unknown> | undefined;
+  const fromMeta = adj?.parent_invoice_no;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  return null;
+});
+const apCurrencyBalances = computed(() => {
+  if (!isApBill.value || !bill.value) return null;
+  return apBillCurrencyBalances(
+    bill.value.channel_meta as Record<string, unknown> | null,
+    bill.value.paid_amount,
+    bill.value.due_amount,
+  );
+});
+
+const billSettlementCurrencyLabel = computed(() => {
+  const code = apCurrencyBalances.value?.[0]?.currency_code ?? bill.value?.currency_code;
+  if (!code) return null;
+  return settlementCurrencyDisplayLabel(code);
+});
+const lines = computed((): GlobalInvoiceItemRow[] => {
+  const bundle = bundleQuery.data.value;
+  const stockItems = bundle?.stockItems;
+  if (stockItems?.length) return stockItems;
+  const fromQuery = itemsQuery.data.value;
+  if (fromQuery?.length) return fromQuery;
+  const id = billId.value;
+  if (bundle?.billLines?.length && id != null && !isApBill.value && !isAdjustmentBill.value) {
+    return kernelBillLinesToStockRows(bundle.billLines, id);
+  }
+  return fromQuery ?? [];
+});
+
+const billLinesQuantityTotal = computed(() => sumBillLineQuantities(lines.value));
+
+const showArKernelSource = computed(() => {
+  if (isApBill.value || !bill.value) return false;
+  return isDeliveryPaperOutcomeBillSource(bill.value.source_type, bill.value.source_key ?? null);
+});
+
+const deliveryPaperShopOrderId = computed(() => {
+  const b = bill.value;
+  if (!b) return null;
+  const meta = b.channel_meta as Record<string, unknown> | null;
+  const fromMeta = meta?.shop_order_id;
+  if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
+  if (b.source_type === 'shop_order' && b.source_id != null) {
+    const id = Number(b.source_id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  return null;
+});
+
+const billCurrencyCode = computed(() =>
+  String(bill.value?.currency_code ?? 'BDT').trim().toUpperCase(),
+);
+
+function formatDeskAmount(value: number | string | null | undefined): string {
+  if (isApBill.value) return formatAmountBdt(value);
+  return formatSettlementCurrencyAmount(value, billCurrencyCode.value);
+}
+
+const adjustmentLineRows = computed((): BillLineDisplayRow[] => {
+  if (!isAdjustmentBill.value) return [];
+  const fromQuery = billLinesQuery.data.value;
+  if (fromQuery?.length) {
+    return fromQuery;
+  }
+  if (isApBill.value) {
+    return [];
+  }
+  return lines.value.map((line) => ({
+    id: line.id,
+    name_snapshot: line.name_snapshot ?? 'Line',
+    currency_code: 'BDT',
+    line_total_amount: Number(line.line_total_amount ?? 0),
+    books_amount: Number(line.line_total_amount ?? 0),
+    quantity: Number(line.quantity ?? 1),
+  }));
+});
+
+const adjustmentReason = computed(() => {
+  const meta = bill.value?.channel_meta as Record<string, unknown> | null;
+  const adj = meta?.adjustment as Record<string, unknown> | undefined;
+  const fromMeta = adj?.reason;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  const note = bill.value?.note?.trim();
+  return note || null;
+});
+
+const profileName = computed(
+  () => bill.value?.profiles?.name || bill.value?.recipient_name || '—',
+);
+
+const fromPartyName = computed(
+  () =>
+    bill.value?.to_profile?.name
+    || selectedBrand.value?.name
+    || '—',
+);
+const fromPartyAddress = computed(
+  () => bill.value?.to_profile?.address ?? selectedBrand.value?.address ?? null,
+);
+const toPartyName = computed(
+  () =>
+    bill.value?.from_profile?.name
+    || bill.value?.profiles?.name
+    || bill.value?.recipient_name
+    || '—',
+);
+const toPartyAddress = computed(
+  () =>
+    bill.value?.from_profile?.address
+    ?? bill.value?.profiles?.address
+    ?? bill.value?.recipient_address
+    ?? null,
+);
+const toPartyPhone = computed(
+  () =>
+    bill.value?.from_profile?.phone
+    ?? bill.value?.profiles?.phone
+    ?? bill.value?.recipient_phone
+    ?? null,
+);
+
+const goBack = () => {
+  if (typeof window !== 'undefined' && window.history.length > 1) {
+    router.back();
+    return;
+  }
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  router.push({ name: 'app-bills-page', params: tenantSlug ? { tenantSlug } : {} });
+};
+
+const goBrands = () => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  router.push({
+    name: 'app-bill-brands-page',
+    params: tenantSlug ? { tenantSlug } : {},
+  });
+};
+
+const onPrint = () => {
+  window.print();
+};
+</script>
+
+<style scoped>
+.preview-sheet {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
+  border-radius: 8px;
+}
+.totals-panel {
+  min-width: 200px;
+  font-size: 13px;
+}
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 4px;
+}
+
+.ap-bill-balance-group--spaced {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--tf-neutral-border, #e2e8f0);
+}
+.preview-lines th {
+  font-size: 11px;
+  color: #64748b;
+}
+.preview-line-item-cell {
+  vertical-align: top;
+  max-width: 300px;
+}
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .preview-sheet {
+    border: none;
+    box-shadow: none;
+  }
+  .preview-line-item-cell img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+</style>
+
+<style lang="scss" scoped>
+.bill-preview-note .rich-text-body :deep(p) {
+  margin-top: 0;
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+.bill-preview-note .rich-text-body :deep(ul),
+.bill-preview-note .rich-text-body :deep(ol) {
+  padding-left: 18px;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+</style>
+
+<style lang="scss">
+@media print {
+  .q-header,
+  .q-drawer,
+  .q-footer,
+  .workspace-shell-toolbar {
+    display: none !important;
+  }
+  .q-page-container {
+    padding-top: 0 !important;
+  }
+}
+</style>

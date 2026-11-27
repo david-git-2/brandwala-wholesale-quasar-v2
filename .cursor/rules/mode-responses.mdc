@@ -1,127 +1,28 @@
 ---
-description: Ask = short easy English. Agent wrap-up = Done. Plan = overview, FE/BE, then phases. Always active.
+description: Ask = short English. Agent = Done. Plan = phased outline.
 alwaysApply: true
 ---
 
-# Mode Responses — Always Active
+# Mode Responses
 
-Follow the section for the current Cursor mode. Do not mix them.
+Follow the section for the current Cursor mode only.
 
-## Ask mode
+## Ask
 
-Every reply uses short, easy English.
+Short easy English: one idea per sentence; meaning first; explain, do not implement.
 
-- Short words. Short sentences. One idea per sentence.
-- Say what it means for the user first. File paths and jargon only if they need them.
-- Explain, do not implement.
-- Do not dump long code unless they asked for it.
+## Agent
 
-```text
-❌ The RPC list_shop_price_overrides is a SECURITY DEFINER function that
-   joins global_stock_allocations under RLS.
+When finished, reply exactly: **Done** (+1–2 sentences only for restart/migrate/risk).
 
-✅ This page loads prices from a server function. It only shows stock
-   that this shop is allowed to sell.
-```
-
-## Agent mode
-
-If blocked because the docs do not state a needed fact, do **not** reply `Done`. Reply with the `DOC_GAP` block from `.cursor/rules/docs-first.mdc` and stop.
-
-When the task is finished, reply with exactly:
-
-Done
-
-Add 1–2 sentences only if the user must know something important:
-
-- they need to restart, migrate, or run a command
-- something is blocked or risky
-- a choice was made that changes later work
-
-Do not recap files, diffs, or steps. Do not list what you changed.
-
-```text
-❌ Updated ShopPricingPage.vue to debounce search and wired the store.
-
-✅ Done
-   Restart the dev server so the new env var is picked up.
-```
-
-## Plan mode
-
-Use this **section order** every time. Do not implement in plan mode.
-
-### 1 — Plan
-
-One short title: what we are building or fixing.
-
-### 2 — Overview
-
-Plain outcome in a few bullets:
-
-- What the user can do when done
-- Scope in / out (one line each if needed)
-- Docs to read first (`spec.md`, `00-gaps.md`, …)
-- Blockers or dependencies on other work
-
-### 3 — Frontend changes
-
-Summary of **all** web work (not phased yet). List paths under `web/`:
-
-- Pages, routes, nav
-- Components, composables, stores/services/repositories
-- Types, query keys, user-visible behavior
-
-Tables or bullets. Name symbols when it matters. No step-by-step implementation here — that goes in phases.
-
-### 4 — Backend changes
-
-Summary of **all** Supabase work (not phased yet). List paths under `supabase/`:
-
-- Schema files, migrations (new file names only — bodies live in schemas first per project rules)
-- RPCs, tables, RLS, tests under `supabase/tests/`
-
-Same rule: inventory and intent here; detailed edits in phases.
-
-### 5 — Phases
-
-Slice implementation here. **Phase 1** is the first shippable slice. Later phases depend on earlier ones when they must.
-
-For **every** phase write:
-
-- **Goal** — what this phase delivers
-- **Files** — exact paths to create, edit, or delete
-- **Change** — what to add, edit, or remove in each file (symbol names, behavior, not “update the store”)
-
-Phase rules:
-
-- Name files and functions. Paste key signatures or field names when they matter.
-- If you looked something up, put the finding in the phase (implement must not re-research).
-- Frontend/backend sections are the map; phases are the execution order (a phase may touch only FE, only BE, or both).
-- Stop after the last phase.
-
-```text
 ## Plan
-Shop pricing search debounce
 
-## Overview
-- Search waits before hitting the server so typing does not spam requests.
-- In: Shop pricing list search. Out: other shop pages.
-- Read: docs/features/shop_order/spec.md
+Do not implement. Section order:
 
-## Frontend changes
-- web/src/modules/shop_order/pages/ShopPricingPage.vue — debounce onSearchInput
+1. **Plan** — one-line title
+2. **Overview** — bullets: outcome, scope in/out, docs to read, blockers
+3. **Frontend changes** — paths under `web/`, symbols that matter
+4. **Backend changes** — `supabase/` paths; migration names only if new
+5. **Phases** — each: **Goal**, **Files** (exact paths), **Change**
 
-## Backend changes
-- (none)
-
-## Phases
-
-Phase 1 — Add debounce to shop pricing search
-Goal: Typing in search waits 300ms before fetching.
-Files:
-- web/src/modules/shop_order/pages/ShopPricingPage.vue
-Change:
-- In onSearchInput, wrap shopPricingStore.loadList() with a 300ms
-  debounce. Reuse existing searchQuery ref. Do not add a new composable.
-```
+Stop after the last phase. Use `core.mdc` voice.

@@ -11,10 +11,10 @@
       <q-btn
         outline
         color="primary"
-        icon="ph ph-truck"
-        label="Dropship Ops Desk"
+        icon="ph ph-package"
+        label="Dropship management"
         no-caps
-        :to="{ name: 'app-shop-dropship-orders-page' }"
+        :to="{ name: 'app-shop-dropship-management-page' }"
       />
     </div>
   </section>

@@ -93,22 +93,22 @@ const childTenantRefsCache = new Map<
   { fetchedAt: number; rows: TenantHierarchyChildRef[] }
 >();
 
-export const childTenantRefsCacheKey = (parentTenantIds: number[]) =>
-  [...parentTenantIds].sort((a, b) => a - b).join(',');
+export const childTenantRefsCacheKey = (tenantIds: number[]) =>
+  [...tenantIds].sort((a, b) => a - b).join(',');
 
-const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHierarchyChildRef[]> => {
-  if (!parentTenantIds.length) {
+const listChildTenantRefs = async (tenantIds: number[]): Promise<TenantHierarchyChildRef[]> => {
+  if (!tenantIds.length) {
     return [];
   }
 
-  const cacheKey = childTenantRefsCacheKey(parentTenantIds);
+  const cacheKey = childTenantRefsCacheKey(tenantIds);
   const cached = childTenantRefsCache.get(cacheKey);
   if (cached && Date.now() - cached.fetchedAt < CHILD_TENANT_REFS_CACHE_TTL_MS) {
     return cached.rows;
   }
 
   const { data, error } = await supabase.rpc('list_child_tenant_refs', {
-    p_tenant_ids: parentTenantIds,
+    p_tenant_ids: tenantIds,
   });
 
   if (error) {
@@ -413,12 +413,12 @@ export type TenantPurgeResult = {
 };
 
 const previewPurgeData = async (payload: {
-  parentTenantId: number;
+  tenantId: number;
   scope: 'all_hierarchy' | 'child_only';
   targetChildId?: number | null;
 }): Promise<TenantPurgePreviewCounts> => {
   const { data, error } = await (supabase.rpc as any)('preview_tenant_data_purge', {
-    p_tenant_id: payload.parentTenantId,
+    p_tenant_id: payload.tenantId,
     p_scope: payload.scope,
     p_target_child_id: payload.targetChildId ?? null,
   });
@@ -439,13 +439,13 @@ const previewPurgeData = async (payload: {
 };
 
 const purgeOperationalData = async (payload: {
-  parentTenantId: number;
+  tenantId: number;
   scope: 'all_hierarchy' | 'child_only';
   confirmationSlug: string;
   targetChildId?: number | null;
 }): Promise<TenantPurgeResult> => {
   const { data, error } = await (supabase.rpc as any)('purge_tenant_operational_data', {
-    p_tenant_id: payload.parentTenantId,
+    p_tenant_id: payload.tenantId,
     p_scope: payload.scope,
     p_confirmation_slug: payload.confirmationSlug,
     p_target_child_id: payload.targetChildId ?? null,

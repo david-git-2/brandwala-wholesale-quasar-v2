@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/customer/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/customer/spec.md` |
 | UI | `web/src/modules/customer/` |
 | SQL | `public.sql` (customer stub not split) |
 | State | Pinia — copy module |

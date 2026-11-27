@@ -1,6 +1,6 @@
 import { computed, ref, onMounted, onBeforeUnmount, watchEffect } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw, type Router } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 export interface BreadcrumbBadge {
   label: string;
@@ -37,7 +37,6 @@ const DOMAIN_GROUPS: Record<string, string> = {
   access_control: 'Access Control',
   'access-control': 'Access Control',
   membership: 'Memberships',
-  'after-sales': 'After Sales',
   customers: 'Customers',
   capital: 'Capital',
   accounting: 'Accounting',
@@ -57,8 +56,8 @@ const ENTITY_MAP: Record<
   { label: string; singular: string; defaultSubPath?: string | undefined; skipIdCrumb?: boolean }
 > = {
   demand: { label: 'Demand', singular: 'Demand' },
-  fulfill: { label: 'Delivery paper', singular: 'Delivery paper' },
-  'delivery-paper': { label: 'Delivery paper', singular: 'Delivery paper' },
+  fulfill: { label: 'Demand', singular: 'Demand' },
+  'delivery-paper': { label: 'Demand', singular: 'Demand' },
   shipment: { label: 'Shipments', singular: 'Shipment' },
   'inbound-shipments': { label: 'Inbound Shipments', singular: 'Shipment' },
   inbound: { label: 'Inbound Shipments', singular: 'Shipment' },
@@ -71,7 +70,11 @@ const ENTITY_MAP: Record<
   shipping: { label: 'Shipping', singular: 'Shipping' },
   orders: { label: 'Orders', singular: 'Order' },
   'dropship-orders': { label: 'Dropship Orders', singular: 'Dropship Order' },
-  'dropship-management': { label: 'Dropship Orders', singular: 'Dropship Order' },
+  'dropship-management': {
+    label: 'Dropship management',
+    singular: 'Dropship order',
+    skipIdCrumb: true,
+  },
   'customer-groups': { label: 'Customer Groups', singular: 'Customer Group' },
   merchants: { label: 'Dropshippers', singular: 'Dropshipper' },
   categories: { label: 'Categories', singular: 'Category' },

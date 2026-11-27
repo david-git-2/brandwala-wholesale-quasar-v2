@@ -302,7 +302,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { date, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useKobaOrderStore } from 'src/modules/koba/retail/stores/kobaOrderStore';
 import KobaOrderDetailDialog from 'src/modules/koba/retail/components/KobaOrderDetailDialog.vue';
 

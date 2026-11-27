@@ -544,7 +544,7 @@ import type { QInput } from 'quasar';
 import { useI18n } from 'vue-i18n';
 
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
@@ -586,7 +586,7 @@ const props = defineProps<{
   useHeaderProfile?: boolean;
 }>();
 
-const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor', 'theme-proxy'];
 
 const drawerOpen = ref(false);
 const showLogoutDialog = ref(false);

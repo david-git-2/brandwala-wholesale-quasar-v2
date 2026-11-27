@@ -104,11 +104,11 @@ Cash RPCs (`rpc_deposit`, `rpc_pay_bills`, …): [money](../money/spec.md) · [b
 
 `rpc_create_bill`: `source_entity`, `source_type`, `source_id`, `source_key` (parent + discriminator). List: `rpc_query_bills` `p_source_*`. No DML; no `rpc_allocate_invoice_no` from features.
 
-**Delivery paper AR:** `apply_delivery_paper_outcome` (take / condition) calls **`rpc_create_bill`** with `kind = sales_invoice_wholesale`, stock lines, `source_key` `delivery_paper:{id}:take|condition` (shop order: `source_entity = public.shop_orders`; PBC: `public.delivery_paper`). Draft only; issue via **`rpc_issue_bill`** / desk after stock commit.
+**Catalog customer delivery:** No auto AR from a delivery record. Staff create/issue wholesale AR from the compose desk or existing order workflows. Legacy bills with `source_key` `delivery_paper:…` or `source_type = delivery_close` remain readable only.
 
 ## Shipment cost AP (Option A) {#shipment-cost-ap}
 
-One kernel bill per **bucket × currency** (`source_key` e.g. `material:GBP`). Costs tab → draft/issue on kernel; retire `global_shipment_cost_entries` after cutover. Wiring: [procurement spec](../procurement_stock/spec.md) · [PS35](../procurement_stock/00-gaps.md).
+One kernel bill per **bucket × currency** (`source_key` e.g. `material:GBP`). Costs tab → draft/issue on kernel; retire `global_shipment_cost_entries` after cutover. Wiring: [procurement spec](../procurement_stock/spec.md) · PS35.
 
 ---
 
@@ -146,7 +146,7 @@ Cash invariants (I5, I7, …): [money/spec.md](../money/spec.md).
 | ID | Type | Plan / doc | Code today | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | B1 | not_built | Shipment AP on kernel bills | Adjunct Option A in this spec | Costs tab + drop `global_shipment_cost_entries` |
-| B2 | shipped | Desk list kernel-only | `list_bills_desk_page` → `money_kernel.bills` only | [bills_pays/00-gaps.md](../bills_pays/00-gaps.md) |
+| B2 | shipped | Desk list kernel-only | `list_bills_desk_page` → `money_kernel.bills` only | bills_pays/spec.md |
 | B3 | sql_split | Logical bills owner | DDL in `money_kernel_v2` | Future schema split |
 | B4 | cutover | Drop `bill_events` | Table + T5/T6 triggers + `v_bill_events` | Migration; remove event includes from `rpc_get_bill` |
 
@@ -154,7 +154,7 @@ Cash invariants (I5, I7, …): [money/spec.md](../money/spec.md).
 
 ## Legacy cutover {#legacy-cutover}
 
-**Do not drop** until [bills_pays/00-gaps.md](../bills_pays/00-gaps.md) blockers clear.
+**Do not drop** until bills_pays/spec.md blockers clear.
 
 | Legacy | v2 |
 | :--- | :--- |
@@ -167,7 +167,7 @@ Cash invariants (I5, I7, …): [money/spec.md](../money/spec.md).
 | `sales_invoice_counters` | `invoice_no_counters` |
 | `bill_events` | **Drop** — use settlements + bill header |
 
-**Backfill:** [07-backfill-cutover.sql](07-backfill-cutover.sql). **SQL cutover notes:** `supabase/schemas/bills_pays/99_legacy_kernel_cutover.sql`.
+**Backfill:** [07-backfill-cutover.sql](07-backfill-cutover.sql).
 
 ---
 

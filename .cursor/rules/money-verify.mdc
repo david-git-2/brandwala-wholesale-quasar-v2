@@ -15,7 +15,7 @@ When you change shipment AP, money kernel RPCs, landed cost stamp, or Summary AP
 
 1. Run `pnpm run verify:money` before replying Done.
 2. Report the exact line `VERIFY MONEY: PASS` or `VERIFY MONEY: FAIL <section>` from the command output.
-3. Do **not** edit golden SQL, `shipment_golden_s54.json`, or expected numbers to make a red test green — stop and ask the user (like DOC_GAP).
+3. Do **not** edit golden SQL, `shipment_golden_s54.json`, or expected numbers to make a red test green — stop and ask the user.
 4. Never run `backend:reset`, `backend:restore-dumps`, or `backend:pull-prod-data` as part of verify.
 
 Drift check uses **local** DB rows; failures may be legacy shipments. List shipment ids from drift output and note data cleanup separately from code fixes.

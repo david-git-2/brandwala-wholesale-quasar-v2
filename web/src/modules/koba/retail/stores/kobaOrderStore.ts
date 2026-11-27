@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 import { handleApiFailure } from 'src/utils/appFeedback';
 

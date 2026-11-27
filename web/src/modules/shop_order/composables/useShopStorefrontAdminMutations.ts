@@ -8,7 +8,7 @@ import type {
   ShopStorefrontAdminListingsResult,
   UpsertListingPayload,
 } from '../types';
-import type { Product } from 'src/modules/products/types';
+import type { Product } from 'src/modules/shop_order/submodules/products/types';
 import type { CandidateAllocation } from '../types/pricing';
 import { roundNearest5or0, roundUpToNearest50or100 } from '../utils/shopPricingRound';
 import type { ShopStorefrontAdminListingsPage } from './useShopStorefrontAdminQuery';

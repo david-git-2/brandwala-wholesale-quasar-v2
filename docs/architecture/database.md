@@ -1,6 +1,6 @@
 # Architecture: Database Conventions & Schema Structure
 
-All database definitions, stored procedures, RLS policies, and migrations follow modular live SQL in `supabase/schemas/`. Tracker: [doc/supabase-schema.md](../../doc/supabase-schema.md).
+All database definitions, stored procedures, RLS policies, and migrations follow modular live SQL in `supabase/schemas/` (active paths in `supabase/config.toml` `schema_paths`).
 
 `supabase/migrations/` is apply history for prod and local replay. It is not the live schema. Do not list or read that folder to learn tables or RPCs. Grep `supabase/schemas/`. Open one migration file only when you are adding or fixing that file.
 
@@ -24,7 +24,7 @@ supabase/
 
 **Exception:** `notifications/` uses `03_rls.sql` then `04_rpcs.sql`. Follow files on disk for that folder.
 
-Stub folders (`wallet/`, `thrift/`, `tenants/`, …) may exist before objects are moved out of `public.sql`. Check [doc/supabase-schema.md](../../doc/supabase-schema.md).
+Stub folders (`wallet/`, `thrift/`, `tenants/`, …) may exist before objects are moved out of `public.sql`. Check `supabase/config.toml` (`schema_paths`) to see which folders are active.
 
 ---
 

@@ -1,0 +1,705 @@
+import { computed } from 'vue';
+
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import {
+  resolveTenantHierarchyKind,
+  type TenantHierarchyKind,
+} from 'src/modules/tenant/utils/tenantHierarchy';
+import type { AccessRole } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import type { AuthScope } from 'src/modules/workspace/submodules/auth/composables/useOAuthLogin';
+import {
+  PROCUREMENT_HUB_MODULE_KEYS,
+  SHOP_ORDER_HUB_MODULE_KEYS,
+} from './hubNavConfig';
+import {
+  buildModuleRoutePath,
+  getModuleDefinition,
+  getModuleRoutesForScope,
+  MODULE_REGISTRY,
+  type InteractiveScope,
+  type ModuleAction,
+  type ModuleKey,
+} from './moduleRegistry';
+
+type ModuleHubConfig = {
+  routeSegment: string;
+  anchorModuleKey: ModuleKey;
+  hubModuleKeys: readonly ModuleKey[];
+};
+
+/** Legacy hub injection — shop/procurement/reference sidebars are driven by hubNavConfig. */
+const MODULE_HUB_CONFIGS: readonly ModuleHubConfig[] = [];
+
+const isProcurementHubModuleKey = (moduleKey: ModuleKey): boolean =>
+  (PROCUREMENT_HUB_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey);
+
+/** Child tenants may view parent warehouse stock only — all other procurement hub modules stay blocked. */
+const isProcurementBlockedOnChildTenant = (
+  moduleKey: ModuleKey,
+  action: ModuleAction = 'view',
+): boolean => {
+  if (!isProcurementHubModuleKey(moduleKey)) {
+    return false;
+  }
+  if (moduleKey === 'global_stock' && action === 'view') {
+    return false;
+  }
+  if (moduleKey === 'procurement_fulfill' && action === 'view') {
+    return false;
+  }
+  return true;
+};
+
+const resolveTenantForModuleAccess = (
+  tenantId: number | null | undefined,
+): { parent_id: number | null } | null => {
+  const tenantStore = useTenantStore();
+  return (
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+    null
+  );
+};
+
+const PEOPLE_SOURCE_MODULE_KEYS = [
+  'people',
+  'cashbook',
+  'customer',
+  'vendor',
+  'investor_capital',
+  'investor_profiles',
+  'recipient_profile',
+  'global_invoice',
+] as const;
+
+const isTenantModuleActive = (
+  moduleKey: ModuleKey,
+  activeModuleKeys: readonly string[],
+): boolean => {
+  if (activeModuleKeys.includes(moduleKey)) {
+    return true;
+  }
+
+  if (moduleKey === 'people') {
+    return PEOPLE_SOURCE_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
+  }
+
+  if (moduleKey === 'procurement_demand') {
+    return activeModuleKeys.includes('global_shipment');
+  }
+
+  if (moduleKey === 'procurement_fulfill') {
+    return activeModuleKeys.includes('global_shipment');
+  }
+
+  if (moduleKey === 'product_based_costing') {
+    return (
+      activeModuleKeys.includes('product_based_costing') ||
+      activeModuleKeys.includes('shop_order') ||
+      activeModuleKeys.includes('shop_order_mgmt') ||
+      activeModuleKeys.includes('global_shipment') ||
+      activeModuleKeys.includes('procurement_stock') ||
+      activeModuleKeys.includes('procurement_demand')
+    );
+  }
+
+  if (moduleKey === 'invoice_brand') {
+    return (
+      activeModuleKeys.includes('invoice_brand') ||
+      activeModuleKeys.includes('global_invoice') ||
+      activeModuleKeys.includes('sales_invoice')
+    );
+  }
+
+  if (moduleKey === 'recipient_profile') {
+    return (
+      activeModuleKeys.includes('recipient_profile') ||
+      activeModuleKeys.includes('customer') ||
+      activeModuleKeys.includes('global_invoice') ||
+      activeModuleKeys.includes('sales_invoice')
+    );
+  }
+
+  if (moduleKey === 'investor_profiles') {
+    return (
+      activeModuleKeys.includes('investor_profiles') ||
+      activeModuleKeys.includes('investor_capital')
+    );
+  }
+
+  if (moduleKey === 'procurement_stock') {
+    return PROCUREMENT_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
+  }
+
+  if (moduleKey === 'shop_order') {
+    return SHOP_ORDER_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
+  }
+
+  return false;
+};
+
+const hasModuleRoleGrant = ({
+  moduleKey,
+  action,
+  role,
+  effectiveGrants,
+  isAdmin,
+}: {
+  moduleKey: ModuleKey;
+  action: ModuleAction;
+  role: AccessRole | null | undefined;
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined;
+  isAdmin?: boolean | null | undefined;
+}): boolean => {
+  if (role === 'superadmin' || isAdmin === true) {
+    return true;
+  }
+
+  if (!effectiveGrants) {
+    return false;
+  }
+
+  if (moduleKey === 'people') {
+    return effectiveGrants.some(
+      (grant) =>
+        (PEOPLE_SOURCE_MODULE_KEYS as readonly string[]).includes(grant.module_key) &&
+        grant.action === action,
+    );
+  }
+
+  if (
+    effectiveGrants.some((grant) => grant.module_key === moduleKey && grant.action === action)
+  ) {
+    return true;
+  }
+
+  if (moduleKey === 'procurement_demand') {
+    return effectiveGrants.some(
+      (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'procurement_fulfill') {
+    return effectiveGrants.some(
+      (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'product_based_costing') {
+    return effectiveGrants.some(
+      (grant) =>
+        (grant.module_key === 'product_based_costing' ||
+          grant.module_key === 'shop_order' ||
+          grant.module_key === 'shop_order_mgmt' ||
+          grant.module_key === 'global_shipment' ||
+          grant.module_key === 'procurement_demand') &&
+        grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'invoice_brand') {
+    return effectiveGrants.some(
+      (grant) =>
+        (grant.module_key === 'invoice_brand' ||
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice') &&
+        grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'recipient_profile') {
+    return effectiveGrants.some(
+      (grant) =>
+        (grant.module_key === 'recipient_profile' ||
+          grant.module_key === 'customer' ||
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice') &&
+        grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'procurement_stock') {
+    return effectiveGrants.some(
+      (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'shop_order') {
+    return SHOP_ORDER_HUB_MODULE_KEYS.some((hubKey) =>
+      effectiveGrants.some((grant) => grant.module_key === hubKey && grant.action === action),
+    );
+  }
+
+  return false;
+};
+
+const NO_ACCESS: readonly ModuleAction[] = [];
+
+const SALES_CHILD_CATALOG_MODULES: ReadonlySet<ModuleKey> = new Set([
+  'billing_profile',
+]);
+
+const isBlockedOnParentCompany = (
+  moduleKey: ModuleKey,
+  tenantId: number | null | undefined,
+): boolean => {
+  if (!SALES_CHILD_CATALOG_MODULES.has(moduleKey)) {
+    return false;
+  }
+
+  return resolveWorkspaceTenantKind(tenantId) === 'parent';
+};
+
+const resolveWorkspaceTenantKind = (
+  tenantId: number | null | undefined,
+): TenantHierarchyKind => {
+  const tenantStore = useTenantStore();
+  const current =
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+    tenantStore.availableAdminTenants.find((tenant) => tenant.id === tenantId) ??
+    null;
+  return resolveTenantHierarchyKind(current, [
+    ...tenantStore.availableAdminTenants,
+    ...tenantStore.items,
+    ...tenantStore.hierarchyChildRefs,
+  ]);
+};
+
+const isInteractiveScope = (scope: AuthScope | null): scope is InteractiveScope =>
+  scope === 'app' || scope === 'shop';
+
+export const hasTenantContextForScope = ({
+  scope,
+  tenantId,
+}: {
+  scope: AuthScope | null;
+  tenantId: number | null | undefined;
+}) => {
+  if (!isInteractiveScope(scope)) {
+    return false;
+  }
+
+  return typeof tenantId === 'number' && Number.isFinite(tenantId);
+};
+
+export const hasCustomerGroupContextForScope = ({
+  scope,
+  customerGroupId,
+}: {
+  scope: AuthScope | null;
+  customerGroupId: number | null | undefined;
+}) => {
+  if (scope !== 'shop') {
+    return true;
+  }
+
+  return typeof customerGroupId === 'number' && Number.isFinite(customerGroupId);
+};
+
+export type ModuleAccessResolution = {
+  allowed: boolean;
+  hasScopeContext: boolean;
+  hasTenantContext: boolean;
+  hasCustomerGroupContext: boolean;
+  moduleEnabled: boolean;
+  roleAllowed: boolean;
+  allowedActions: readonly ModuleAction[];
+};
+
+export const canAccessModule = ({
+  scope,
+  tenantId,
+  customerGroupId,
+  role,
+  moduleKey,
+  activeModuleKeys,
+  action = 'view',
+  effectiveGrants,
+  isAdmin,
+}: {
+  scope: AuthScope | null;
+  tenantId: number | null | undefined;
+  customerGroupId?: number | null | undefined;
+  role: AccessRole | null | undefined;
+  moduleKey: ModuleKey;
+  activeModuleKeys: readonly string[];
+  action?: ModuleAction;
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined;
+  isAdmin?: boolean | null | undefined;
+}) => {
+  const hasScopeContext = isInteractiveScope(scope);
+  const hasTenantContext = hasTenantContextForScope({ scope, tenantId });
+  const hasCustomerGroupContext = hasCustomerGroupContextForScope({
+    scope,
+    customerGroupId,
+  });
+  const tenantHasModule = isTenantModuleActive(moduleKey, activeModuleKeys);
+
+  const roleAllowed = hasModuleRoleGrant({
+    moduleKey,
+    action,
+    role,
+    effectiveGrants,
+    isAdmin,
+  });
+
+  const currentTenant = resolveTenantForModuleAccess(tenantId);
+  if (currentTenant?.parent_id != null) {
+    const blockedOnChild =
+      (isProcurementHubModuleKey(moduleKey) &&
+        isProcurementBlockedOnChildTenant(moduleKey, action)) ||
+      moduleKey === 'investor_capital' ||
+      moduleKey === 'investor_profiles' ||
+      moduleKey === 'investor_capital_ledger' ||
+      moduleKey === 'investor_shipment_share' ||
+      moduleKey === 'investor_portal' ||
+      moduleKey === 'cashbook' ||
+      moduleKey === 'invoice_brand';
+    if (blockedOnChild) {
+      return false;
+    }
+  }
+
+  // Stock (inventory) is child-tenant only — hide on parent / standalone roots
+  if (moduleKey === 'inventory') {
+    const tenantStore = useTenantStore();
+    const current =
+      tenantStore.selectedTenant ??
+      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+      null;
+    if (!current || current.parent_id === null) {
+      return false;
+    }
+  }
+
+  // Billing catalogs and shop storefronts belong to the issuing child / standalone.
+  if (isBlockedOnParentCompany(moduleKey, tenantId)) {
+    return false;
+  }
+
+  return (
+    hasScopeContext && hasTenantContext && hasCustomerGroupContext && tenantHasModule && roleAllowed
+  );
+};
+
+export const resolveModuleAccess = ({
+  scope,
+  tenantId,
+  customerGroupId,
+  role,
+  moduleKey,
+  activeModuleKeys,
+  action = 'view',
+  effectiveGrants,
+  isAdmin,
+}: {
+  scope: AuthScope | null;
+  tenantId: number | null | undefined;
+  customerGroupId?: number | null | undefined;
+  role: AccessRole | null | undefined;
+  moduleKey: ModuleKey;
+  activeModuleKeys: readonly string[];
+  action?: ModuleAction;
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined;
+  isAdmin?: boolean | null | undefined;
+}): ModuleAccessResolution => {
+  const hasScopeContext = isInteractiveScope(scope);
+  const hasTenantContext = hasTenantContextForScope({ scope, tenantId });
+  const hasCustomerGroupContext = hasCustomerGroupContextForScope({
+    scope,
+    customerGroupId,
+  });
+  const moduleEnabled = isTenantModuleActive(moduleKey, activeModuleKeys);
+
+  let roleAllowed = false;
+  let allowedActions: readonly ModuleAction[] = [];
+  if (role === 'superadmin' || isAdmin === true) {
+    roleAllowed = true;
+    allowedActions = ['view'];
+  } else if (effectiveGrants) {
+    allowedActions = effectiveGrants
+      .filter((grant) => grant.module_key === moduleKey)
+      .map((grant) => grant.action as ModuleAction);
+    roleAllowed = hasModuleRoleGrant({
+      moduleKey,
+      action,
+      role,
+      effectiveGrants,
+      isAdmin,
+    });
+    if (
+      (moduleKey === 'procurement_demand' ||
+        moduleKey === 'procurement_fulfill' ||
+        moduleKey === 'product_based_costing') &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some((grant) => grant.module_key === 'global_shipment')
+    ) {
+      allowedActions = effectiveGrants
+        .filter((grant) => grant.module_key === 'global_shipment')
+        .map((grant) => grant.action as ModuleAction);
+    }
+    if (
+      moduleKey === 'invoice_brand' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some(
+        (grant) => grant.module_key === 'global_invoice' || grant.module_key === 'sales_invoice',
+      )
+    ) {
+      allowedActions = effectiveGrants
+        .filter(
+          (grant) =>
+            grant.module_key === 'global_invoice' || grant.module_key === 'sales_invoice',
+        )
+        .map((grant) => grant.action as ModuleAction);
+    }
+    if (
+      moduleKey === 'people' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some((grant) =>
+        (PEOPLE_SOURCE_MODULE_KEYS as readonly string[]).includes(grant.module_key),
+      )
+    ) {
+      allowedActions = effectiveGrants
+        .filter((grant) => (PEOPLE_SOURCE_MODULE_KEYS as readonly string[]).includes(grant.module_key))
+        .map((grant) => grant.action as ModuleAction);
+    }
+    if (
+      moduleKey === 'recipient_profile' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some(
+        (grant) =>
+          grant.module_key === 'recipient_profile' ||
+          grant.module_key === 'customer' ||
+          grant.module_key === 'global_invoice' ||
+          grant.module_key === 'sales_invoice',
+      )
+    ) {
+      allowedActions = effectiveGrants
+        .filter(
+          (grant) =>
+            grant.module_key === 'recipient_profile' ||
+            grant.module_key === 'customer' ||
+            grant.module_key === 'global_invoice' ||
+            grant.module_key === 'sales_invoice',
+        )
+        .map((grant) => grant.action as ModuleAction);
+    }
+  } else {
+    allowedActions = NO_ACCESS;
+    roleAllowed = false;
+  }
+
+  const currentTenant = resolveTenantForModuleAccess(tenantId);
+  const isChildTenant = currentTenant?.parent_id != null;
+
+  let isBlockedByChildStatus = false;
+  if (isChildTenant) {
+    isBlockedByChildStatus =
+      (isProcurementHubModuleKey(moduleKey) &&
+        isProcurementBlockedOnChildTenant(moduleKey, action)) ||
+      moduleKey === 'investor_capital' ||
+      moduleKey === 'investor_profiles' ||
+      moduleKey === 'investor_capital_ledger' ||
+      moduleKey === 'investor_shipment_share' ||
+      moduleKey === 'investor_portal' ||
+      moduleKey === 'cashbook' ||
+      moduleKey === 'invoice_brand';
+  }
+
+  if (isChildTenant && moduleKey === 'global_stock') {
+    allowedActions = allowedActions.filter((grantAction) => grantAction === 'view');
+    if (action !== 'view') {
+      roleAllowed = false;
+    }
+  }
+
+  let isBlockedByParentStatus = false;
+  if (moduleKey === 'inventory') {
+    const tenantStore = useTenantStore();
+    const current =
+      tenantStore.selectedTenant ??
+      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+      null;
+    if (!current || current.parent_id === null) {
+      isBlockedByParentStatus = true;
+    }
+  }
+
+  if (isBlockedOnParentCompany(moduleKey, tenantId)) {
+    isBlockedByParentStatus = true;
+  }
+
+  return {
+    allowed:
+      hasScopeContext &&
+      hasTenantContext &&
+      hasCustomerGroupContext &&
+      moduleEnabled &&
+      roleAllowed &&
+      !isBlockedByChildStatus &&
+      !isBlockedByParentStatus,
+    hasScopeContext,
+    hasTenantContext,
+    hasCustomerGroupContext,
+    moduleEnabled: moduleEnabled && !isBlockedByChildStatus && !isBlockedByParentStatus,
+    roleAllowed,
+    allowedActions,
+  };
+};
+
+export const getAccessibleModuleRoutes = ({
+  scope,
+  tenantId,
+  customerGroupId,
+  role,
+  activeModuleKeys,
+  tenantSlug,
+  effectiveGrants,
+  isAdmin,
+}: {
+  scope: AuthScope | null;
+  tenantId: number | null | undefined;
+  customerGroupId?: number | null | undefined;
+  role: AccessRole | null | undefined;
+  activeModuleKeys: readonly string[];
+  tenantSlug?: string | null | undefined;
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined;
+  isAdmin?: boolean | null | undefined;
+}) => {
+  if (!isInteractiveScope(scope)) {
+    return [];
+  }
+
+  const accessibleRoutes = getModuleRoutesForScope(scope, { tenantSlug }).filter(
+    (routeDefinition) =>
+      resolveModuleAccess({
+        scope,
+        tenantId,
+        customerGroupId,
+        role,
+        moduleKey: routeDefinition.moduleKey,
+        activeModuleKeys,
+        action: routeDefinition.requiredAction ?? 'view',
+        effectiveGrants,
+        isAdmin,
+      }).allowed,
+  );
+
+  if (scope !== 'app') {
+    return accessibleRoutes;
+  }
+
+  const accessContext = {
+    scope,
+    tenantId,
+    customerGroupId,
+    role,
+    activeModuleKeys,
+    effectiveGrants,
+    isAdmin,
+  };
+
+  const routes = [...accessibleRoutes];
+
+  for (const hubConfig of MODULE_HUB_CONFIGS) {
+    const hubPath = buildModuleRoutePath({
+      scope: 'app',
+      routeSegment: hubConfig.routeSegment,
+      tenantSlug,
+    });
+
+    if (routes.some((route) => route.to === hubPath)) {
+      continue;
+    }
+
+    const hasAnyHubAccess = hubConfig.hubModuleKeys.some((moduleKey) =>
+      resolveModuleAccess({
+        ...accessContext,
+        moduleKey,
+        action: 'view',
+      }).allowed,
+    );
+
+    if (!hasAnyHubAccess) {
+      continue;
+    }
+
+    const hubDefinition = getModuleDefinition(hubConfig.anchorModuleKey);
+    const hubRoute = hubDefinition.routes.find((routeDefinition) => routeDefinition.scope === 'app');
+
+    if (!hubRoute) {
+      continue;
+    }
+
+    routes.push({
+      moduleKey: hubConfig.anchorModuleKey,
+      moduleName: hubDefinition.name,
+      to: hubPath,
+      ...hubRoute,
+    });
+  }
+
+  const moduleOrder = new Map(MODULE_REGISTRY.map((definition, index) => [definition.key, index]));
+
+  return routes.sort((a, b) => {
+    const orderA = moduleOrder.get(a.moduleKey) ?? Number.MAX_SAFE_INTEGER;
+    const orderB = moduleOrder.get(b.moduleKey) ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+  });
+};
+
+export const useModulePermissions = () => {
+  const authStore = useAuthStore();
+
+  const accessibleModuleRoutes = computed(() =>
+    getAccessibleModuleRoutes({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      activeModuleKeys: authStore.activeModuleKeys,
+      tenantSlug: authStore.tenantSlug,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    }),
+  );
+
+  const hasModuleAccess = (moduleKey: ModuleKey, action: ModuleAction = 'view') =>
+    canAccessModule({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      moduleKey,
+      activeModuleKeys: authStore.activeModuleKeys,
+      action,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    });
+
+  const getModuleAccess = (moduleKey: ModuleKey, action: ModuleAction = 'view') =>
+    resolveModuleAccess({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      moduleKey,
+      activeModuleKeys: authStore.activeModuleKeys,
+      action,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    });
+
+  return {
+    accessibleModuleRoutes,
+    getModuleAccess,
+    hasModuleAccess,
+  };
+};
+
+export type { ModuleKey, ModuleAction } from './moduleRegistry';

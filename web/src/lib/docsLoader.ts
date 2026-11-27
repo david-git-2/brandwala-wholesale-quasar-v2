@@ -26,9 +26,9 @@ export interface DocCategoryGroup {
   subgroups?: Record<string, DocItem[]> | undefined;
 }
 
-// Vite glob loader to eagerly load all markdown files across docs/ and doc/
+// Vite glob loader to eagerly load all markdown files under docs/
 const rawDocFiles = import.meta.glob<string>(
-  ['../../../docs/**/*.md', '../../../doc/**/*.md'],
+  ['../../../docs/**/*.md'],
   { query: '?raw', import: 'default', eager: true }
 );
 
@@ -76,9 +76,7 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
   const lowerPath = cleanPath.toLowerCase();
   const lowerTitle = title.toLowerCase();
 
-  if (lowerPath.includes('gaps') || lowerTitle.includes('gaps')) {
-    badge = 'Gaps';
-  } else if (
+  if (
     fileName === 'spec' ||
     lowerPath.endsWith('/spec.md') ||
     lowerPath.includes('prd') ||
@@ -112,27 +110,11 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
   } else if (cleanPath.startsWith('docs/guides/')) {
     category = 'Architecture & Standards';
     subgroup = 'Engineering Guides';
-  } else if (cleanPath === 'doc/supabase-schema.md' || cleanPath === 'doc/SUPABASE_SCHEMA.md') {
-    category = 'Architecture & Standards';
-    subgroup = 'Database & Schemas';
   } else if (cleanPath.startsWith('docs/features/')) {
     category = 'Features & Specifications';
     const parts = cleanPath.split('/');
     if (parts.length > 2 && parts[2]) {
       subgroup = parts[2].replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-    }
-  } else if (cleanPath.startsWith('doc/fix/')) {
-    category = 'System, Schemas & Fixes';
-    subgroup = 'UI & Logic Fixes';
-  } else if (cleanPath.startsWith('doc/')) {
-    const parts = cleanPath.split('/');
-    if (parts.length > 2 && parts[1]) {
-      const folder = parts[1];
-      subgroup = folder.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      category = 'Operations & Modules';
-    } else {
-      category = 'System, Schemas & Fixes';
-      subgroup = 'System Guides';
     }
   }
 
@@ -162,18 +144,11 @@ function parseMarkdownMetadata(rawPath: string, content: string): DocItem {
   };
 }
 
-function shouldIndexDoc(cleanPath: string): boolean {
-  if (cleanPath === 'doc/brand-theme.md' || cleanPath === 'doc/BRAND_THEME_PLAN.md') return false;
-  return true;
-}
-
 export function getAllDocs(): DocItem[] {
   const docs: DocItem[] = [];
 
   for (const [rawPath, content] of Object.entries(rawDocFiles)) {
     if (typeof content !== 'string') continue;
-    const cleanPath = rawPath.replace(/^\.\.\/\.\.\//, '').replace(/^\.\.\//, '');
-    if (!shouldIndexDoc(cleanPath)) continue;
     docs.push(parseMarkdownMetadata(rawPath, content));
   }
 

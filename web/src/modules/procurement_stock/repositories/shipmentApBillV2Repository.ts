@@ -28,7 +28,7 @@ const db = supabase as any;
 const mapRpcBillLinesToInputs = (lines: unknown): ShipmentApBillLineInput[] => {
   if (!Array.isArray(lines)) return [];
   return lines
-    .map((raw) => {
+    .map((raw): ShipmentApBillLineInput | null => {
       if (!raw || typeof raw !== 'object') return null;
       const row = raw as Record<string, unknown>;
       const meta = row.meta && typeof row.meta === 'object' ? (row.meta as Record<string, unknown>) : {};

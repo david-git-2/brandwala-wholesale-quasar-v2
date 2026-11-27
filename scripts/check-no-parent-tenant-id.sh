@@ -7,6 +7,13 @@ fail=0
 rg_column_ref() {
   rg -n "$@" 2>/dev/null \
     | rg -v 'resolve_parent_tenant_id|user_can_manage_parent_tenant|v_parent_tenant_id' \
+    | rg -v 'AS parent_tenant_id|--.*parent_tenant_id' \
+    || true
+}
+
+rg_dot_column_ref() {
+  rg -n '\.[[:alnum]_]*parent_tenant_id\b' "$@" 2>/dev/null \
+    | rg -v 'resolve_parent_tenant_id' \
     || true
 }
 
@@ -22,7 +29,7 @@ check_paths() {
   fi
 }
 
-check_paths "supabase/schemas" supabase/schemas --glob '!public.sql.bak' --glob '!*.pre-so3'
+check_paths "supabase/schemas" supabase/schemas
 check_paths "supabase/tests" supabase/tests --glob '!no_parent_tenant_id.sql'
 check_paths "web/src" web/src --glob '!database.types.ts'
 
@@ -36,6 +43,11 @@ while IFS= read -r -d '' f; do
   fi
   if rg_column_ref '\bparent_tenant_id\b' "$f" | grep -q .; then
     echo "check-no-parent-tenant-id: found in migration $f" >&2
+    fail=1
+  fi
+  if rg_dot_column_ref "$f" | grep -q .; then
+    echo "check-no-parent-tenant-id: found .parent_tenant_id column access in migration $f" >&2
+    rg_dot_column_ref "$f" >&2
     fail=1
   fi
 done < <(find supabase/migrations -maxdepth 1 -name '*.sql' -print0 2>/dev/null)

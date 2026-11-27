@@ -195,7 +195,7 @@ import ThriftShipmentDetailsSkeleton from '../components/ThriftShipmentDetailsSk
 import ThriftShipmentDetailsHeader from '../components/ThriftShipmentDetailsHeader.vue';
 import ThriftShipmentCostInputsCard from '../components/ThriftShipmentCostInputsCard.vue';
 import ThriftShipmentCostOverviewCard from '../components/ThriftShipmentCostOverviewCard.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { useThriftSettingsQuery } from 'src/modules/thrift/settings/composables/useThriftSettingsQuery';
 import { useThriftShipmentDetailQuery } from '../composables/useThriftShipmentQuery';
@@ -213,8 +213,8 @@ import { buildAutoListedPricingPatch } from '../../shared/utils/buildAutoListedP
 import { formatThriftActionableError } from '../../shared/utils/formatThriftActionableError';
 import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
 import { useQuasar } from 'quasar';
-import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useMembershipColumnPreference } from 'src/modules/tenant/submodules/membership/composables/useMembershipColumnPreference';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 
 const $q = useQuasar();

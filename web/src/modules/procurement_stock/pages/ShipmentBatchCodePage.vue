@@ -8,10 +8,10 @@
       {{ error }}
     </q-banner>
 
-    <template v-else-if="listId && parentTenantId">
+    <template v-else-if="listId && tenantId">
       <BatchCodeListHeaderBar
         :list-id="listId"
-        :parent-tenant-id="parentTenantId"
+        :tenant-id="tenantId"
         show-back
         class="q-mb-xs"
         @back="goBack"
@@ -26,7 +26,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import BatchCodeListHeaderBar from '../components/BatchCodeListHeaderBar.vue';
 import ShipmentBatchCodeGrid from '../components/ShipmentBatchCodeGrid.vue';
@@ -47,7 +47,7 @@ const shipmentId = computed(() => Number(route.params.id));
 const loading = ref(true);
 const error = ref<string | null>(null);
 const listId = ref<number | null>(null);
-const parentTenantId = ref<number | null>(null);
+const tenantId = ref<number | null>(null);
 const listMeta = ref<BatchCodeListRow | null>(null);
 
 const resolveParentTenantId = (): number => {
@@ -73,7 +73,7 @@ const ensureList = async () => {
   loading.value = true;
   error.value = null;
   try {
-    parentTenantId.value = resolveParentTenantId();
+    tenantId.value = resolveParentTenantId();
     await shipmentStore.fetchShipmentDetails(shipmentId.value);
     const shipment = shipmentStore.currentShipment;
     if (!shipment) {
@@ -92,9 +92,9 @@ const ensureList = async () => {
     }
 
     const created = await createListMutation.mutateAsync({
-      parentTenantId: parentTenantId.value,
+      tenantId: tenantId.value,
       payload: {
-        tenant_id: parentTenantId.value,
+        tenant_id: tenantId.value,
         shipment_id: shipmentId.value,
       },
       relations: {

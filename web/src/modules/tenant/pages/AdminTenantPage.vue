@@ -24,8 +24,6 @@
                   </div>
                   <div class="row items-center q-gutter-x-xs text-caption text-grey-7">
                     <span>{{ activeTenant.slug }}</span>
-                    <span>•</span>
-                    <span class="text-weight-medium">{{ isCapitalHostTenant ? 'Parent Company' : 'Sister Concern' }}</span>
                   </div>
                 </div>
               </div>
@@ -120,12 +118,6 @@
                 </button>
               </div>
             </div>
-
-            <CompanyBusinessSection
-              v-if="activeTenant && isCapitalHostTenant"
-              :company-id="activeTenant.id"
-              :company-slug="activeTenant.slug"
-            />
           </q-card-section>
         </q-card>
 
@@ -184,11 +176,10 @@ import { useRoute } from 'vue-router';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { getTenantSlugFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
 import { useAdminTenantSelection } from '../composables/useAdminTenantSelection';
 import { useTenantStore } from '../stores/tenantStore';
-import CompanyBusinessSection from '../components/CompanyBusinessSection.vue';
 import TenantTreeList from '../components/TenantTreeList.vue';
 import TenantDangerZoneCard from '../components/TenantDangerZoneCard.vue';
 import TenantPurgeModal from '../components/TenantPurgeModal.vue';
@@ -215,7 +206,7 @@ const activeTenant = computed<Tenant | null>(() => {
   return null;
 });
 
-const isCapitalHostTenant = computed(() => activeTenant.value?.parent_id === null);
+const isCapitalHostTenant = computed(() => Boolean(activeTenant.value));
 
 const activeStatusStyle = {
   backgroundColor: '#c3e8d2',
@@ -241,7 +232,7 @@ const adminLoginUrl = computed(() =>
 
 const customerLoginUrl = computed(() =>
   activeTenant.value?.slug
-    ? `${baseUrl.value}/${activeTenant.value.slug}/shop/login`
+    ? `${baseUrl.value}/shop/${activeTenant.value.slug}/catalog/login`
     : `${baseUrl.value}/shop/login`,
 );
 

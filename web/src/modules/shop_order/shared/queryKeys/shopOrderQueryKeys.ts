@@ -5,7 +5,6 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'staffOrders', params] as const,
   staffOrdersPage: (params: {
     tenantId: number;
-    parentTenantId?: number | null;
     search?: string | null;
     status?: string | null;
     shopId?: number | null;
@@ -18,7 +17,6 @@ export const shopOrderQueryKeys = {
   shopsAppPage: (
     params: {
       tenantId: number;
-      parentTenantId?: number | null;
       search?: string | null;
       active?: boolean | null;
       catalogParentTenantId?: number | null;
@@ -79,8 +77,8 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'storefrontProductRelated', { tenantId, shopSlug, productId }] as const,
   catalogSearch: (tenantId: number, search: string, limit?: number) =>
     ['shopOrder', 'catalogSearch', { tenantId, search, limit: limit ?? 15 }] as const,
-  catalogRefreshLog: (parentTenantId: number) =>
-    ['shopOrder', 'catalogRefreshLog', { parentTenantId }] as const,
+  catalogRefreshLog: (tenantId: number) =>
+    ['shopOrder', 'catalogRefreshLog', { tenantId }] as const,
   staffProductSearch: (params: {
     tenantId: number;
     shopId: number;
@@ -108,18 +106,21 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'pricingCandidates', { tenantId, shopId }] as const,
   currencies: () => ['shopOrder', 'currencies'] as const,
   pricingRule: (shopId: number) => ['shopOrder', 'pricingRule', { shopId }] as const,
-  customerOrders: (tenantId: number, statusBucket?: string | null) =>
-    ['shopOrder', 'customerOrders', { tenantId, statusBucket: statusBucket ?? null }] as const,
+  customerOrders: (
+    tenantId: number,
+    statusBucket?: string | null,
+    shopType?: string | null,
+  ) =>
+    ['shopOrder', 'customerOrders', { tenantId, statusBucket: statusBucket ?? null, shopType }] as const,
   customerDashboardOrders: (tenantId: number) =>
     ['shopOrder', 'customerDashboardOrders', { tenantId }] as const,
   orderDetailRoot: () => ['shopOrder', 'orderDetail'] as const,
   orderDetail: (tenantId: number | null, orderId: number) =>
     ['shopOrder', 'orderDetail', { tenantId, orderId }] as const,
-  billsForShopOrder: (parentTenantId: number, orderId: number) =>
-    ['shopOrder', 'billsForShopOrder', { parentTenantId, orderId }] as const,
-  deliveryPaperQtyByOrderItem: (tenantId: number, orderId: number) =>
-    ['shopOrder', 'deliveryPaperQtyByOrderItem', { tenantId, orderId }] as const,
-  deliveryPaperQtyByOrderItemRoot: () => ['shopOrder', 'deliveryPaperQtyByOrderItem'] as const,
+  billsForShopOrder: (tenantId: number, orderId: number) =>
+    ['shopOrder', 'billsForShopOrder', { tenantId, orderId }] as const,
+  billItemCoverage: (tenantId: number, orderId: number) =>
+    ['shopOrder', 'billItemCoverage', { tenantId, orderId }] as const,
   courierRemittances: (params: { tenantId: number; courierServiceId?: string | null; status?: string | null }) =>
     ['courier-remittances', params.tenantId, { courierServiceId: params.courierServiceId ?? null, status: params.status ?? null }] as const,
   courierRemittanceDetail: (tenantId: number, batchId: number) =>

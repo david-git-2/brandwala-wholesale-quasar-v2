@@ -20,7 +20,7 @@ export type ApFxLandedPoolsInput = {
 export function landedPoolsFromApFx(apFx: ApFxLandedPoolsInput): LandedCostPools {
   return {
     materialBdt: apFx.material.bdt_paid,
-    freightBdt: apFx.freight_bdt > 0 ? apFx.freight_bdt : apFx.freight.bdt_paid,
+    freightBdt: (apFx.freight_bdt ?? 0) > 0 ? (apFx.freight_bdt ?? 0) : apFx.freight.bdt_paid,
     customsBdt: apFx.customs?.bdt_paid ?? 0,
     handlingBdt: apFx.handling?.bdt_paid ?? 0,
     financeBdt: apFx.finance?.bdt_paid ?? 0,

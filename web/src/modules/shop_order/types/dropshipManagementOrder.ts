@@ -118,6 +118,7 @@ export interface DropshipManagementOrderView {
     return_charge_amount: number;
     deduct_return_charge_from_middle_man: boolean;
     return_override_reason: string | null;
+    global_invoice_id: number | null;
     courier_ap_bill_id: number | null;
   };
   items: DropshipManagementReturnLine[];
@@ -137,6 +138,13 @@ export interface DropshipSettlementDraftPayload {
   discount_company_pay: number;
   return_reason_note: string;
   charge_lines: DropshipSettlementChargeLine[];
+}
+
+/** Management list Save (delivered rows until status → payment_received). */
+export interface DropshipManagementListSettlementPayload {
+  collected_cod_amount: number;
+  delivery_charge_amount: number;
+  cod_charge_amount: number;
 }
 
 export interface DropshipCourierBankTransferPayload {

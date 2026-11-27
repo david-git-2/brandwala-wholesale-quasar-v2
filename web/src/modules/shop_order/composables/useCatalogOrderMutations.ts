@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { showSuccessNotification, handleApiFailure } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { applyStaffOrderDetailToCache } from '../utils/staffOrderDetailCacheUtils';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 

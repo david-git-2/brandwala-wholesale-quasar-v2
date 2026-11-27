@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/<name>/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/<name>/spec.md` |
 | UI | `web/src/modules/<name>/` |
 | SQL | `supabase/schemas/<domain>/` or `public.sql` |
 | Model | BW / pre-order / K-beauty / thrift — [business-models](../../architecture/business-models.md) |

@@ -7,8 +7,8 @@ import {
   isShipmentCostsLocked,
   sumProductEntryAmount,
 } from '../utils/costEntriesCosting';
-import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
-import type { GlobalCurrency } from 'src/modules/global_reference/types';
+import { useGlobalCurrenciesQuery } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalReferenceQuery';
+import type { GlobalCurrency } from 'src/modules/tenant/submodules/global_reference/types';
 export function useInboundShipmentCalculations() {
   const shipmentStore = useGlobalShipmentStore();
 

@@ -1,0 +1,347 @@
+<template>
+  <Teleport to="body">
+    <AppTradeFlowLoadingScreen
+      v-if="isLoading"
+      fullscreen
+      :scope="scope"
+      tagline="Connecting…"
+      aria-label="Connecting"
+    />
+  </Teleport>
+
+  <section class="auth-card auth-card--immersive">
+
+    <div class="auth-card__header">
+      <h2 class="auth-card__title">{{ title }}</h2>
+      <p class="auth-card__subtitle">Sign in to continue</p>
+    </div>
+
+    <div v-if="loginErrorMessage" class="auth-card__error" role="alert">
+      <q-icon name="ph ph-warning-circle" size="1.1rem" class="auth-card__error-icon" />
+      <span>{{ loginErrorMessage }}</span>
+    </div>
+
+    <button
+      class="auth-card__cta"
+      :class="{ 'auth-card__cta--loading': isLoading }"
+      :disabled="isLoading || disabled"
+      @click="handleGoogleLogin"
+      type="button"
+      :aria-label="isLoading ? 'Connecting…' : ctaLabel"
+    >
+      <span class="auth-card__cta-inner">
+        <span class="auth-card__google-disc">
+          <svg
+            class="auth-card__google-icon"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              fill="#4285F4"
+            />
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+              fill="#FBBC05"
+            />
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </svg>
+        </span>
+
+        <span class="auth-card__cta-label">{{ ctaLabel }}</span>
+      </span>
+    </button>
+
+    <p class="auth-card__secure-note">
+      <q-icon name="ph ph-lock-key" size="0.85rem" style="vertical-align: -2px" />
+      Secured with OAuth 2.0 — we never store your password
+    </p>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, inject, watchEffect } from 'vue';
+import { useRoute } from 'vue-router';
+import type { Ref } from 'vue';
+import AppTradeFlowLoadingScreen from 'src/components/brand/AppTradeFlowLoadingScreen.vue';
+import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin';
+
+const props = defineProps<{
+  scope: AuthScope;
+  title: string;
+  ctaLabel: string;
+  disabled?: boolean;
+  tenantSlug?: string | null;
+  shopTypePath?: string | null;
+}>();
+
+const route = useRoute();
+const { handleGoogleLogin, isLoading } = useOAuthLogin(props.scope, {
+  tenantSlug: props.tenantSlug ?? null,
+  shopTypePath: props.shopTypePath ?? null,
+});
+
+const panelTitle = inject<Ref<string>>('authPanelTitle');
+watchEffect(() => {
+  if (panelTitle) panelTitle.value = props.title;
+});
+
+const loginErrorMessage = computed(() => {
+  const error = route.query.login_error;
+  if (error === 'session_expired') return 'Your session expired. Please sign in again.';
+  if (error === 'no_membership')
+    return 'This Google account does not have permission for this entry point yet.';
+  if (error === 'wrong_tenant')
+    return props.scope === 'app'
+      ? 'This Google account is not allowed for the requested tenant workspace.'
+      : 'This Google account is not allowed for this tenant shop link.';
+  if (error === 'invalid_tenant')
+    return props.scope === 'app'
+      ? 'The requested tenant workspace could not be found for this account.'
+      : 'This shop link is not connected to an active tenant.';
+  return '';
+});
+</script>
+
+<style scoped>
+.auth-card {
+  --card-accent: var(--tf-theme-primary);
+  --card-accent-rgb: var(--tf-theme-primary-rgb);
+  --card-soft: var(--tf-theme-primary-soft);
+  --card-ink: var(--tf-theme-ink);
+  --card-muted: var(--tf-theme-muted);
+  --card-pad-x: clamp(1rem, 4vw, 1.75rem);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--tf-theme-surface);
+  border-radius: 8px;
+  border: 1px solid var(--tf-theme-border);
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 0.04),
+    0 8px 24px rgb(0 0 0 / 0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 0 0 1.75rem;
+}
+
+.auth-card__accent-bar {
+  height: 4px;
+  background: var(--card-accent);
+}
+
+.auth-card__header {
+  padding: 1.5rem var(--card-pad-x) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.auth-card__title {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--card-ink);
+}
+
+.auth-card__subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--card-muted);
+  letter-spacing: 0.005em;
+}
+
+.auth-card__error {
+  margin: 0 var(--card-pad-x);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgb(220 38 38 / 0.06);
+  border: 1px solid rgb(220 38 38 / 0.18);
+  color: #991b1b;
+  font-size: 0.83rem;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.auth-card__error-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #dc2626;
+}
+
+.auth-card__divider {
+  margin: 0 var(--card-pad-x);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--card-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-card__divider::before,
+.auth-card__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--card-muted) 22%, #ffffff);
+}
+
+.auth-card__cta {
+  appearance: none;
+  cursor: pointer;
+  border: none;
+  background: var(--card-accent);
+  border-radius: 8px;
+  margin: 0 var(--card-pad-x);
+  padding: 0.7rem 1rem;
+  width: calc(100% - 2 * var(--card-pad-x));
+  max-width: 100%;
+  box-sizing: border-box;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+  outline: none;
+}
+
+.auth-card__cta:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--card-accent) 82%, var(--card-ink));
+  box-shadow: 0 6px 18px rgb(var(--card-accent-rgb) / 0.28);
+  transform: translateY(-1px);
+}
+
+.auth-card__cta:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.auth-card__cta:focus-visible {
+  box-shadow: 0 0 0 3px var(--card-soft);
+}
+
+.auth-card__cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.auth-card__cta--loading {
+  pointer-events: none;
+}
+
+.auth-card__cta-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.auth-card__google-disc {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.auth-card__google-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.auth-card__cta-label {
+  font-size: clamp(0.85rem, 2.8vw, 0.93rem);
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.auth-card__secure-note {
+  margin: 0 var(--card-pad-x);
+  font-size: 0.72rem;
+  color: var(--card-muted);
+  line-height: 1.45;
+  text-align: center;
+}
+
+@media (max-width: 380px) {
+  .auth-card__cta-inner {
+    gap: 0.5rem;
+  }
+
+  .auth-card__google-disc {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.auth-card.auth-card--immersive {
+  --card-pad-x: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+  gap: 1.25rem;
+  padding: 0;
+  width: 100%;
+  max-width: 22rem;
+  margin-inline: 0;
+}
+
+.auth-card.auth-card--immersive .auth-card__header {
+  padding: 0;
+  gap: 0.35rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__title {
+  font-size: clamp(1.65rem, 3.4vw, 2rem);
+  text-shadow: 0 1px 20px color-mix(in srgb, var(--tf-theme-base) 92%, transparent);
+}
+
+.auth-card.auth-card--immersive .auth-card__subtitle {
+  font-size: 0.92rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__cta {
+  margin: 0;
+  width: 100%;
+  padding: 0.82rem 1rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__cta:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.auth-card.auth-card--immersive .auth-card__secure-note {
+  margin: 0;
+  text-align: left;
+  font-size: 0.74rem;
+}
+
+.auth-card.auth-card--immersive .auth-card__error {
+  margin: 0;
+}
+</style>

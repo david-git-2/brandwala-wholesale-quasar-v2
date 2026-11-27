@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import type { QTableColumn } from 'quasar';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 export const statusOptions = [
   { label: 'Available', value: 'AVAILABLE' },

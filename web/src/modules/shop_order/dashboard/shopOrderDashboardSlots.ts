@@ -1,5 +1,5 @@
 import { defineAsyncComponent } from 'vue';
-import type { DashboardSlot } from 'src/modules/dashboard/types/dashboardSlot';
+import type { DashboardSlot } from 'src/modules/workspace/submodules/dashboard/types/dashboardSlot';
 
 const ShopOrderCard = defineAsyncComponent(() => import('./ShopOrderCard.vue'));
 

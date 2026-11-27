@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useI18n } from 'vue-i18n';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { dropshipCartService } from '../services/dropshipCartService';
@@ -9,6 +10,7 @@ import type { SubmitDropshipOrderPayload } from '../repositories/dropshipCartRep
 export function useSubmitDropshipOrderMutation() {
   const queryClient = useQueryClient();
   const authStore = useAuthStore();
+  const { t } = useI18n();
   const tenantId = computed(() => authStore.tenantId ?? 0);
 
   const mutation = useMutation({
@@ -20,12 +22,9 @@ export function useSubmitDropshipOrderMutation() {
       }
       return { data: res.data, shopId: payload.shopId };
     },
-    onSuccess: ({ shopId }) => {
+    onSuccess: ({ data, shopId }) => {
       void queryClient.invalidateQueries({
         queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.dropshipReviewCart(tenantId.value, shopId),
       });
       void queryClient.invalidateQueries({
         queryKey: shopOrderQueryKeys.activeCarts(tenantId.value),
@@ -33,7 +32,11 @@ export function useSubmitDropshipOrderMutation() {
       void queryClient.invalidateQueries({
         queryKey: shopOrderQueryKeys.cart(tenantId.value, shopId),
       });
-      showSuccessNotification('Order placed successfully.');
+      const message =
+        data.status === 'resell_discount_requested'
+          ? t('shop.dropship_order_submitted_discount_review')
+          : t('shop.dropship_order_placed_success');
+      showSuccessNotification(message);
     },
   });
 

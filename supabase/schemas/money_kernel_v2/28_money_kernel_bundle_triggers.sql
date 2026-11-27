@@ -42,11 +42,26 @@ AS $$
 DECLARE
   line        record;
   v_to_credit numeric(18, 4);
-  v_from_bal  numeric(18, 4);
-  v_to_bal    numeric(18, 4);
-  v_line_cnt  int;
+  v_from_bal     numeric(18, 4);
+  v_to_bal       numeric(18, 4);
+  v_line_cnt     int;
+  v_cur_status   text;
+  v_cur_from_bal numeric(18, 4);
+  v_cur_to_bal   numeric(18, 4);
 BEGIN
   IF TG_OP = 'INSERT' AND NEW.status = 'posted' THEN
+    SELECT p.status, p.from_balance_after, p.to_balance_after
+      INTO v_cur_status, v_cur_from_bal, v_cur_to_bal
+      FROM money_kernel.pays p
+     WHERE p.id = NEW.id;
+
+    IF NOT FOUND
+       OR v_cur_status <> 'posted'
+       OR v_cur_from_bal IS NOT NULL
+       OR v_cur_to_bal IS NOT NULL THEN
+      RETURN NEW;
+    END IF;
+
     PERFORM set_config('money.bundle_writer', '1', true);
 
     SELECT count(*)::int INTO v_line_cnt

@@ -1,8 +1,8 @@
 import { ref, computed, watch, onMounted, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar, type QTableColumn } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import { globalShipmentRepository, type GlobalShipmentItem } from '../repositories/globalShipmentRepository';

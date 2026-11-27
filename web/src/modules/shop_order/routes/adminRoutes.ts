@@ -1,12 +1,9 @@
 import type { NavigationGuard, RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { canAccessModule } from 'src/modules/navigation/modulePermissions';
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
-import {
-  getAppRouteLocation,
-  getTenantSlugFromRoute,
-} from 'src/modules/tenant/utils/tenantRouteContext';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { canAccessModule } from 'src/modules/workspace/submodules/navigation/modulePermissions';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
+import { validateAppRouteTenantSlug } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const SHOP_OVERVIEW_MODULE_KEYS = [
   'shop_config',
@@ -24,21 +21,7 @@ const guard = (requiredModule: ModuleKey) =>
     requiredScope: 'app',
     requireTenantContext: true,
     requiredModule,
-    validateAccess: ({ authStore, to }) => {
-      const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
-
-      if (!selectedTenantSlug) {
-        return true;
-      }
-
-      const routeTenantSlug = getTenantSlugFromRoute(to);
-
-      if (routeTenantSlug === selectedTenantSlug) {
-        return true;
-      }
-
-      return getAppRouteLocation(to, selectedTenantSlug);
-    },
+    validateAccess: ({ authStore, to }) => validateAppRouteTenantSlug({ authStore, to }),
   });
 
 const shopOverviewGuard: NavigationGuard = async (to, from) => {
@@ -65,50 +48,36 @@ const shopOverviewGuard: NavigationGuard = async (to, from) => {
 
 const adminRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/shop',
+    path: '/app/shop',
     component: () => import('layouts/AppLayout.vue'),
     name: 'admin-shop-settings',
     children: [
       {
         path: '',
         name: 'app-shop-overview-page',
-        component: () => import('src/modules/shop_order/pages/ShopOrderOverviewPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopOrderOverviewPage.vue'),
         beforeEnter: shopOverviewGuard,
       },
       {
         path: 'overview',
-        redirect: (to) => {
-          const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
-          return `${tenantSlug}/app/shop`;
-        },
+        redirect: '/app/shop',
       },
       {
         path: 'roles',
         name: 'admin-shop-roles',
-        redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to);
-          return tenantSlug
-            ? `/${tenantSlug}/app/access-control/roles`
-            : '/app/access-control/roles';
-        },
+        redirect: '/app/access-control/roles',
       },
       {
         path: 'roles/:id/grants',
         name: 'admin-shop-role-grants',
-        redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to);
-          const id = String(to.params.id);
-          return tenantSlug
-            ? `/${tenantSlug}/app/access-control/roles/${id}/grants`
-            : `/app/access-control/roles/${id}/grants`;
-        },
+        redirect: (to) => `/app/access-control/roles/${String(to.params.id)}/grants`,
       },
     ],
   },
 
   // shop_config — Shops
   {
-    path: '/:tenantSlug?/app/shop/shops',
+    path: '/app/shop/shops',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -122,58 +91,58 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'list',
         name: 'app-shop-shops-list-page',
-        component: () => import('src/modules/shop_order/pages/ShopsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopsPage.vue'),
         beforeEnter: guard('shop_config'),
       },
       {
         path: ':shopId/setup',
         name: 'app-shop-settings-page',
-        component: () => import('src/modules/shop_order/pages/ShopSettingsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopSettingsPage.vue'),
         beforeEnter: guard('shop_config'),
       },
       {
         path: ':shopId/access',
         name: 'app-shop-access-matrix-page',
-        component: () => import('src/modules/shop_order/pages/ShopAccessMatrixPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopAccessMatrixPage.vue'),
         beforeEnter: guard('shop_permissions'),
       },
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/shops/:shopId/preview',
+    path: '/app/shop/shops/:shopId/preview',
     component: () => import('layouts/ExternalLayout.vue'),
     children: [
       {
         path: '',
         name: 'app-shop-preview-page',
-        component: () => import('src/modules/shop_order/pages/ShopPreviewPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopPreviewPage.vue'),
         beforeEnter: guard('shop_config'),
       },
     ],
   },
 
   {
-    path: '/:tenantSlug?/app/shop/categories',
+    path: '/app/shop/categories',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
         name: 'app-shop-categories-page',
-        component: () => import('src/modules/shop_order/pages/ShopCategoriesPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopCategoriesPage.vue'),
         beforeEnter: guard('shop_category'),
       },
     ],
   },
 
   {
-    path: '/:tenantSlug?/app/shop/customer-groups',
+    path: '/app/shop/customer-groups',
     redirect: (to) => ({
       name: 'app-customers-list',
       params: { tenantSlug: to.params.tenantSlug },
     }),
   },
   {
-    path: '/:tenantSlug?/app/shop/customer-groups/:pathMatch(.*)*',
+    path: '/app/shop/customer-groups/:pathMatch(.*)*',
     redirect: (to) => ({
       name: 'app-customers-list',
       params: { tenantSlug: to.params.tenantSlug },
@@ -182,31 +151,31 @@ const adminRoutes: RouteRecordRaw[] = [
 
   // shop_pricing — Shop Pricing
   {
-    path: '/:tenantSlug?/app/shop/pricing',
+    path: '/app/shop/pricing',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
         name: 'app-shop-pricing-list-page',
-        component: () => import('src/modules/shop_order/pages/ShopPricingListPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopPricingListPage.vue'),
         beforeEnter: guard('shop_pricing'),
       },
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/shops/:shopId/pricing',
+    path: '/app/shop/shops/:shopId/pricing',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
         name: 'app-shop-pricing-page',
-        component: () => import('src/modules/shop_order/pages/ShopPricingPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/ShopPricingPage.vue'),
         beforeEnter: guard('shop_pricing'),
       },
       {
         path: 'add-listings',
         name: 'app-shop-add-listings-page',
-        component: () => import('src/modules/shop_order/pages/AddShopListingsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/admin/AddShopListingsPage.vue'),
         beforeEnter: guard('shop_pricing'),
       },
     ],
@@ -214,55 +183,50 @@ const adminRoutes: RouteRecordRaw[] = [
 
   // shop_order_mgmt — Orders (app scope)
   {
-    path: '/:tenantSlug?/app/shop/orders',
+    path: '/app/shop/orders',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
         name: 'app-shop-orders-page',
-        component: () => import('src/modules/shop_order/pages/ShopOrdersPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ShopOrdersPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: 'cancelled',
         name: 'app-shop-orders-cancelled-page',
-        component: () => import('src/modules/shop_order/pages/CancelledShopOrdersPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/CancelledShopOrdersPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: 'create',
         name: 'app-shop-order-create-page',
-        component: () => import('src/modules/shop_order/pages/ManualDropshipOrderPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ManualDropshipOrderPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: 'create-catalog',
         name: 'app-shop-order-create-catalog-page',
-        component: () => import('src/modules/shop_order/pages/ManualCatalogOrderPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ManualCatalogOrderPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
-        path: ':id/delivery-paper/:paperId',
-        name: 'app-shop-order-delivery-paper-page',
-        component: () =>
-          import('src/modules/procurement_stock/pages/DeliveryPaperDetailPage.vue'),
-        props: (route) => ({
-          documentType: 'shop_order' as const,
-          documentId: Number(route.params.id),
-        }),
+        path: ':id/create-bill',
+        name: 'app-shop-order-create-bill-page',
+        component: () => import('src/modules/shop_order/pages/orders/CatalogOrderCreateBillPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: ':id',
         name: 'app-shop-order-detail-page',
-        component: () => import('src/modules/shop_order/pages/ShopOrderDetailHostPage.vue'),
+        component: () => import('src/modules/shop_order/pages/orders/ShopOrderDetailHostPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
     ],
   },
 
   {
-    path: '/:tenantSlug?/app/shop/shipping',
+    path: '/app/shop/shipping',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -277,33 +241,39 @@ const adminRoutes: RouteRecordRaw[] = [
   },
 
   {
-    path: '/:tenantSlug?/app/shop/dropship-management',
+    path: '/app/shop/dropship-management',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
         name: 'app-shop-dropship-management-page',
-        component: () => import('src/modules/shop_order/pages/DropshipManagementPage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipManagementPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
         path: ':id/return',
         name: 'app-shop-dropship-return-page',
-        component: () => import('src/modules/shop_order/pages/DropshipReturnFinalizePage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipReturnFinalizePage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
-        path: ':id',
-        name: 'app-shop-dropship-management-detail-page',
-        component: () => import('src/modules/shop_order/pages/DropshipManagementDetailPage.vue'),
-        beforeEnter: guard('shop_order_mgmt'),
+        path: ':id(\\d+)',
+        redirect: (to) => ({
+          name: 'app-shop-dropship-management-page',
+          params: {
+            ...(to.params.tenantSlug ? { tenantSlug: to.params.tenantSlug } : {}),
+          },
+          query: {
+            highlightOrderId: String(to.params.id),
+          },
+        }),
       },
     ],
   },
 
   // shop_fulfillment — retired from nav
   {
-    path: '/:tenantSlug?/app/shop/fulfillment',
+    path: '/app/shop/fulfillment',
     redirect: (to) => ({
       name: 'app-shop-orders-page',
       params: { tenantSlug: to.params.tenantSlug },
@@ -313,7 +283,7 @@ const adminRoutes: RouteRecordRaw[] = [
   // Dropship list/tools stay under /dropship; order detail is /orders/:id.
 
   {
-    path: '/:tenantSlug?/app/shop/dropship',
+    path: '/app/shop/dropship',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -328,13 +298,13 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'couriers',
         name: 'app-shop-dropship-couriers-page',
-        component: () => import('src/modules/shop_order/pages/DropshipCouriersPage.vue'),
+        component: () => import('src/modules/people/pages/DropshipCouriersPage.vue'),
         beforeEnter: guard('shop_shipping'),
       },
       {
         path: 'pickup-locations',
         name: 'app-shop-dropship-pickup-locations-page',
-        component: () => import('src/modules/shop_order/pages/DropshipPickupLocationsPage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipPickupLocationsPage.vue'),
         beforeEnter: guard('shop_shipping'),
       },
       {
@@ -346,15 +316,23 @@ const adminRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: 'dropshippers',
+        name: 'app-shop-dropship-dropshippers-page',
+        component: () => import('src/modules/people/pages/DropshippersPage.vue'),
+        beforeEnter: guard('shop_config'),
+      },
+      {
         path: 'merchants',
         name: 'app-shop-dropship-merchants-page',
-        component: () => import('src/modules/shop_order/pages/DropshipMerchantsPage.vue'),
-        beforeEnter: guard('shop_config'),
+        redirect: (to) => ({
+          name: 'app-shop-dropship-dropshippers-page',
+          params: { tenantSlug: to.params.tenantSlug },
+        }),
       },
       {
         path: 'finance-hub',
         name: 'app-shop-dropship-finance-hub-page',
-        component: () => import('src/modules/shop_order/pages/DropshipFinanceHubPage.vue'),
+        component: () => import('src/modules/shop_order/pages/dropship/DropshipFinanceHubPage.vue'),
         beforeEnter: guard('shop_shipping'),
       },
       {
@@ -441,7 +419,7 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/orders/:id/packing-slip',
+    path: '/app/shop/orders/:id/packing-slip',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: guard('shop_order_mgmt'),
     children: [
@@ -449,12 +427,12 @@ const adminRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-shop-order-packing-slip-page',
         component: () =>
-          import('src/modules/shop_order/pages/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue'),
+          import('src/modules/shop_order/pages/dropship/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue'),
       },
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/orders/:id/recipient-slip',
+    path: '/app/shop/orders/:id/recipient-slip',
     component: () => import('layouts/ExternalLayout.vue'),
     beforeEnter: guard('shop_order_mgmt'),
     children: [
@@ -462,19 +440,19 @@ const adminRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-shop-order-recipient-slip-page',
         component: () =>
-          import('src/modules/shop_order/pages/DropshipOrderRecipientInvoicePreviewPage.vue'),
+          import('src/modules/shop_order/pages/dropship/DropshipOrderRecipientInvoicePreviewPage.vue'),
       },
     ],
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/v2/customer-invoice-preview',
+    path: '/app/shop/dropship/:id/v2/customer-invoice-preview',
     redirect: (to) => ({
       name: 'app-shop-order-packing-slip-page',
       params: { tenantSlug: to.params.tenantSlug, id: to.params.id },
     }),
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/customer-invoice-preview',
+    path: '/app/shop/dropship/:id/customer-invoice-preview',
     name: 'app-shop-dropship-order-customer-invoice-preview',
     redirect: (to) => ({
       name: 'app-shop-order-packing-slip-page',
@@ -482,7 +460,7 @@ const adminRoutes: RouteRecordRaw[] = [
     }),
   },
   {
-    path: '/:tenantSlug?/app/shop/dropship/:id/recipient-invoice-preview',
+    path: '/app/shop/dropship/:id/recipient-invoice-preview',
     name: 'app-shop-dropship-recipient-invoice-preview',
     redirect: (to) => ({
       name: 'app-shop-order-recipient-slip-page',
@@ -492,28 +470,28 @@ const adminRoutes: RouteRecordRaw[] = [
 
   // Legacy redirects (Phase 9)
   {
-    path: '/:tenantSlug?/app/commerce/shop',
+    path: '/app/commerce/shop',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop`;
     },
   },
   {
-    path: '/:tenantSlug?/app/commerce/orders',
+    path: '/app/commerce/orders',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop/orders`;
     },
   },
   {
-    path: '/:tenantSlug?/app/commerce-shop/:catchAll(.*)*',
+    path: '/app/commerce-shop/:catchAll(.*)*',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop`;
     },
   },
   {
-    path: '/:tenantSlug?/app/stores/:catchAll(.*)*',
+    path: '/app/stores/:catchAll(.*)*',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
       return `${tenantSlug}/app/shop`;

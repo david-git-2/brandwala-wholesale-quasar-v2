@@ -12,12 +12,12 @@ export interface GlobalStockType {
   updated_at: string;
 }
 
-const listStockTypes = async (parentTenantId: number | null): Promise<GlobalStockType[]> => {
+const listStockTypes = async (tenantId: number | null): Promise<GlobalStockType[]> => {
   // Return system-wide types (tenant_id is null) plus tenant-specific ones
   const query = db.from('global_stock_types').select('*');
 
-  if (parentTenantId) {
-    query.or(`tenant_id.is.null,tenant_id.eq.${parentTenantId}`);
+  if (tenantId) {
+    query.or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
   } else {
     query.is('tenant_id', null);
   }
@@ -29,7 +29,7 @@ const listStockTypes = async (parentTenantId: number | null): Promise<GlobalStoc
 };
 
 const createStockType = async (
-  parentTenantId: number | null,
+  tenantId: number | null,
   payload: {
     description: string;
     is_sellable: boolean;
@@ -40,7 +40,7 @@ const createStockType = async (
     .from('global_stock_types')
     .insert([
       {
-        tenant_id: parentTenantId,
+        tenant_id: tenantId,
         description: payload.description.trim(),
         is_sellable: payload.is_sellable,
         sort_order: payload.sort_order,

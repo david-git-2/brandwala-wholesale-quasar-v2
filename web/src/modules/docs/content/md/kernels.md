@@ -475,7 +475,7 @@ flowchart LR
 | Warehouse receive | Lots created on post; stamp reads shipment state |
 | Reporting / investor | Shipment P&L and GP use landed + local — not bill-line COGS fiction |
 
-Dropship **courier AP** at ship is money-only (`dropship_courier` source) — not the inbound shipment cost matrix.
+Dropship courier paper at ship is money-only — not the inbound shipment cost matrix. **Target:** courier **AR (net remittance)**; **as-built until SO-CA1:** courier **AP** (`dropship_courier`).
 
 ### Links to other kernels
 
@@ -580,7 +580,7 @@ Reporting keeps these layers separate (COD is not sales).
 
 **Wholesale take** — Buyer bill 1,500; pay 1,500 cash: bill **paid**, tenant cash **+1,500**, sales **1,500**. Overpay leaves **profile cashbook** leftover; no second bill.
 
-**Dropship** — Merchant bill **1,500** at ship (not recipient COD face). Courier AP at ship. **Remittance** is net bank in; alloc to merchant bill; **leftover** on merchant cashbook, later pay out without alloc.
+**Dropship** — Merchant bill **1,500** at ship (not recipient COD face). **Target:** courier AR **net** (e.g. 2,120) at ship; remittance closes courier AR and auto-allocates merchant AR; leftover cashbook. **As-built:** courier AP + retention until SO-CA1.
 
 **Inbound AP** — Cost rows stay on the shipment. AP bills per bucket; pay out with alloc. After issue, shortages use **credit notes**, not rewritten totals.
 
@@ -593,11 +593,11 @@ flowchart TB
     W1 --> W2 --> W3
   end
 
-  subgraph d["Dropship"]
+  subgraph d["Dropship target"]
     D1["Merchant AR at ship"]
-    D2["Courier AP"]
+    D2["Courier AR net"]
     D3["Net remittance in"]
-    D4["Alloc + merchant leftover"]
+    D4["Auto alloc + leftover"]
     D1 --> D3
     D2 --> D3
     D3 --> D4

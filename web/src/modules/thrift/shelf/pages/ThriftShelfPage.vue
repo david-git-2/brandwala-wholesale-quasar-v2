@@ -136,7 +136,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useThriftStore } from '../../shared/stores/thriftStore';
 import { useThriftShelvesQuery } from '../../shared/composables/useThriftMasterDataQuery';
 import { useQuasar, type QTableColumn } from 'quasar';

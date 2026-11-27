@@ -17,10 +17,17 @@ const READY_STATUSES = new Set<ShopOrderStatus>([
   'reseller_paid',
 ]);
 
+export function isDropshipResellDiscountReviewStatus(
+  status: ShopOrderStatus | string | null | undefined,
+): boolean {
+  return status === 'resell_discount_requested';
+}
+
 export function resolveDropshipOrderDetailView(
   status: ShopOrderStatus | null | undefined,
 ): DropshipOrderDetailView | null {
   if (!status) return null;
+  if (isDropshipResellDiscountReviewStatus(status)) return null;
   if (status === 'confirmed') return 'confirmed';
   if (status === 'processing') return 'processing';
   if (READY_STATUSES.has(status)) return 'ready';

@@ -1,0 +1,962 @@
+<template>
+  <q-dialog v-model="dialogModel" persistent>
+    <q-card style="width: 960px; max-width: 95vw">
+      <q-card-section class="row items-center justify-between">
+        <div class="text-h6 text-weight-bold">
+          {{
+            isEditMode
+              ? $t('product_based_costing.edit_costing_item')
+              : $t('product_based_costing.add_costing_item')
+          }}
+        </div>
+
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section class="q-pa-md">
+        <q-form @submit.prevent="submitForm">
+          <div class="row q-col-gutter-lg">
+            <!-- Left Column (Image & Identification) -->
+            <div class="col-12 col-md-5 q-gutter-y-md">
+              <div
+                class="image-preview-container border rounded-borders q-pa-sm bg-grey-1 text-center"
+              >
+                <div v-if="form.image_url" class="image-preview-box">
+                  <SmartImage
+                    :src="form.image_url"
+                    style="max-height: 200px; max-width: 100%; object-fit: contain; margin: 0 auto"
+                  />
+                </div>
+                <div
+                  v-else
+                  class="image-preview-placeholder flex flex-center text-grey-6"
+                  style="height: 200px"
+                >
+                  <div class="column items-center">
+                    <q-icon name="ph ph-image" size="48px" />
+                    <div class="text-caption q-mt-sm">{{ $t('product_based_costing.no_image_preview') }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <q-input
+                v-model="form.image_url"
+                :label="$t('product_based_costing.image_url')"
+                outlined
+                dense
+                :disable="isProductListInputType"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-image" />
+                </template>
+              </q-input>
+
+              <q-input
+                v-model="form.name"
+                :label="$t('product_based_costing.col_name')"
+                type="textarea"
+                autogrow
+                outlined
+                dense
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-archive-box" />
+                </template>
+              </q-input>
+
+              <q-input
+                v-model="form.barcode"
+                :label="$t('product_based_costing.barcode')"
+                outlined
+                dense
+                :disable="isProductListInputType"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-qr-code" />
+                </template>
+              </q-input>
+
+              <q-input
+                v-model="form.product_code"
+                :label="$t('product_based_costing.product_code')"
+                outlined
+                dense
+                :disable="isProductListInputType"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-identification-badge" />
+                </template>
+              </q-input>
+
+              <q-input v-model="form.web_link" :label="$t('product_based_costing.web_link')" outlined dense>
+                <template #prepend>
+                  <q-icon name="ph ph-link" />
+                </template>
+              </q-input>
+            </div>
+
+            <!-- Right Column (Metadata, Parameters & Note) -->
+            <div class="col-12 col-md-7 q-gutter-y-md">
+              <q-select
+                v-model="form.vendor_code"
+                :options="vendorOptions"
+                emit-value
+                map-options
+                :label="$t('product_based_costing.vendor')"
+                outlined
+                dense
+                clearable
+                :disable="isProductListInputType"
+                :loading="store.saving"
+                @update:model-value="onVendorChange"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-storefront" />
+                </template>
+              </q-select>
+
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <div class="row items-center q-col-gutter-sm no-wrap">
+                    <div class="col">
+                      <q-select
+                        v-model="form.brand"
+                        :options="filteredBrandOptions"
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        clearable
+                        emit-value
+                        map-options
+                        :label="$t('product_based_costing.table_col_brand')"
+                        outlined
+                        dense
+                        :disable="isProductListInputType || !canPickBrandCategory"
+                        @filter="filterBrandOptions"
+                        @input-value="onBrandInputValue"
+                      >
+                        <template #prepend>
+                          <q-icon name="ph ph-tag" />
+                        </template>
+                      </q-select>
+                    </div>
+                    <div class="col-auto">
+                      <q-btn
+                        color="primary"
+                        no-caps
+                        outline
+                        :label="$t('product_based_costing.add')"
+                        :disable="isProductListInputType || !canAddBrand"
+                        @click="addBrandOption"
+                        style="height: 40px"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12 col-sm-6">
+                  <div class="row items-center q-col-gutter-sm no-wrap">
+                    <div class="col">
+                      <q-select
+                        v-model="form.category"
+                        :options="filteredCategoryOptions"
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        clearable
+                        emit-value
+                        map-options
+                        :label="$t('product_based_costing.category')"
+                        outlined
+                        dense
+                        :disable="isProductListInputType || !canPickBrandCategory"
+                        @filter="filterCategoryOptions"
+                        @input-value="onCategoryInputValue"
+                      >
+                        <template #prepend>
+                          <q-icon name="ph ph-squares-four" />
+                        </template>
+                      </q-select>
+                    </div>
+                    <div class="col-auto">
+                      <q-btn
+                        color="primary"
+                        no-caps
+                        outline
+                        :label="$t('product_based_costing.add')"
+                        :disable="isProductListInputType || !canAddCategory"
+                        @click="addCategoryOption"
+                        style="height: 40px"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="form.quantity"
+                    :label="$t('product_based_costing.table_col_qty')"
+                    type="number"
+                    outlined
+                    dense
+                    @wheel.prevent
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-hash" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="form.confirmed_quantity"
+                    :label="$t('product_based_costing.table_col_confirmedQty')"
+                    type="number"
+                    outlined
+                    dense
+                    @wheel.prevent
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-check-circle" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="form.price_gbp"
+                    :label="$t('product_based_costing.bulk_price_gbp')"
+                    type="number"
+                    outlined
+                    dense
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-currency-gbp" />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+              <div class="row items-center justify-between q-mt-sm">
+                <div class="text-subtitle2 text-weight-medium text-grey-8">
+                  {{ $t('product_based_costing.weights_g') }}
+                </div>
+                <q-btn
+                  color="purple"
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  icon="ph ph-sparkle"
+                  :label="$t('product_based_costing.autofill_weights')"
+                  :loading="aiLoading"
+                  @click="autofillWeights"
+                />
+              </div>
+
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.product_weight"
+                    :label="$t('product_based_costing.bulk_product_weight_g')"
+                    type="number"
+                    outlined
+                    dense
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-scales" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="form.package_weight"
+                    :label="$t('product_based_costing.bulk_package_weight_g')"
+                    type="number"
+                    outlined
+                    dense
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-barbell" />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+
+              <div>
+                <div class="text-subtitle2 q-mb-xs text-weight-medium text-grey-8">
+                  {{ $t('product_based_costing.item_note') }}
+                </div>
+                <q-editor
+                  v-model="form.note"
+                  min-height="120px"
+                  :toolbar="[
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['unordered', 'ordered'],
+                    ['quote', 'hr'],
+                    ['undo', 'redo'],
+                  ]"
+                />
+              </div>
+            </div>
+          </div>
+        </q-form>
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-actions align="right">
+        <q-btn flat :label="$t('product_based_costing.cancel')" v-close-popup />
+        <q-btn
+          color="primary"
+          :label="isEditMode ? $t('product_based_costing.update') : $t('shop_admin.save')"
+          :loading="store.saving"
+          @click="submitForm"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+</template>
+
+<script setup lang="ts">
+import { computed, watch, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
+import SmartImage from 'src/components/SmartImage.vue';
+import { useProductStore } from 'src/modules/shop_order/submodules/products/stores/productStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
+import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
+import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
+import { useGlobalCurrencies } from 'src/modules/tenant/submodules/global_reference/composables/useGlobalCurrencies';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
+import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { useQuasar } from 'quasar';
+import { fetchWeightsFromGemini } from 'src/utils/gemini';
+
+interface ProductBasedCostingItemFormData {
+  id?: number;
+  product_based_costing_file_id?: number | null;
+  product_id?: number | null;
+  name?: string | null;
+  image_url?: string | null;
+  note?: string | null;
+  barcode?: string | null;
+  product_code?: string | null;
+  brand?: string | null;
+  category?: string | null;
+  vendor_code?: string | null;
+  market_code?: string | null;
+  quantity?: number | null;
+  confirmed_quantity?: number | null;
+  web_link?: string | null;
+  price_gbp?: number | null;
+  product_weight?: number | null;
+  package_weight?: number | null;
+  status?: string | null;
+  input_type?: 'manual' | 'product_list' | null;
+}
+
+const props = defineProps<{
+  modelValue: boolean;
+  productBasedCostingFileId: number;
+  itemData?: ProductBasedCostingItemFormData | null;
+  defaultVendorCode?: string | null;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'created'): void;
+  (e: 'updated'): void;
+}>();
+
+const store = useProductBasedCostingStore();
+const productStore = useProductStore();
+const vendorStore = useVendorStore();
+const updateFileMutation = useUpdateProductBasedCostingFileMutation();
+const fileIdRef = computed(() => props.productBasedCostingFileId);
+const { data: fileDetail } = useProductBasedCostingFileDetailQuery(fileIdRef);
+
+const resolvedDefaultVendorCode = computed(
+  () => props.defaultVendorCode ?? fileDetail.value?.vendor_code ?? null,
+);
+const { currencies } = useGlobalCurrencies();
+const authStore = useAuthStore();
+const $q = useQuasar();
+const { t } = useI18n();
+
+const aiLoading = ref(false);
+
+const autofillWeights = async () => {
+  if (!form.name || !form.name.trim()) {
+    $q.notify({
+      type: 'negative',
+      message: t('product_based_costing.enter_name_first_weight'),
+    });
+    return;
+  }
+
+  const apiKey =
+    localStorage.getItem('gemini_api_key') ||
+    (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ||
+    (import.meta.env.GEMINI_API_KEY as string | undefined);
+
+  if (!apiKey || !apiKey.trim()) {
+    $q.dialog({
+      title: t('product_based_costing.configure_gemini_api'),
+      message: t('product_based_costing.configure_gemini_api_msg'),
+      prompt: {
+        model: '',
+        type: 'text',
+        isValid: (val) => val.trim().length > 0,
+      },
+      cancel: true,
+      persistent: true,
+    }).onOk((key: string) => {
+      localStorage.setItem('gemini_api_key', key.trim());
+      $q.notify({
+        type: 'positive',
+        message: t('product_based_costing.gemini_key_saved_retry'),
+      });
+      void runAIFill();
+    });
+    return;
+  }
+
+  await runAIFill();
+};
+
+const runAIFill = async () => {
+  aiLoading.value = true;
+  try {
+    const name = form.name || '';
+    const mlRegex = /\b(\d+(?:\.\d+)?)\s*ml\b/i;
+    const mlMatch = name.match(mlRegex);
+
+    let productWeight: number | null = null;
+    let packageWeight: number | null = null;
+
+    if (mlMatch && typeof mlMatch[1] === 'string') {
+      productWeight = parseFloat(mlMatch[1]);
+    }
+
+    const result = await fetchWeightsFromGemini(name);
+
+    if (productWeight === null && result.product_weight_g !== null) {
+      productWeight = result.product_weight_g;
+    }
+
+    if (result.package_weight_g !== null) {
+      packageWeight = result.package_weight_g + 20;
+    } else {
+      packageWeight = 20;
+    }
+
+    if (productWeight !== null) {
+      form.product_weight = productWeight;
+    }
+    if (packageWeight !== null) {
+      form.package_weight = packageWeight;
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: t('product_based_costing.weights_autofilled'),
+    });
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Gemini error:', error);
+    $q.notify({
+      type: 'negative',
+      message: errMsg || t('product_based_costing.failed_fetch_weights'),
+    });
+  } finally {
+    aiLoading.value = false;
+  }
+};
+
+const dialogModel = computed({
+  get: () => props.modelValue,
+  set: (value: boolean) => emit('update:modelValue', value),
+});
+
+const isEditMode = computed(() => Boolean(props.itemData?.id));
+const isProductListInputType = computed(() => props.itemData?.input_type === 'product_list');
+
+const getInitialForm = () => ({
+  product_based_costing_file_id: props.productBasedCostingFileId,
+  name: '',
+  image_url: '',
+  note: '',
+  barcode: '',
+  product_code: '',
+  brand: null as string | null,
+  category: null as string | null,
+  vendor_code: resolvedDefaultVendorCode.value ?? null,
+  quantity: null as number | null,
+  confirmed_quantity: null as number | null,
+  web_link: '',
+  price_gbp: null as number | null,
+  product_weight: null as number | null,
+  package_weight: null as number | null,
+  status: 'pending',
+});
+
+const form = reactive(getInitialForm());
+
+const fillForm = () => {
+  if (props.itemData?.id) {
+    Object.assign(form, {
+      product_based_costing_file_id:
+        props.itemData.product_based_costing_file_id ?? props.productBasedCostingFileId,
+      name: props.itemData.name ?? '',
+      image_url: props.itemData.image_url ?? '',
+      note: props.itemData.note ?? '',
+      barcode: props.itemData.barcode ?? '',
+      product_code: props.itemData.product_code ?? '',
+      brand: props.itemData.brand ?? null,
+      category: props.itemData.category ?? null,
+      vendor_code: props.itemData.vendor_code ?? null,
+      quantity: props.itemData.quantity ?? null,
+      confirmed_quantity: props.itemData.confirmed_quantity ?? null,
+      web_link: props.itemData.web_link ?? '',
+      price_gbp: props.itemData.price_gbp ?? null,
+      product_weight: props.itemData.product_weight ?? null,
+      package_weight: props.itemData.package_weight ?? null,
+      status: props.itemData.status ?? 'pending',
+    });
+  } else {
+    Object.assign(form, getInitialForm());
+    if (props.itemData?.name) {
+      form.name = props.itemData.name;
+    }
+  }
+};
+
+const resetForm = () => {
+  Object.assign(form, getInitialForm());
+};
+
+const vendorOptions = computed(() => [
+  { label: 'Other', value: null as string | null },
+  ...vendorStore.items.map((vendor) => ({
+    label: `${vendor.name} (${vendor.code})`,
+    value: vendor.code,
+  })),
+]);
+
+const gbpCurrencyId = computed(
+  () => currencies.value.find((c) => c.code === 'GBP')?.id ?? null,
+);
+
+const resolvedMarketCode = computed(() => {
+  if (!form.vendor_code) return null;
+  const vendor = vendorStore.items.find((v) => v.code === form.vendor_code);
+  const code = vendor?.market_code?.trim();
+  return code ? code.toUpperCase() : null;
+});
+
+const brandNames = ref<string[]>([]);
+const categoryNames = ref<string[]>([]);
+const filteredBrandNames = ref<string[]>([]);
+const filteredCategoryNames = ref<string[]>([]);
+const brandInputValue = ref('');
+const categoryInputValue = ref('');
+
+const filteredBrandOptions = computed(() => {
+  const seen = new Set<string>();
+  const options = filteredBrandNames.value
+    .map((item) => (item ?? '').trim())
+    .filter((item) => item.length > 0)
+    .filter((item) => item.toLowerCase() !== 'other')
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((item) => ({
+      label: item,
+      value: item,
+    }));
+
+  return [{ label: 'Other', value: null as string | null }, ...options];
+});
+
+const filteredCategoryOptions = computed(() => {
+  const seen = new Set<string>();
+  const options = filteredCategoryNames.value
+    .map((item) => (item ?? '').trim())
+    .filter((item) => item.length > 0)
+    .filter((item) => item.toLowerCase() !== 'other')
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((item) => ({
+      label: item,
+      value: item,
+    }));
+
+  return [{ label: 'Other', value: null as string | null }, ...options];
+});
+
+const canPickBrandCategory = computed(
+  () => Boolean(form.vendor_code) && Boolean(resolvedMarketCode.value),
+);
+
+const normalized = (value: string | null | undefined) => (value ?? '').trim();
+
+const normalizeKey = (value: string | null | undefined) => normalized(value).toLowerCase();
+
+const lastTypedBrand = ref('');
+const lastTypedCategory = ref('');
+
+const canAddBrand = computed(() => {
+  if (!canPickBrandCategory.value || !form.vendor_code) return false;
+  const candidate = normalized(lastTypedBrand.value || brandInputValue.value || form.brand);
+  if (!candidate || candidate.toLowerCase() === 'other') return false;
+  return !brandNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate));
+});
+
+const canAddCategory = computed(() => {
+  if (!canPickBrandCategory.value || !form.vendor_code) return false;
+  const candidate = normalized(
+    lastTypedCategory.value || categoryInputValue.value || form.category,
+  );
+  if (!candidate || candidate.toLowerCase() === 'other') return false;
+  return !categoryNames.value.some((item) => normalizeKey(item) === normalizeKey(candidate));
+});
+
+const loadBrandCategoryOptions = async () => {
+  if (!form.vendor_code || !resolvedMarketCode.value) {
+    brandNames.value = [];
+    categoryNames.value = [];
+    filteredBrandNames.value = [];
+    filteredCategoryNames.value = [];
+    return;
+  }
+
+  const [brandResult, categoryResult] = await Promise.all([
+    productService.listBrands({
+      vendorCode: form.vendor_code,
+      tenantId: authStore.tenantId ?? null,
+    }),
+    productService.listCategories({
+      vendorCode: form.vendor_code,
+      tenantId: authStore.tenantId ?? null,
+    }),
+  ]);
+
+  if (brandResult.success) {
+    brandNames.value = brandResult.data ?? [];
+    filteredBrandNames.value = [...brandNames.value];
+  } else {
+    handleApiFailure(brandResult, brandResult.error ?? 'Failed to load brands.');
+  }
+
+  if (categoryResult.success) {
+    categoryNames.value = categoryResult.data ?? [];
+    filteredCategoryNames.value = [...categoryNames.value];
+  } else {
+    handleApiFailure(categoryResult, categoryResult.error ?? 'Failed to load categories.');
+  }
+};
+
+const filterBrandOptions = (val: string, update: (callback: () => void) => void) => {
+  const needle = normalizeKey(val);
+  update(() => {
+    if (!needle) {
+      filteredBrandNames.value = [...brandNames.value];
+      return;
+    }
+    filteredBrandNames.value = brandNames.value.filter((item) =>
+      normalizeKey(item).includes(needle),
+    );
+  });
+};
+
+const filterCategoryOptions = (val: string, update: (callback: () => void) => void) => {
+  const needle = normalizeKey(val);
+  update(() => {
+    if (!needle) {
+      filteredCategoryNames.value = [...categoryNames.value];
+      return;
+    }
+    filteredCategoryNames.value = categoryNames.value.filter((item) =>
+      normalizeKey(item).includes(needle),
+    );
+  });
+};
+
+const onBrandInputValue = (value: string) => {
+  const cleaned = (value || '').trim();
+  if (cleaned && cleaned.toLowerCase() !== 'other') {
+    lastTypedBrand.value = cleaned;
+  }
+  brandInputValue.value = value;
+};
+
+const onCategoryInputValue = (value: string) => {
+  const cleaned = (value || '').trim();
+  if (cleaned && cleaned.toLowerCase() !== 'other') {
+    lastTypedCategory.value = cleaned;
+  }
+  categoryInputValue.value = value;
+};
+
+const addBrandOption = async () => {
+  const name = normalized(lastTypedBrand.value || brandInputValue.value || form.brand);
+  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return;
+
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
+  const result = await productService.createProductBrand({
+    name,
+    vendor_code: form.vendor_code,
+    vendor_id: selectedVendor ? selectedVendor.id : null,
+    tenant_id: authStore.tenantId ?? null,
+  });
+
+  if (!result.success) {
+    handleApiFailure(result, result.error ?? 'Failed to add brand.');
+    return;
+  }
+
+  showSuccessNotification('Brand added successfully.');
+  await loadBrandCategoryOptions();
+  form.brand = result.data?.name || name.toUpperCase();
+  brandInputValue.value = '';
+  lastTypedBrand.value = '';
+};
+
+const addCategoryOption = async () => {
+  const name = normalized(lastTypedCategory.value || categoryInputValue.value || form.category);
+  if (!name || name.toLowerCase() === 'other' || !form.vendor_code) return;
+
+  const selectedVendor = vendorStore.items.find((v) => v.code === form.vendor_code);
+  const result = await productService.createProductCategory({
+    name,
+    vendor_code: form.vendor_code,
+    vendor_id: selectedVendor ? selectedVendor.id : null,
+    tenant_id: authStore.tenantId ?? null,
+  });
+
+  if (!result.success) {
+    handleApiFailure(result, result.error ?? 'Failed to add category.');
+    return;
+  }
+
+  showSuccessNotification('Category added successfully.');
+  await loadBrandCategoryOptions();
+  form.category = result.data?.name || name;
+  categoryInputValue.value = '';
+  lastTypedCategory.value = '';
+};
+
+const cleanListPrice = (val: number | null | undefined): number | null => {
+  if (val == null) return null;
+  const parsed = Number(val);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const submitForm = async () => {
+  if (!form.vendor_code) {
+    handleApiFailure(
+      { success: false, error: 'Please select a vendor first.' },
+      'Please select a vendor first.',
+    );
+    return;
+  }
+
+  if (!resolvedMarketCode.value) {
+    handleApiFailure(
+      { success: false, error: 'Selected vendor has no market configured.' },
+      'Selected vendor has no market configured.',
+    );
+    return;
+  }
+
+  const marketCode = resolvedMarketCode.value;
+
+  if (isEditMode.value && props.itemData?.id) {
+    const result = await store.updateProductBasedCostingItem({
+      id: props.itemData.id,
+      product_based_costing_file_id: props.productBasedCostingFileId,
+      name: form.name,
+      image_url: form.image_url,
+      note: form.note,
+      barcode: form.barcode,
+      product_code: form.product_code,
+      brand: form.brand,
+      vendor_code: form.vendor_code,
+      market_code: marketCode,
+      quantity: form.quantity,
+      web_link: form.web_link,
+      price_gbp: form.price_gbp,
+      product_weight: form.product_weight,
+      package_weight: form.package_weight,
+    });
+
+    if (!result.success) {
+      return;
+    }
+
+    if (props.itemData.product_id != null) {
+      await productStore.updateProduct({
+        id: props.itemData.product_id,
+        brand: form.brand || null,
+        category: form.category || null,
+      });
+    }
+
+    emit('updated');
+    emit('update:modelValue', false);
+    resetForm();
+    return;
+  }
+
+  const listPriceAmount = cleanListPrice(form.price_gbp);
+  if (listPriceAmount != null && gbpCurrencyId.value == null) {
+    handleApiFailure(
+      { success: false, error: 'GBP currency is not configured. Cannot save list price.' },
+      'GBP currency is not configured. Cannot save list price.',
+    );
+    return;
+  }
+
+  const createProductResult = await productStore.createProduct({
+    inserted_by_tenant_id: authStore.tenantId ?? null,
+    name: form.name || null,
+    image_url: form.image_url || null,
+    barcode: form.barcode || null,
+    product_code: form.product_code || null,
+    list_price_amount: listPriceAmount,
+    list_price_currency_id: listPriceAmount != null ? gbpCurrencyId.value : null,
+    country_of_origin: null,
+    brand: form.brand || null,
+    category: form.category || null,
+    available_units: null,
+    languages: null,
+    batch_code_manufacture_date: null,
+    expire_date: null,
+    minimum_order_quantity: null,
+    product_weight: form.product_weight,
+    package_weight: form.package_weight,
+    vendor_code: form.vendor_code,
+    market_code: marketCode,
+    is_available: true,
+  });
+
+  if (!createProductResult.success || !createProductResult.data?.id) {
+    return;
+  }
+
+  const result = await store.createProductBasedCostingItem({
+    product_based_costing_file_id: props.productBasedCostingFileId,
+    product_id: createProductResult.data.id,
+    input_type: 'manual',
+    name: form.name,
+    image_url: form.image_url,
+    note: form.note,
+    barcode: form.barcode,
+    product_code: form.product_code,
+    brand: form.brand,
+    vendor_code: form.vendor_code,
+    market_code: marketCode,
+    quantity: form.quantity,
+    web_link: form.web_link,
+    price_gbp: form.price_gbp,
+    product_weight: form.product_weight,
+    package_weight: form.package_weight,
+  });
+
+  if (!result.success) {
+    return;
+  }
+
+  emit('created');
+  emit('update:modelValue', false);
+  resetForm();
+};
+
+watch(
+  () => [props.modelValue, props.itemData],
+  async ([value]) => {
+    if (value) {
+      fillForm();
+      if (!vendorStore.items.length) {
+        await vendorStore.fetchVendors(authStore.tenantId ?? null);
+      }
+      await loadBrandCategoryOptions();
+    }
+  },
+  { immediate: true, deep: true },
+);
+
+watch(
+  () => [resolvedDefaultVendorCode.value, props.modelValue, props.itemData],
+  (values) => {
+    const vendorCode = (values[0] ?? null) as string | null;
+    const isOpen = Boolean(values[1]);
+    const itemData = (values[2] ?? null) as ProductBasedCostingItemFormData | null;
+
+    if (!isOpen) {
+      return;
+    }
+    if (itemData?.id) {
+      return;
+    }
+    form.vendor_code = vendorCode ?? null;
+    void loadBrandCategoryOptions();
+  },
+);
+
+const onVendorChange = async () => {
+  if (!isEditMode.value) {
+    form.brand = null;
+    form.category = null;
+  }
+  await loadBrandCategoryOptions();
+
+  try {
+    await updateFileMutation.mutateAsync({
+      id: props.productBasedCostingFileId,
+      vendor_code: form.vendor_code,
+      market_code: resolvedMarketCode.value,
+    });
+  } catch {
+    /* mutation shows error */
+  }
+};
+</script>
+
+<style scoped>
+.border {
+  border: 1px solid #e0e0e0;
+}
+.image-preview-container {
+  border: 1px dashed #cfd8dc;
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--tf-neutral-surface) 96%, var(--tf-neutral-ink) 4%);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.image-preview-container:hover {
+  border-color: var(--q-primary);
+  background-color: #f5f7fa;
+}
+.image-preview-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+.image-preview-placeholder {
+  min-height: 200px;
+}
+</style>

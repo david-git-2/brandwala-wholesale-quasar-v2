@@ -258,7 +258,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { globalReferenceRepository } from 'src/modules/tenant/submodules/global_reference/repositories/globalReferenceRepository';
 import {
   computePurchasePriceAdjustments,
   calculateEstimatedPurchaseTotal,

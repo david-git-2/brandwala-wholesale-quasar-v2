@@ -86,7 +86,7 @@ import type { ChartData, ChartOptions } from 'chart.js';
 import {
   formatDashboardCount,
   formatDashboardMoneyFull,
-} from 'src/modules/dashboard/utils/formatDashboardMetric';
+} from 'src/modules/workspace/submodules/dashboard/utils/formatDashboardMetric';
 import type { ShopOrderDashboardMetrics } from '../repositories/shopOrderDashboardRepository';
 import { ensureShopOrderChartsRegistered } from './shopOrderChartSetup';
 

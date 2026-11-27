@@ -1,5 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
 
 const thriftGuard = {
   loginRoute: 'admin-login-page' as const,
@@ -14,7 +14,7 @@ const thriftLedgerGuard = createAccessGuard({
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/app/thrift/ledger',
+    path: '/app/thrift/ledger',
     component: () => import('layouts/AppLayout.vue'),
     beforeEnter: thriftLedgerGuard,
     children: [

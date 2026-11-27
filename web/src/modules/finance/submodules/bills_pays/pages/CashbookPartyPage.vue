@@ -1,0 +1,250 @@
+<template>
+  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
+    <div v-if="detailQuery.isPending.value" class="col flex flex-center">
+      <q-spinner color="primary" size="32px" />
+    </div>
+
+    <div v-else-if="detailQuery.isError.value" class="col flex flex-center text-negative">
+      {{ detailError }}
+    </div>
+
+    <div v-else class="col column no-wrap overflow-hidden q-gutter-y-sm">
+      <div class="cashbook-header q-pa-md">
+        <div class="text-h6 text-weight-bold">{{ detail?.name }}</div>
+        <div v-if="detail?.caption" class="text-caption text-grey-7">{{ detail.caption }}</div>
+        <div class="row q-gutter-md q-mt-sm text-body2">
+          <span>Available <strong>{{ formatAmountBdt(detail?.available_balance ?? 0) }}</strong></span>
+          <span>Pending {{ formatAmountBdt(detail?.pending_balance ?? 0) }}</span>
+          <span>Locked {{ formatAmountBdt(detail?.locked_balance ?? 0) }}</span>
+        </div>
+        <div v-if="detail?.account_class" class="text-caption text-grey-7 q-mt-xs">
+          {{
+            detail.account_class === 'tenant_asset'
+              ? 'Company cash (tenant asset)'
+              : 'Profile custody'
+          }}
+        </div>
+        <div class="row q-gutter-sm q-mt-sm items-center wrap">
+          <ProfileCashbookActionBar
+            :show-locations="showCashPoints"
+            @deposit="onDeposit"
+            @withdraw="onWithdraw"
+            @locations="goManageLocations"
+          />
+        </div>
+      </div>
+
+      <q-input
+        v-model="searchText"
+        outlined
+        dense
+        class="q-px-sm shrink-0"
+        placeholder="Search ledger…"
+        @update:model-value="onSearch"
+      />
+
+      <div class="col overflow-auto invoice-list-card">
+        <q-markup-table flat dense class="full-width">
+          <thead>
+            <tr>
+              <th class="text-left">Date</th>
+              <th class="text-left">Type</th>
+              <th class="text-right">Amount</th>
+              <th class="text-right">Balance</th>
+              <th class="text-left">Point</th>
+              <th class="text-left">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="line in ledgerRows" :key="line.id">
+              <td>{{ formatCashbookLedgerDate(line.created_at) }}</td>
+              <td>
+                <span>{{ formatCashbookLedgerType(line.type) }}</span>
+                <q-badge v-if="line.is_reversal" dense color="orange-2" text-color="orange-9" label="Reversal" class="q-ml-xs" />
+              </td>
+              <td
+                class="text-right"
+                :class="{ 'text-negative': isCashbookLedgerDeduction(line.type) }"
+              >
+                {{ formatAmountBdt(line.amount) }}
+              </td>
+              <td class="text-right">{{ line.balance_after == null ? '—' : formatAmountBdt(line.balance_after) }}</td>
+              <td class="text-caption">{{ line.cashbook_point_name || '—' }}</td>
+              <td class="text-caption">
+                <CashbookLedgerSourceCell :line="line" @open-pay="openPayById" />
+              </td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+        <div v-if="!ledgerRows.length && !ledgerQuery.isPending.value" class="q-pa-lg text-center text-grey-7">
+          No ledger entries.
+        </div>
+        <div v-if="hasMoreLedger" class="row justify-center q-py-sm">
+          <q-btn flat dense no-caps label="Load more" icon="ph ph-arrow-down" @click="ledgerOffset += LEDGER_PAGE" />
+        </div>
+      </div>
+    </div>
+
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { formatAmountBdt } from 'src/utils/currency';
+import { useCashbookPartyQuery } from '../composables/useCashbookPartyQuery';
+import CashbookLedgerSourceCell from '../components/CashbookLedgerSourceCell.vue';
+import ProfileCashbookActionBar from 'src/modules/people/components/ProfileCashbookActionBar.vue';
+import { useProfileCashMovementNav } from 'src/modules/people/composables/useProfileCashMovementNav';
+import { type CashbookLedgerRow } from '../repositories/cashbookRepository';
+import {
+  formatCashbookLedgerDate,
+  formatCashbookLedgerType,
+  isCashbookLedgerDeduction,
+} from '../utils/cashbookLedgerDisplay';
+
+const LEDGER_PAGE = 50;
+const ALLOWED_TYPES = new Set(['tenant', 'customer', 'courier', 'vendor']);
+
+const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+const { goToCashMovement } = useProfileCashMovementNav();
+
+const searchText = ref('');
+const debouncedSearch = ref('');
+const ledgerOffset = ref(0);
+const accumulatedLedger = ref<CashbookLedgerRow[]>([]);
+
+const operatingTenantId = computed(() => authStore.selectedTenant?.id ?? 0);
+
+const entityType = computed(() => {
+  const raw = route.params.entityType;
+  const t = typeof raw === 'string' ? raw : '';
+  return ALLOWED_TYPES.has(t) ? t : 'customer';
+});
+
+const entityId = computed(() => {
+  const raw = route.params.entityId;
+  const id = Number(typeof raw === 'string' ? raw : '');
+  return Number.isFinite(id) && id > 0 ? id : 0;
+});
+
+const showCashPoints = computed(() => entityType.value === 'tenant' && entityId.value > 0);
+
+const partyParams = computed(() => ({
+  tenantId: operatingTenantId.value,
+  entityType: entityType.value,
+  entityId: entityId.value,
+  search: debouncedSearch.value || undefined,
+  ledgerOffset: ledgerOffset.value,
+  ledgerLimit: LEDGER_PAGE,
+}));
+
+const { detailQuery, ledgerQuery } = useCashbookPartyQuery(partyParams);
+
+const detail = computed(() => detailQuery.data.value);
+const detailError = computed(() => {
+  const err = detailQuery.error.value;
+  return err instanceof Error ? err.message : 'Could not load party.';
+});
+
+watch(
+  () => ledgerQuery.data.value,
+  (rows) => {
+    const list = rows ?? [];
+    if (ledgerOffset.value === 0) accumulatedLedger.value = list;
+    else {
+      const ids = new Set(accumulatedLedger.value.map((r) => r.id));
+      accumulatedLedger.value = [...accumulatedLedger.value, ...list.filter((r) => !ids.has(r.id))];
+    }
+  },
+);
+
+watch(debouncedSearch, () => {
+  ledgerOffset.value = 0;
+  accumulatedLedger.value = [];
+});
+
+const ledgerRows = computed(() => accumulatedLedger.value);
+const hasMoreLedger = computed(() => (ledgerQuery.data.value?.length ?? 0) >= LEDGER_PAGE);
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+const onSearch = (value: string | number | null) => {
+  const v = String(value ?? '');
+  searchText.value = v;
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    debouncedSearch.value = v.trim();
+  }, 300);
+};
+
+const routeParams = () => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : undefined;
+  return tenantSlug ? { tenantSlug } : {};
+};
+
+const partyLedgerPath = computed(() => {
+  const tenantSlug = typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '';
+  const prefix = tenantSlug ? `/${tenantSlug}` : '';
+  return `${prefix}/app/cashbook/${entityType.value}/${entityId.value}`;
+});
+
+const onDeposit = () => {
+  goToCashMovement({
+    kind: 'deposit',
+    entityType: entityType.value,
+    entityId: entityId.value,
+    partyName: detail.value?.name,
+    returnTo: partyLedgerPath.value,
+  });
+};
+
+const onWithdraw = () => {
+  goToCashMovement({
+    kind: 'withdrawal',
+    entityType: entityType.value,
+    entityId: entityId.value,
+    partyName: detail.value?.name,
+    returnTo: partyLedgerPath.value,
+  });
+};
+
+const goManageLocations = () => {
+  router.push({
+    name: 'app-cashbook-points-page',
+    params: {
+      ...routeParams(),
+      entityType: entityType.value,
+      entityId: String(entityId.value),
+    },
+  });
+};
+
+const openPayById = (payId: number) => {
+  router.push({
+    name: 'app-pay-detail-page',
+    params: { ...routeParams(), payId: String(payId) },
+  });
+};
+</script>
+
+<style scoped>
+.page-fixed-layout {
+  height: calc(100vh - 55px);
+}
+.cashbook-header {
+  background: var(--tf-neutral-surface, #fff);
+  border: 1px solid var(--tf-neutral-border, #e7e1d8);
+  border-radius: 8px;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+.invoice-list-card {
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+</style>

@@ -31,13 +31,13 @@ const listCargoCompanies = async (
 
 const isCodeAvailable = async (
   code: string,
-  parentTenantId: number,
+  tenantId: number,
   excludeId?: number | null,
 ): Promise<boolean> => {
   let query = db
     .from('cargo_companies')
     .select('id', { count: 'exact', head: true })
-    .eq('tenant_id', parentTenantId)
+    .eq('tenant_id', tenantId)
     .eq('code', normalizeCode(code));
 
   if (typeof excludeId === 'number') {
@@ -86,12 +86,12 @@ const updateCargoCompany = async (payload: CargoCompanyUpdateInput): Promise<Car
   return data as CargoCompany;
 };
 
-const deleteCargoCompany = async (id: number, parentTenantId: number): Promise<void> => {
+const deleteCargoCompany = async (id: number, tenantId: number): Promise<void> => {
   const { data: row, error: fetchError } = await db
     .from('cargo_companies')
     .select('id, is_default, code')
     .eq('id', id)
-    .eq('tenant_id', parentTenantId)
+    .eq('tenant_id', tenantId)
     .maybeSingle();
 
   if (fetchError) throw fetchError;
@@ -100,13 +100,13 @@ const deleteCargoCompany = async (id: number, parentTenantId: number): Promise<v
     throw new Error('Cannot delete the default cargo company.');
   }
 
-  const { error } = await db.from('cargo_companies').delete().eq('id', id).eq('tenant_id', parentTenantId);
+  const { error } = await db.from('cargo_companies').delete().eq('id', id).eq('tenant_id', tenantId);
   if (error) throw error;
 };
 
-const ensureDefaultCargoCompany = async (parentTenantId: number): Promise<number> => {
+const ensureDefaultCargoCompany = async (tenantId: number): Promise<number> => {
   const { data, error } = await db.rpc('ensure_default_cargo_company', {
-    p_tenant_id: parentTenantId,
+    p_tenant_id: tenantId,
   });
   if (error) throw error;
   return data as number;

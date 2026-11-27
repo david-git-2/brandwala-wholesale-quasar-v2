@@ -199,14 +199,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import BillDialogField from 'src/modules/bills_pays/components/BillDialogField.vue';
-import MoneyPayDialogAmountBlock from 'src/modules/bills_pays/components/MoneyPayDialogAmountBlock.vue';
+import BillDialogField from 'src/modules/finance/submodules/bills_pays/components/BillDialogField.vue';
+import MoneyPayDialogAmountBlock from 'src/modules/finance/submodules/bills_pays/components/MoneyPayDialogAmountBlock.vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
 import { formatAmountBdt } from 'src/utils/currency';
-import { useBooksExchangeRateQuery } from 'src/modules/bills_pays/composables/useBooksExchangeRateQuery';
+import { useBooksExchangeRateQuery } from 'src/modules/finance/submodules/bills_pays/composables/useBooksExchangeRateQuery';
 import { useProfileCashMovementLegData } from '../composables/useProfileCashMovementLegData';
 import ProfileCashbookBundleCreateDialog from './ProfileCashbookBundleCreateDialog.vue';
-import type { MoneyPayKind } from 'src/modules/bills_pays/types/moneyPayDialog';
+import type { MoneyPayKind } from 'src/modules/finance/submodules/bills_pays/types/moneyPayDialog';
 import type { ProfileCashbookBundleRow } from '../types/profileCashbookBundle';
 
 const props = defineProps<{

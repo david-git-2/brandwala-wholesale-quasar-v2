@@ -1,15 +1,38 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
+import { createShopAccessGuard } from 'src/modules/workspace/submodules/auth/guards/createShopAccessGuard';
+
+const SHOP_TYPE = ':shopType(catalog|stock|dropship)';
+
+const browseChildren: RouteRecordRaw[] = [
+  {
+    path: '',
+    name: 'shop-catalog-entry-page',
+    component: () => import('src/modules/shop_order/pages/storefront/CatalogEntryPage.vue'),
+    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
+  },
+  {
+    path: ':shopSlug/product/:productId',
+    name: 'shop-storefront-product-detail-page',
+    component: () => import('src/modules/shop_order/pages/storefront/StorefrontProductDetailPage.vue'),
+    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
+  },
+  {
+    path: ':shopSlug',
+    name: 'shop-storefront-browse-page',
+    component: () => import('src/modules/shop_order/pages/storefront/StorefrontPage.vue'),
+    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
+  },
+];
 
 const shopRoutes: RouteRecordRaw[] = [
   {
-    path: '/:tenantSlug?/shop/orders',
+    path: `/shop/:tenantSlug/${SHOP_TYPE}/orders`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
         path: '',
         name: 'shop-orders-page',
-        component: () => import('src/modules/shop_order/pages/CustomerOrdersPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/CustomerOrdersPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
       },
       {
@@ -19,115 +42,113 @@ const shopRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'shop-order-detail-page',
-        component: () => import('src/modules/shop_order/pages/CustomerOrderDetailPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/CustomerOrderDetailPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
       },
     ],
   },
 
   {
-    path: '/:tenantSlug?/shop/browse',
+    path: `/shop/:tenantSlug/${SHOP_TYPE}/browse`,
     component: () => import('layouts/ShopLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'shop-catalog-entry-page',
-        component: () => import('src/modules/shop_order/pages/CatalogEntryPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
-      },
-      {
-        path: ':shopSlug/product/:productId',
-        name: 'shop-storefront-product-detail-page',
-        component: () => import('src/modules/shop_order/pages/StorefrontProductDetailPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
-      },
-      {
-        path: ':shopSlug',
-        name: 'shop-storefront-browse-page',
-        component: () => import('src/modules/shop_order/pages/StorefrontPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
-      },
-    ],
+    children: browseChildren,
   },
 
   {
-    path: '/:tenantSlug?/shop/cart',
+    path: `/shop/:tenantSlug/${SHOP_TYPE}/cart`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
         path: '',
         name: 'shop-cart-page',
-        component: () => import('src/modules/shop_order/pages/ShopCartEntryPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/ShopCartEntryPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
   },
 
   {
-    path: '/:tenantSlug?/shop/dropship/review',
+    path: `/shop/:tenantSlug/dropship/review`,
+    redirect: (to) => ({
+      path: `/shop/${String(to.params.tenantSlug ?? '')}/dropship/place-order`,
+      query: { ...to.query, step: '2' },
+    }),
+  },
+
+  {
+    path: `/shop/:tenantSlug/dropship/delivery`,
+    redirect: (to) => ({
+      path: `/shop/${String(to.params.tenantSlug ?? '')}/dropship/place-order`,
+      query: { ...to.query, step: '3' },
+    }),
+  },
+
+  {
+    path: `/shop/:tenantSlug/dropship/place-order`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
         path: '',
-        name: 'shop-dropship-review-page',
-        component: () => import('src/modules/shop_order/pages/ShopDropshipReviewPage.vue'),
+        name: 'shop-dropship-place-order-page',
+        component: () => import('src/modules/shop_order/pages/storefront/ShopDropshipPlaceOrderPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
   },
 
   {
-    path: '/:tenantSlug?/shop/dropship/delivery',
-    component: () => import('layouts/ShopLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'shop-dropship-delivery-page',
-        component: () => import('src/modules/shop_order/pages/ShopDropshipDeliveryPage.vue'),
-        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
-      },
-    ],
-  },
-
-  {
-    path: '/:tenantSlug?/shop/checkout',
+    path: `/shop/:tenantSlug/dropship/checkout`,
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
         path: '',
         name: 'shop-checkout-page',
-        component: () => import('src/modules/shop_order/pages/ShopCheckoutPage.vue'),
+        component: () => import('src/modules/shop_order/pages/storefront/ShopCheckoutPage.vue'),
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
   },
 
   {
-    path: '/:tenantSlug?/shop/commerce/:catchAll(.*)*',
+    path: '/shop/:tenantSlug/browse/:shopSlug',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      const tenantSlug = String(to.params.tenantSlug ?? '');
+      const shopSlug = String(to.params.shopSlug ?? '');
+      return `/shop/${tenantSlug}/catalog/browse/${shopSlug}`;
+    },
+  },
+
+  {
+    path: '/shop/:tenantSlug/browse',
+    redirect: (to) => {
+      const tenantSlug = String(to.params.tenantSlug ?? '');
+      return `/shop/${tenantSlug}/catalog/browse`;
+    },
+  },
+
+  {
+    path: '/shop/:tenantSlug/commerce/:catchAll(.*)*',
+    redirect: (to) => {
+      const tenantSlug = String(to.params.tenantSlug ?? '');
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
         : '';
-      return `${tenantSlug}/shop${subPath}`;
+      return `/shop/${tenantSlug}/catalog${subPath}`;
     },
   },
   {
-    path: '/:tenantSlug?/shop/commerce-shop/:catchAll(.*)*',
+    path: '/shop/:tenantSlug/commerce-shop/:catchAll(.*)*',
     redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+      const tenantSlug = String(to.params.tenantSlug ?? '');
       const subPath = to.params.catchAll
         ? `/${Array.isArray(to.params.catchAll) ? to.params.catchAll.join('/') : to.params.catchAll}`
         : '';
-      return `${tenantSlug}/shop${subPath}`;
+      return `/shop/${tenantSlug}/catalog${subPath}`;
     },
   },
   {
-    path: '/:tenantSlug?/shop/stores/:catchAll(.*)*',
-    redirect: (to) => {
-      const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
-      return `${tenantSlug}/app/shop`;
-    },
+    path: '/shop/:tenantSlug/stores/:catchAll(.*)*',
+    redirect: () => '/app/shop',
   },
 ];
 

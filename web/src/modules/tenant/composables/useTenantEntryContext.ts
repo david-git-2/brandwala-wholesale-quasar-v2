@@ -3,17 +3,25 @@ import { useRoute } from 'vue-router';
 
 import { tenantService } from '../services/tenantService';
 import type { TenantEntry } from '../types';
-import { getTenantLookupFromRoute } from '../utils/tenantRouteContext';
+import { getShopTypePathFromRoute, getTenantLookupFromRoute } from '../utils/tenantRouteContext';
 
-export function useTenantEntryContext() {
+export function useTenantEntryContext(options?: { requireShopType?: boolean }) {
   const route = useRoute();
   const loading = ref(false);
   const error = ref<string | null>(null);
   const tenant = ref<TenantEntry | null>(null);
 
   const lookup = computed(() => getTenantLookupFromRoute(route));
+  const shopTypePath = computed(() => getShopTypePathFromRoute(route));
 
   const resolveTenant = async () => {
+    if (options?.requireShopType && !shopTypePath.value) {
+      tenant.value = null;
+      error.value = null;
+      loading.value = false;
+      return;
+    }
+
     if (!lookup.value.source) {
       tenant.value = null;
       error.value =
@@ -49,7 +57,7 @@ export function useTenantEntryContext() {
   };
 
   watch(
-    lookup,
+  () => [lookup.value, shopTypePath.value] as const,
     () => {
       void resolveTenant();
     },

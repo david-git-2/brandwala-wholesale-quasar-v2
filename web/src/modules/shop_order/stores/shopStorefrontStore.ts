@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { handleApiFailure } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 export const useShopStorefrontStore = defineStore('shopStorefront', {
   state: () => ({

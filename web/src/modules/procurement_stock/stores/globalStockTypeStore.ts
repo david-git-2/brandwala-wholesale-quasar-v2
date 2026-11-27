@@ -13,11 +13,11 @@ export const useGlobalStockTypeStore = defineStore('global_stock_type', {
   }),
 
   actions: {
-    async fetchStockTypes(parentTenantId: number | null) {
+    async fetchStockTypes(tenantId: number | null) {
       this.loading = true;
       this.error = null;
       try {
-        const data = await globalStockTypeRepository.listStockTypes(parentTenantId);
+        const data = await globalStockTypeRepository.listStockTypes(tenantId);
         this.items = data;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load stock types';
@@ -27,7 +27,7 @@ export const useGlobalStockTypeStore = defineStore('global_stock_type', {
     },
 
     async createStockType(
-      parentTenantId: number | null,
+      tenantId: number | null,
       payload: {
         description: string;
         is_sellable: boolean;
@@ -37,7 +37,7 @@ export const useGlobalStockTypeStore = defineStore('global_stock_type', {
       this.saving = true;
       this.error = null;
       try {
-        const newType = await globalStockTypeRepository.createStockType(parentTenantId, payload);
+        const newType = await globalStockTypeRepository.createStockType(tenantId, payload);
         this.items.push(newType);
         this.items.sort((a, b) => a.sort_order - b.sort_order);
         return newType;

@@ -265,6 +265,7 @@ BEGIN
       CURRENT_DATE, 'posted', p_idempotency_key, '{}'::jsonb, p_meta, auth.uid()
     ) RETURNING * INTO v_pays;
   PERFORM money_kernel.fn_ensure_header_pay_bundle_lines(p_tenant_id, v_pays.id);
+  PERFORM money_kernel.flush_deferred_pays();
   EXCEPTION WHEN unique_violation THEN
     SELECT * INTO v_pays FROM money_kernel.pays
      WHERE tenant_id = p_tenant_id AND idempotency_key = p_idempotency_key
@@ -423,6 +424,7 @@ BEGIN
       CURRENT_DATE, 'posted', p_idempotency_key, '{}'::jsonb, p_meta, auth.uid()
     ) RETURNING * INTO v_pays;
   PERFORM money_kernel.fn_ensure_header_pay_bundle_lines(p_tenant_id, v_pays.id);
+  PERFORM money_kernel.flush_deferred_pays();
   EXCEPTION WHEN unique_violation THEN
     SELECT * INTO v_pays FROM money_kernel.pays
      WHERE tenant_id = p_tenant_id AND idempotency_key = p_idempotency_key
@@ -561,6 +563,7 @@ BEGIN
       CURRENT_DATE, 'posted', p_idempotency_key, '{}'::jsonb, p_meta, auth.uid()
     ) RETURNING * INTO v_pays;
   PERFORM money_kernel.fn_ensure_header_pay_bundle_lines(p_tenant_id, v_pays.id);
+  PERFORM money_kernel.flush_deferred_pays();
   EXCEPTION WHEN unique_violation THEN
     SELECT * INTO v_pays FROM money_kernel.pays
      WHERE tenant_id = p_tenant_id AND idempotency_key = p_idempotency_key
@@ -961,10 +964,10 @@ BEGIN
     p_tenant_id,
     p_payer_profile_id,
     p_from_pot_id,
-    p_to_pot_id,
     p_amount,
-    v_books_rate,
     jsonb_build_array(jsonb_build_object('bill_id', p_bill_id, 'amount', p_amount)),
+    p_to_pot_id,
+    NULL,
     p_meta,
     p_idempotency_key
   );
@@ -1790,11 +1793,8 @@ BEGIN
     END IF;
   END IF;
 
-  -- Compute total from lines
+  -- Compute total from lines (empty allowed on draft create)
   v_lines := COALESCE(p_payload->'lines', '[]'::jsonb);
-  IF jsonb_array_length(v_lines) = 0 THEN
-    RAISE EXCEPTION 'invalid_arguments: lines required';
-  END IF;
   FOR v_line IN SELECT * FROM jsonb_array_elements(v_lines) LOOP
     v_qty   := COALESCE((v_line->>'quantity')::numeric,   1);
     v_price := COALESCE((v_line->>'unit_price')::numeric, 0);
@@ -2002,9 +2002,6 @@ BEGIN
   END IF;
 
   v_lines := COALESCE(p_payload->'lines', '[]'::jsonb);
-  IF jsonb_array_length(v_lines) = 0 THEN
-    RAISE EXCEPTION 'invalid_arguments: lines required';
-  END IF;
   FOR v_line IN SELECT * FROM jsonb_array_elements(v_lines) LOOP
     v_qty   := COALESCE((v_line->>'quantity')::numeric, 1);
     v_price := COALESCE((v_line->>'unit_price')::numeric, 0);
@@ -2122,6 +2119,17 @@ BEGIN
   END IF;
   IF v_bill.from_profile_id IS NULL OR v_bill.to_profile_id IS NULL THEN
     RAISE EXCEPTION 'invalid_arguments: from_profile_id and to_profile_id required before issue';
+  END IF;
+
+  IF v_bill.total_amount IS NULL OR v_bill.total_amount <= 0 THEN
+    RAISE EXCEPTION 'invalid_arguments: bill must have total_amount > 0 before issue';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM money_kernel.bill_lines bl
+    WHERE bl.tenant_id = p_tenant_id AND bl.bill_id = p_bill_id
+  ) THEN
+    RAISE EXCEPTION 'invalid_arguments: at least one line is required before issue';
   END IF;
 
   SELECT * INTO v_registry FROM money_kernel.bill_kind_registry WHERE kind = v_bill.kind;

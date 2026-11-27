@@ -67,14 +67,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import TfBtn from 'src/components/ui/TfBtn.vue';
-import type { CashbookPointRow } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { cashbookRepository } from 'src/modules/bills_pays/repositories/cashbookRepository';
-import { moneyKernelRepository } from 'src/modules/bills_pays/repositories/moneyKernelRepository';
-import { createPayIdempotencyKey } from 'src/modules/bills_pays/repositories/paysRepository';
-import { useBooksExchangeRateQuery } from 'src/modules/bills_pays/composables/useBooksExchangeRateQuery';
-import { useMoneyKernelCurrenciesQuery } from 'src/modules/bills_pays/composables/useMoneyKernelCurrenciesQuery';
+import type { CashbookPointRow } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { cashbookRepository } from 'src/modules/finance/submodules/bills_pays/repositories/cashbookRepository';
+import { moneyKernelRepository } from 'src/modules/finance/submodules/bills_pays/repositories/moneyKernelRepository';
+import { createPayIdempotencyKey } from 'src/modules/finance/submodules/bills_pays/repositories/paysRepository';
+import { useBooksExchangeRateQuery } from 'src/modules/finance/submodules/bills_pays/composables/useBooksExchangeRateQuery';
+import { useMoneyKernelCurrenciesQuery } from 'src/modules/finance/submodules/bills_pays/composables/useMoneyKernelCurrenciesQuery';
 import { useQueryClient } from '@tanstack/vue-query';
-import { cashbookQueryKeys } from 'src/modules/bills_pays/services/cashbookQueryKeys';
+import { cashbookQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/cashbookQueryKeys';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{

@@ -110,7 +110,7 @@ import type { ChartData, ChartOptions } from 'chart.js';
 import {
   dashboardSharePct,
   formatDashboardCount,
-} from 'src/modules/dashboard/utils/formatDashboardMetric';
+} from 'src/modules/workspace/submodules/dashboard/utils/formatDashboardMetric';
 import type { ProcurementDashboardMetrics } from '../repositories/procurementDashboardRepository';
 import { ensureProcurementChartsRegistered } from './procurementChartSetup';
 

@@ -40,15 +40,15 @@
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { ChartData } from 'chart.js';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useAppDashboardRoutes } from 'src/modules/dashboard/composables/useAppDashboardRoutes';
-import DashboardPulseCard from 'src/modules/dashboard/components/DashboardPulseCard.vue';
-import DashboardPulseSkeleton from 'src/modules/dashboard/components/DashboardPulseSkeleton.vue';
-import DashboardMetric from 'src/modules/dashboard/components/DashboardMetric.vue';
-import DashboardDonut from 'src/modules/dashboard/components/DashboardDonut.vue';
-import { formatDashboardCount } from 'src/modules/dashboard/utils/formatDashboardMetric';
-import { readThemeRgb, rgba } from 'src/modules/dashboard/utils/dashboardChartSetup';
-import { dashboardChartColors } from 'src/modules/dashboard/utils/dashboardChartColors';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useAppDashboardRoutes } from 'src/modules/workspace/submodules/dashboard/composables/useAppDashboardRoutes';
+import DashboardPulseCard from 'src/modules/workspace/submodules/dashboard/components/DashboardPulseCard.vue';
+import DashboardPulseSkeleton from 'src/modules/workspace/submodules/dashboard/components/DashboardPulseSkeleton.vue';
+import DashboardMetric from 'src/modules/workspace/submodules/dashboard/components/DashboardMetric.vue';
+import DashboardDonut from 'src/modules/workspace/submodules/dashboard/components/DashboardDonut.vue';
+import { formatDashboardCount } from 'src/modules/workspace/submodules/dashboard/utils/formatDashboardMetric';
+import { readThemeRgb, rgba } from 'src/modules/workspace/submodules/dashboard/utils/dashboardChartSetup';
+import { dashboardChartColors } from 'src/modules/workspace/submodules/dashboard/utils/dashboardChartColors';
 import { useThriftDashboardMetricsQuery } from 'src/modules/thrift/reports/composables/useThriftReportsQuery';
 
 const props = defineProps<{

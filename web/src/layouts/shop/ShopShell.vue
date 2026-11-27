@@ -16,15 +16,32 @@
           >
             <span class="shop-shell__tenant-text shop-banner-font">{{ tenantName }}</span>
           </button>
-          <ShopCustomerGroupHeaderSwitcher
-            :current-name="companyName"
-            :current-id="authStore.customerGroupId"
-            :groups="loginGroups"
-            @switch-company="onSwitchCompany"
-          />
+
+          <template v-if="showCatalogShopHeader">
+            <span class="shop-shell__context-divider" aria-hidden="true" />
+            <div class="shop-shell__shop-switch">
+              <CatalogShopHeaderSwitcher
+                :shop-name="headerShopName"
+                :current-slug="headerShopSlug"
+                :shops="headerCustomerShops"
+                @switch-shop="onSwitchHeaderShop"
+              />
+            </div>
+          </template>
         </div>
 
         <nav v-if="!$q.screen.xs" class="shop-shell__nav" aria-label="Shop">
+          <q-btn
+            flat
+            no-caps
+            dense
+            class="shop-shell__labeled-btn"
+            :class="{ 'shop-shell__labeled-btn--segment-active': isHomeNavActive }"
+            icon="ph ph-house"
+            :label="$t('navigation.dashboard')"
+            data-test="shop-header-dashboard-btn"
+            @click="goHome"
+          />
           <q-btn
             flat
             no-caps
@@ -50,11 +67,24 @@
         </nav>
 
         <div class="shop-shell__actions">
+          <button
+            v-if="showHeaderSearch && $q.screen.gt.sm"
+            type="button"
+            class="shop-shell__search-trigger"
+            aria-label="Search products"
+            data-test="shop-header-search-trigger"
+            @click="searchOpen = true"
+          >
+            <q-icon name="ph ph-magnifying-glass" size="16px" class="shop-shell__search-trigger-icon" />
+            <span class="shop-shell__search-trigger-text">{{ $t('shop.search_placeholder') }}</span>
+          </button>
+
           <q-btn
-            v-if="showHeaderSearch"
+            v-else-if="showHeaderSearch"
             flat
             round
             dense
+            :ripple="false"
             class="shop-shell__icon-btn"
             aria-label="Search products"
             data-test="shop-header-search-trigger"
@@ -63,15 +93,6 @@
             <q-icon name="ph ph-magnifying-glass" size="20px" />
           </q-btn>
 
-          <div v-if="showCatalogShopHeader" class="shop-shell__shop-switch">
-            <CatalogShopHeaderSwitcher
-              :shop-name="headerShopName"
-              :current-slug="headerShopSlug"
-              :shops="customerShops"
-              @switch-shop="onSwitchHeaderShop"
-            />
-          </div>
-
           <NotificationBell v-if="notificationsEnabled" scope="shop" />
 
           <q-btn
@@ -79,6 +100,7 @@
             flat
             round
             dense
+            :ripple="false"
             class="shop-shell__icon-btn"
             aria-label="Cart"
             @click="goToCart"
@@ -92,6 +114,7 @@
               class="shop-shell__cart-badge"
               :label="cartItemCount"
             />
+            <q-tooltip v-if="cartTooltipText">{{ cartTooltipText }}</q-tooltip>
           </q-btn>
 
           <UserProfileMenu
@@ -114,7 +137,7 @@
           <span class="shop-shell__bottom-nav-icon">
             <q-icon name="ph ph-house" />
           </span>
-          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.home') }}</span>
+          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.dashboard') }}</span>
         </button>
         <button
           type="button"
@@ -210,35 +233,34 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
-import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
-import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
+import NotificationBell from 'src/modules/workspace/submodules/notifications/components/NotificationBell.vue';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/workspace/submodules/notifications/notificationsFeature';
 import ShopHeaderProductSearch from 'src/modules/shop_order/components/ShopHeaderProductSearch.vue';
 import CatalogShopHeaderSwitcher from 'src/modules/shop_order/components/CatalogShopHeaderSwitcher.vue';
-import ShopCustomerGroupHeaderSwitcher from 'src/modules/shop_order/components/ShopCustomerGroupHeaderSwitcher.vue';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopCustomerShellQuery } from 'src/modules/shop_order/composables/useShopCustomerShellQuery';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
-import { getShopDashboardRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 import {
-  bootstrapShopCustomerGroup,
-  type ShopLoginGroupRow,
-} from 'src/modules/auth/utils/shopCustomerGroupSession';
-import {
+  filterShopsByRouteType,
+  getLastShopTypePath,
   getLastVisitedShopId,
   rememberCatalogShop,
   resolveCartShopId,
   resolveCatalogShop,
+  resolveCustomerShopTypePath,
   shopCartPath,
   shopCatalogEntryPath,
   shopCatalogPath,
+  shopDropshipPlaceOrderPath,
   shopHomePath,
 } from 'src/modules/shop_order/utils/catalogShop';
+import { filterActiveCartsByShopTypePath } from 'src/modules/shop_order/utils/shopCartScope';
+import { shopTypeFromPathSegment, shopTypeToPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 
-const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor', 'theme-proxy'];
 
 const props = defineProps<{
   logoutTo: string;
@@ -248,7 +270,6 @@ const $q = useQuasar();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const tenantStore = useTenantStore();
 const kobaCartStore = useKobaCartStore();
 const shellQuery = useShopCustomerShellQuery(
   computed(() => authStore.tenantId ?? null),
@@ -257,7 +278,6 @@ const shellQuery = useShopCustomerShellQuery(
 const { data: activeCartsData } = useActiveShopCartsQuery();
 const activeCarts = computed(() => activeCartsData.value ?? []);
 const loginGroups = computed(() => shellQuery.data.value?.login_groups ?? []);
-const companyName = computed(() => authStore.customerGroup?.name ?? '');
 
 const showLogoutDialog = ref(false);
 const searchOpen = ref(false);
@@ -273,9 +293,16 @@ const ORDER_ROUTE_NAMES = new Set(['shop-orders-page', 'shop-order-detail-page']
 
 const CART_ROUTE_NAMES = new Set(['shop-cart-page', 'shop-checkout-page']);
 
-const showHeaderSearch = computed(() => route.name === 'customer-dashboard');
+const HEADER_SEARCH_ROUTE_NAMES = new Set([
+  'customer-dashboard',
+  ...CATALOG_ROUTE_NAMES,
+  ...ORDER_ROUTE_NAMES,
+  ...CART_ROUTE_NAMES,
+]);
 
 const routeName = computed(() => String(route.name ?? ''));
+
+const showHeaderSearch = computed(() => HEADER_SEARCH_ROUTE_NAMES.has(routeName.value));
 
 const isKobaActive = computed(() => !!(route.name && String(route.name).includes('koba')));
 
@@ -298,13 +325,13 @@ const isCartNavActive = computed(() => {
 const isCartRoute = computed(() => CART_ROUTE_NAMES.has(routeName.value));
 
 const activeCartShopId = computed(() =>
-  resolveCartShopId(authStore.tenantId, activeCarts.value ?? [], route.query.shopId),
+  resolveCartShopId(authStore.tenantId, scopedActiveCarts.value ?? [], route.query.shopId),
 );
 
 const activeCartInfo = computed(() => {
   const shopId = activeCartShopId.value;
   if (!shopId) return null;
-  return (activeCarts.value ?? []).find((cart) => cart.shop_id === shopId) ?? null;
+  return (scopedActiveCarts.value ?? []).find((cart) => cart.shop_id === shopId) ?? null;
 });
 
 const tenantName = computed(
@@ -312,6 +339,20 @@ const tenantName = computed(
 );
 
 const customerShops = computed(() => shellQuery.data.value?.customer_shops ?? []);
+
+const routeShopTypePath = computed(() =>
+  resolveCustomerShopTypePath(route, authStore.tenantId),
+);
+
+const scopedActiveCarts = computed(() =>
+  filterActiveCartsByShopTypePath(activeCarts.value, routeShopTypePath.value),
+);
+
+const routeShopType = computed(() => shopTypeFromPathSegment(routeShopTypePath.value));
+
+const headerCustomerShops = computed(() =>
+  filterShopsByRouteType(customerShops.value, routeShopTypePath.value),
+);
 
 const catalogShopSlug = computed(() => {
   const slug = route.params.shopSlug;
@@ -324,7 +365,7 @@ const cartShopSlug = computed(() => {
   }
   const shopId = activeCartShopId.value;
   if (!shopId) return '';
-  return customerShops.value.find((shop) => shop.id === shopId)?.slug ?? '';
+  return headerCustomerShops.value.find((shop) => shop.id === shopId)?.slug ?? '';
 });
 
 const cartShopName = computed(() => {
@@ -333,11 +374,11 @@ const cartShopName = computed(() => {
   }
   const shopId = activeCartShopId.value;
   if (!shopId) return cartShopSlug.value;
-  return customerShops.value.find((shop) => shop.id === shopId)?.name ?? cartShopSlug.value;
+  return headerCustomerShops.value.find((shop) => shop.id === shopId)?.name ?? cartShopSlug.value;
 });
 
 const rememberedShop = computed(() =>
-  resolveCatalogShop(authStore.tenantId, customerShops.value),
+  resolveCatalogShop(authStore.tenantId, headerCustomerShops.value, routeShopType.value),
 );
 
 const headerShopSlug = computed(() => {
@@ -354,14 +395,15 @@ const headerShopName = computed(() => {
   if (isCartRoute.value && cartShopName.value) {
     return cartShopName.value;
   }
-  const match = customerShops.value.find((shop) => shop.slug === headerShopSlug.value);
+  const match = headerCustomerShops.value.find((shop) => shop.slug === headerShopSlug.value);
   return match?.name || headerShopSlug.value;
 });
 
 const showCatalogShopHeader = computed(() => {
-  if (showHeaderSearch.value) return false;
+  if (routeName.value === 'customer-dashboard') return false;
   if (routeName.value === 'shop-order-detail-page') return false;
-  return headerShopSlug.value.length > 0;
+  if (headerCustomerShops.value.length === 0) return false;
+  return Boolean(headerShopSlug.value || rememberedShop.value?.slug);
 });
 
 watch(showHeaderSearch, (visible) => {
@@ -402,6 +444,7 @@ watch(
   () => route.fullPath,
   () => {
     chromeHidden.value = false;
+    searchOpen.value = false;
   },
 );
 
@@ -442,11 +485,32 @@ const userInitials = computed(() => {
   return source.slice(0, 2).toUpperCase();
 });
 
+const scopedShopCart = computed(() => {
+  const carts = scopedActiveCarts.value ?? [];
+  if (isCartRoute.value && activeCartShopId.value) {
+    return carts.find((c) => c.shop_id === activeCartShopId.value) ?? null;
+  }
+  if (isCatalogNavActive.value && headerShopSlug.value) {
+    return carts.find((c) => c.shop_slug === headerShopSlug.value) ?? null;
+  }
+  return null;
+});
+
 const cartItemCount = computed(() => {
   if (isKobaActive.value) {
     return kobaCartStore.itemCount;
   }
-  return (activeCarts.value ?? []).reduce((sum, c) => sum + Number(c.item_count), 0);
+  if (isCartRoute.value || (isCatalogNavActive.value && headerShopSlug.value)) {
+    return Number(scopedShopCart.value?.item_count ?? 0);
+  }
+  return (scopedActiveCarts.value ?? []).reduce((sum, c) => sum + Number(c.item_count), 0);
+});
+
+const cartTooltipText = computed(() => {
+  if (isKobaActive.value) return '';
+  const nonEmpty = (scopedActiveCarts.value ?? []).filter((c) => Number(c.item_count) > 0);
+  if (nonEmpty.length <= 1) return '';
+  return nonEmpty.map((c) => `${c.shop_name}: ${c.item_count}`).join(' · ');
 });
 
 const canShowCartIcon = computed(() => true);
@@ -463,40 +527,12 @@ const kobaCartRouteName = computed(() => {
 });
 
 const goHome = () => {
-  void router.push(shopHomePath(authStore.tenantSlug));
-};
-
-const onSwitchCompany = async (group: ShopLoginGroupRow) => {
-  const user = authStore.user;
-  const email = user?.email;
-  const tenantId = authStore.tenantId;
-  if (!user || !email || tenantId == null || group.customer_group_id === authStore.customerGroupId) {
-    return;
-  }
-
-  try {
-    const snapshot = await bootstrapShopCustomerGroup({
-      user,
-      email,
-      tenantId,
-      memberId: group.member_id,
-      createdAt: group.member_created_at,
-      updatedAt: group.member_updated_at,
-    });
-    if (!snapshot) {
-      return;
-    }
-    authStore.saveAccess({
-      ...snapshot,
-      savedAt: new Date().toISOString(),
-    });
-    tenantStore.hydrateSelectedTenantFromAuth(snapshot.tenant);
-    clearShopOrderQueryCache();
-    await router.replace(getShopDashboardRouteLocation(route, snapshot.tenant?.slug));
-    void shellQuery.refetch();
-  } catch (error) {
-    console.error('[shop] Failed to switch company', error);
-  }
+  void router.push(
+    shopHomePath(
+      authStore.tenantSlug,
+      routeShopTypePath.value ?? getLastShopTypePath(authStore.tenantId),
+    ),
+  );
 };
 
 onMounted(() => {
@@ -519,39 +555,66 @@ const goToCatalog = () => {
     if (tenantId) {
       rememberCatalogShop(tenantId, { id: cartShopId, slug: cartSlug });
     }
-    void router.push(shopCatalogPath(authStore.tenantSlug, cartSlug));
+    const cartShop = headerCustomerShops.value.find((row) => row.slug === cartSlug);
+    void router.push(
+      shopCatalogPath(authStore.tenantSlug, cartSlug, null, cartShop?.shop_type),
+    );
     return;
   }
 
-  const shop = resolveCatalogShop(tenantId, customerShops.value);
+  const shop = resolveCatalogShop(tenantId, headerCustomerShops.value, routeShopType.value);
   if (shop?.slug) {
     if (tenantId) {
       rememberCatalogShop(tenantId, shop);
     }
-    void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug));
+    void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug, null, shop.shop_type));
     return;
   }
-  void router.push(shopCatalogEntryPath(authStore.tenantSlug));
+  const entryTypePath = routeShopTypePath.value ?? 'catalog';
+  void router.push(shopCatalogEntryPath(authStore.tenantSlug, entryTypePath));
+};
+
+const routeToShopCart = (
+  shopId: number | null | undefined,
+  shopType: ReturnType<typeof shopTypeFromPathSegment> | undefined,
+) => {
+  if (shopType === 'dropship') {
+    return shopDropshipPlaceOrderPath(authStore.tenantSlug, shopId);
+  }
+  return shopCartPath(authStore.tenantSlug, shopId, shopType);
 };
 
 const onSwitchHeaderShop = (shop: { id: number; slug: string; name: string }) => {
   if (!shop.slug) return;
+  const shopRow = headerCustomerShops.value.find((row) => row.id === shop.id);
+  const targetShopType = shopRow?.shop_type ?? routeShopType.value;
   if (authStore.tenantId) {
     rememberCatalogShop(authStore.tenantId, shop);
   }
   if (isCartRoute.value) {
     if (shop.id === activeCartShopId.value) return;
-    void router.push(shopCartPath(authStore.tenantSlug, shop.id));
+    void router.push(routeToShopCart(shop.id, targetShopType));
     return;
   }
   if (isOrdersNavActive.value) return;
   if (shop.slug === headerShopSlug.value) return;
-  void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug));
+  void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug, null, targetShopType));
 };
 
 const goToOrders = () => {
   const tenantSlug = authStore.tenantSlug;
-  void router.push(tenantSlug ? `/${tenantSlug}/shop/orders` : '/shop/orders');
+  if (!tenantSlug) {
+    void router.push('/shop/orders');
+    return;
+  }
+  const shopTypePath =
+    routeShopTypePath.value ??
+    shopTypeToPathSegment(rememberedShop.value?.shop_type) ??
+    'catalog';
+  void router.push({
+    name: 'shop-orders-page',
+    params: { tenantSlug, shopType: shopTypePath },
+  });
 };
 
 const goToCart = async () => {
@@ -572,9 +635,16 @@ const goToCart = async () => {
 
   const parsedLastId = parseInt(getLastVisitedShopId(authStore.tenantId) ?? '', 10);
   const shopId =
-    resolveCartShopId(authStore.tenantId, activeCarts.value ?? []) ??
+    resolveCartShopId(authStore.tenantId, scopedActiveCarts.value ?? []) ??
     (Number.isNaN(parsedLastId) ? null : parsedLastId);
-  await router.push(shopCartPath(authStore.tenantSlug, shopId));
+  const matchedCart = (scopedActiveCarts.value ?? []).find((c) => c.shop_id === shopId);
+  const matchedShop = headerCustomerShops.value.find((s) => s.id === shopId);
+  const targetShopType =
+    matchedCart?.shop_type ??
+    matchedShop?.shop_type ??
+    rememberedShop.value?.shop_type ??
+    routeShopType.value;
+  await router.push(routeToShopCart(shopId, targetShopType));
 };
 
 watch(
@@ -634,20 +704,28 @@ defineExpose({
 
 .shop-shell__toolbar {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
-  min-height: 52px;
+  gap: 0.75rem;
+  padding: 0.45rem 0.9rem;
+  min-height: 54px;
 }
 
 .shop-shell__left {
   justify-self: start;
   min-width: 0;
+  max-width: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.05rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.shop-shell__context-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--tf-neutral-border-strong);
+  flex-shrink: 0;
 }
 
 .shop-shell__nav {
@@ -656,8 +734,9 @@ defineExpose({
   justify-content: center;
   gap: 0.15rem;
   padding: 0.2rem;
-  border-radius: 10px;
-  background: #f1f5f9;
+  border-radius: var(--tf-radius-md, 8px);
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
 }
 
 .shop-shell__tenant-link {
@@ -672,15 +751,15 @@ defineExpose({
   background: transparent;
   cursor: pointer;
   padding: 0.15rem 0.15rem 0.15rem 0;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 9rem;
-  color: var(--tf-shop-charcoal, #2a2b2a);
+  color: var(--tf-neutral-ink);
 }
 
 .shop-shell__tenant-text {
   min-width: 0;
-  font-size: clamp(0.95rem, 2.8vw, 1.15rem);
+  font-size: clamp(0.95rem, 2.8vw, 1.125rem);
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
@@ -698,27 +777,53 @@ defineExpose({
   align-items: center;
   justify-self: end;
   justify-content: flex-end;
-  gap: 0.35rem;
+  gap: 0.4rem;
   min-width: 0;
 }
 
 .shop-shell__shop-switch {
   min-width: 0;
-  max-width: 11rem;
+  max-width: 12.5rem;
 }
 
-.shop-shell__shop-switch :deep(.catalog-header-shop) {
-  justify-content: flex-end;
+.shop-shell__search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 34px;
+  padding: 0 0.7rem;
+  border-radius: var(--tf-radius-md, 8px);
+  border: 1px solid var(--tf-neutral-border);
+  background: var(--tf-neutral-canvas);
+  color: var(--tf-neutral-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
-.shop-shell__shop-switch :deep(.catalog-header-shop__static),
-.shop-shell__shop-switch :deep(.catalog-header-shop__trigger) {
-  font-size: 0.9rem;
+.shop-shell__search-trigger:hover,
+.shop-shell__search-trigger:focus-visible {
+  border-color: var(--tf-neutral-border-strong);
+  background: var(--tf-neutral-surface);
+  color: var(--tf-neutral-ink);
+  outline: none;
+}
+
+.shop-shell__search-trigger-icon {
+  color: var(--tf-neutral-muted);
+  flex-shrink: 0;
+}
+
+.shop-shell__search-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 9.5rem;
 }
 
 .shop-shell__icon-btn {
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 38px;
+  min-height: 38px;
   color: var(--shop-shell-ink);
 }
 
@@ -727,18 +832,18 @@ defineExpose({
 }
 
 .shop-shell__labeled-btn {
-  min-height: 34px;
-  padding: 0.35rem 0.75rem;
-  border-radius: 8px;
+  min-height: 32px;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--tf-radius-sm, 6px);
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--tf-neutral-muted);
   background: transparent !important;
 }
 
 .shop-shell__labeled-btn :deep(.q-icon) {
   font-size: 1rem;
-  color: #64748b;
+  color: var(--tf-neutral-muted);
 }
 
 .shop-shell__labeled-btn :deep(.q-btn__content) {
@@ -746,21 +851,24 @@ defineExpose({
 }
 
 .shop-shell__labeled-btn--segment-active {
-  background: #fff !important;
-  color: var(--tf-theme-primary, #2b5fa8) !important;
+  background: var(--tf-neutral-surface) !important;
+  color: var(--tf-theme-primary) !important;
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
 }
 
 .shop-shell__labeled-btn--segment-active :deep(.q-icon) {
-  color: var(--tf-theme-primary, #2b5fa8) !important;
+  color: var(--tf-theme-primary) !important;
 }
 
 .shop-shell__cart-badge {
+  top: 2px;
+  right: 2px;
   font-size: 0.625rem;
   font-weight: 700;
-  min-width: 1.1rem;
-  min-height: 1.1rem;
-  padding: 0 0.2rem;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  line-height: 1.05rem;
+  padding: 0 0.25rem;
 }
 
 @media (max-width: 1023px) {
@@ -801,11 +909,15 @@ defineExpose({
   }
 
   .shop-shell__left {
-    gap: 0.05rem;
+    gap: 0.35rem;
+  }
+
+  .shop-shell__context-divider {
+    height: 14px;
   }
 
   .shop-shell__tenant-link {
-    max-width: min(58vw, 14rem);
+    max-width: min(34vw, 8rem);
     justify-content: flex-start;
     padding: 0;
   }
@@ -817,28 +929,20 @@ defineExpose({
     line-height: 1.2;
   }
 
-  .shop-shell__left :deep(.shop-company-switch__trigger),
-  .shop-shell__left :deep(.shop-company-switch__static) {
-    min-height: 0;
-    padding: 0;
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--shop-shell-muted);
-  }
-
   .shop-shell__actions {
-    gap: 0.05rem;
+    gap: 0.1rem;
   }
 
   .shop-shell__shop-switch {
-    max-width: 7.5rem;
+    max-width: 8.5rem;
   }
 
   .shop-shell__shop-switch :deep(.catalog-header-shop__static),
   .shop-shell__shop-switch :deep(.catalog-header-shop__trigger) {
+    min-height: 28px;
     font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.15rem 0.2rem;
+    padding: 0.15rem 0.45rem;
   }
 
   .shop-shell__icon-btn {
@@ -854,10 +958,6 @@ defineExpose({
   .shop-shell__actions :deep(.user-profile-btn) {
     padding: 0;
     min-height: 36px;
-  }
-
-  .shop-shell__actions :deep(.user-profile-btn .ph-caret-down) {
-    display: none;
   }
 
   .shop-shell__header,

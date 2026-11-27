@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { productService } from 'src/modules/products/services/productService';
+import { productService } from 'src/modules/shop_order/submodules/products/services/productService';
 
 export interface ShopLookupParams {
   vendorCode?: string | null;

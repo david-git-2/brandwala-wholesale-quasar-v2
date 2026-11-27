@@ -1,16 +1,31 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="auth-layout" :class="themeClass">
+  <q-layout
+    view="hHh lpR fFf"
+    class="auth-layout"
+    :class="[themeClass, { 'auth-layout--immersive': useImmersiveLayout }]"
+    :style="
+      useImmersiveLayout
+        ? { '--auth-scene-bg': `url(${authSceneBg})` }
+        : undefined
+    "
+  >
     <q-page-container>
       <q-page class="auth-page">
         <div class="auth-bg" aria-hidden="true">
-          <div class="auth-bg__blob auth-bg__blob--1" />
-          <div class="auth-bg__blob auth-bg__blob--2" />
-          <div class="auth-bg__blob auth-bg__blob--3" />
+          <div v-if="useImmersiveLayout" class="auth-bg__scene-cover" />
+          <template v-else>
+            <div class="auth-bg__blob auth-bg__blob--1" />
+            <div class="auth-bg__blob auth-bg__blob--2" />
+            <div class="auth-bg__blob auth-bg__blob--3" />
+          </template>
         </div>
 
         <div
           class="auth-layout__inner"
-          :class="{ 'auth-layout__inner--panel-only': isPanelOnlyRoute }"
+          :class="{
+            'auth-layout__inner--panel-only': isPanelOnlyRoute,
+            'auth-layout__inner--immersive': useImmersiveLayout,
+          }"
         >
           <div v-if="!isPanelOnlyRoute" class="auth-canvas">
             <div
@@ -29,7 +44,16 @@
             </div>
 
             <div class="auth-canvas__ghost-wrap" aria-hidden="true">
-              <span class="auth-canvas__ghost-word">{{ ghostWord }}</span>
+              <span
+                v-if="shopTypeGhostParts"
+                class="auth-canvas__ghost-word auth-canvas__ghost-word--shop-type"
+              >
+                <span class="auth-canvas__ghost-stack">
+                  <span class="auth-canvas__ghost-kind">{{ shopTypeGhostParts.kind }}</span>
+                  <span class="auth-canvas__ghost-suffix">{{ shopTypeGhostParts.suffix }}</span>
+                </span>
+              </span>
+              <span v-else class="auth-canvas__ghost-word">{{ ghostWord }}</span>
             </div>
 
             <div class="auth-canvas__footer">
@@ -39,6 +63,13 @@
           </div>
 
           <div class="auth-panel">
+            <p
+              v-if="authScope === 'shop' && shopTypeGhostParts"
+              class="auth-panel__shop-eyebrow"
+            >
+              {{ shopTypeGhostParts.kind }}
+              <span>{{ shopTypeGhostParts.suffix }}</span>
+            </p>
             <router-view />
           </div>
         </div>
@@ -51,6 +82,9 @@
 import { computed, provide, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
+import authSceneBg from 'src/assets/shop-login-bg.png';
+import { SHOP_TYPE_AUTH_GHOST_LABEL } from 'src/modules/tenant/composables/useShopEntryShopType';
+import { getShopTypePathFromRoute } from 'src/modules/tenant/utils/tenantRouteContext';
 
 type AuthLayoutScope = 'platform' | 'app' | 'shop' | 'investor';
 
@@ -59,6 +93,8 @@ const route = useRoute();
 const isPanelOnlyRoute = computed(
   () => route.name === 'auth-callback-page',
 );
+
+const useImmersiveLayout = computed(() => !isPanelOnlyRoute.value);
 
 const panelTitle = ref('');
 provide('authPanelTitle', panelTitle);
@@ -71,12 +107,27 @@ const authScope = computed(() => {
 
 const themeClass = computed(() => `theme-${authScope.value}`);
 
+const shopTypePath = computed(() => getShopTypePathFromRoute(route));
+
+const shopTypeGhostParts = computed(() => {
+  if (authScope.value !== 'shop') return null;
+  const seg = shopTypePath.value;
+  if (!seg) return null;
+  const label = SHOP_TYPE_AUTH_GHOST_LABEL[seg];
+  return {
+    kind: label.replace(/ shop$/i, ''),
+    suffix: 'shop',
+  };
+});
+
 const ghostWord = computed(() => {
   switch (authScope.value) {
     case 'platform':
       return 'Platform';
-    case 'shop':
-      return 'Store';
+    case 'shop': {
+      const seg = shopTypePath.value;
+      return seg ? SHOP_TYPE_AUTH_GHOST_LABEL[seg] : 'Shop';
+    }
     case 'investor':
       return 'Investor';
     default:
@@ -164,12 +215,44 @@ const tagline = computed(() => {
   opacity: 0.1;
 }
 
+.auth-bg__scene-cover {
+  position: absolute;
+  inset: 0;
+  background-color: var(--auth-bg);
+  background-image: var(--auth-scene-bg);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.auth-bg__scene-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      120% 90% at 18% 42%,
+      color-mix(in srgb, var(--auth-bg) 52%, transparent) 0%,
+      transparent 62%
+    ),
+    linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--auth-bg) 48%, transparent) 0%,
+      color-mix(in srgb, var(--auth-bg) 28%, transparent) 52%,
+      color-mix(in srgb, var(--auth-bg) 22%, transparent) 100%
+    );
+}
+
 .auth-layout__inner {
   position: relative;
   z-index: 1;
   min-height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+}
+
+.auth-layout--immersive .auth-layout__inner {
+  grid-template-columns: minmax(0, 1.12fr) minmax(300px, 400px);
 }
 
 .auth-layout__inner--panel-only {
@@ -211,6 +294,133 @@ const tagline = computed(() => {
     var(--auth-glow) 60%,
     transparent 100%
   );
+}
+
+.auth-layout--immersive .auth-canvas {
+  container-type: inline-size;
+  container-name: auth-canvas;
+  background-image: none;
+  background-color: transparent;
+  border-right: none;
+  overflow-x: clip;
+  isolation: isolate;
+  z-index: 1;
+}
+
+.auth-layout--immersive .auth-canvas::after {
+  display: none;
+}
+
+.auth-layout--immersive .auth-panel {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  align-content: center;
+  justify-items: start;
+  padding: clamp(1.5rem, 4vw, 2.75rem) clamp(1.25rem, 4vw, 2.5rem);
+  padding-bottom: max(clamp(1.5rem, 4vw, 2.75rem), env(safe-area-inset-bottom));
+}
+
+.auth-panel__shop-eyebrow {
+  display: none;
+  margin: 0;
+  width: 100%;
+  max-width: 21rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--auth-accent);
+  line-height: 1.2;
+}
+
+.auth-panel__shop-eyebrow span {
+  color: var(--auth-muted);
+  font-weight: 600;
+}
+
+.auth-layout--immersive .auth-canvas__brand-name,
+.auth-layout--immersive .auth-canvas__brand-sub,
+.auth-layout--immersive .auth-canvas__tagline,
+.auth-layout--immersive .auth-canvas__credit {
+  text-shadow: 0 1px 22px color-mix(in srgb, var(--auth-bg) 92%, transparent);
+}
+
+.auth-layout--immersive .auth-canvas__ghost-wrap {
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-layout--immersive .auth-canvas__ghost-word--shop-type {
+  display: block;
+  max-width: 100%;
+  font-size: clamp(2.35rem, 14.5cqw, 6.25rem);
+  text-align: left;
+  letter-spacing: normal;
+  text-wrap: wrap;
+  color: var(--auth-ink);
+  -webkit-text-stroke: 0;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  text-shadow: 0 2px 28px color-mix(in srgb, var(--auth-bg) 88%, transparent);
+}
+
+.auth-layout--immersive .auth-canvas__ghost-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.14em;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.auth-layout--immersive .auth-canvas__ghost-kind {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  font-size: 1em;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.92;
+}
+
+.auth-layout--immersive .auth-canvas__ghost-suffix {
+  display: block;
+  font-size: 0.38em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding-left: 0.14em;
+  text-transform: uppercase;
+  color: var(--auth-accent);
+  line-height: 1.1;
+  box-sizing: border-box;
+}
+
+.auth-layout--immersive .auth-canvas__tagline {
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.auth-layout--immersive .auth-canvas__credit {
+  opacity: 0.85;
+}
+
+.auth-layout--immersive .auth-canvas__ghost-word:not(.auth-canvas__ghost-word--shop-type) {
+  display: block;
+  max-width: 100%;
+  font-size: clamp(2.35rem, 15.5cqw, 6.5rem);
+  line-height: 0.88;
+  overflow-wrap: break-word;
+  text-align: left;
+  color: color-mix(in srgb, var(--auth-ink) 48%, var(--auth-accent));
+  -webkit-text-stroke: 0;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  text-shadow: 0 2px 28px color-mix(in srgb, var(--auth-bg) 88%, transparent);
 }
 
 .auth-canvas__brand {
@@ -290,6 +500,11 @@ const tagline = computed(() => {
   background-clip: text;
 }
 
+.auth-canvas__ghost-word--shop-type {
+  font-size: clamp(4rem, 10.5vw, 10rem);
+  line-height: 0.92;
+}
+
 .auth-canvas__footer {
   flex-shrink: 0;
   display: flex;
@@ -337,6 +552,31 @@ const tagline = computed(() => {
   padding: 0;
 }
 
+@media (max-width: 1180px) {
+  .auth-layout--immersive .auth-layout__inner {
+    grid-template-columns: minmax(0, 1fr) minmax(272px, 340px);
+  }
+
+  .auth-layout--immersive .auth-canvas__ghost-word:not(.auth-canvas__ghost-word--shop-type) {
+    font-size: clamp(2.1rem, 14cqw, 5.25rem);
+  }
+
+  .auth-layout--immersive .auth-canvas__ghost-word--shop-type {
+    font-size: clamp(2.1rem, 13cqw, 5rem);
+  }
+}
+
+@media (max-width: 980px) {
+  .auth-layout--immersive .auth-canvas__ghost-wrap,
+  .auth-layout--immersive .auth-canvas__footer {
+    display: none;
+  }
+
+  .auth-layout--immersive .auth-layout__inner {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  }
+}
+
 @media (max-width: 860px) {
   .auth-layout__inner {
     grid-template-columns: minmax(0, 1fr);
@@ -355,6 +595,60 @@ const tagline = computed(() => {
     padding: clamp(1.25rem, 3vw, 1.75rem);
   }
 
+  .auth-layout--immersive .auth-bg__scene-cover::after {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--auth-bg) 58%, transparent) 0%,
+      color-mix(in srgb, var(--auth-bg) 38%, transparent) 50%,
+      color-mix(in srgb, var(--auth-bg) 42%, transparent) 100%
+    );
+  }
+
+  .auth-layout--immersive .auth-layout__inner--immersive {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    grid-template-rows: unset;
+    grid-template-columns: unset;
+  }
+
+  .auth-layout--immersive .auth-canvas {
+    flex: 0 0 auto;
+    border-bottom: none;
+    padding: max(1rem, env(safe-area-inset-top)) 1.25rem 0.5rem;
+  }
+
+  .auth-layout--immersive .auth-canvas__brand-mark-wrap {
+    width: 40px;
+    height: 40px;
+  }
+
+  .auth-layout--immersive .auth-panel {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    align-content: unset;
+    justify-items: unset;
+    width: 100%;
+    min-height: 0;
+    padding: 0.75rem 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .auth-layout--immersive .auth-panel__shop-eyebrow {
+    display: block;
+    margin-bottom: 0.65rem;
+    align-self: flex-start;
+    text-align: left;
+  }
+
+  .auth-layout--immersive .auth-panel > :deep(*) {
+    align-self: flex-start;
+    width: 100%;
+    max-width: 22rem;
+  }
+
   .auth-canvas::after {
     display: none;
   }
@@ -368,6 +662,10 @@ const tagline = computed(() => {
     font-size: clamp(4rem, 18vw, 7rem);
   }
 
+  .auth-canvas__ghost-word--shop-type {
+    font-size: clamp(2.5rem, 12vw, 5rem);
+  }
+
   .auth-panel {
     padding: clamp(1.5rem, 5vw, 2.25rem);
   }
@@ -378,12 +676,20 @@ const tagline = computed(() => {
     padding: 1.25rem;
   }
 
+  .auth-layout--immersive .auth-canvas {
+    padding: max(0.85rem, env(safe-area-inset-top)) 1rem 0.35rem;
+  }
+
   .auth-canvas__ghost-wrap {
     min-height: 4rem;
   }
 
   .auth-panel {
     padding: 1.25rem;
+  }
+
+  .auth-layout--immersive .auth-panel {
+    padding: 0.5rem 1rem max(1.25rem, env(safe-area-inset-bottom));
   }
 }
 </style>

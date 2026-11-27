@@ -82,13 +82,6 @@
             >
               Confirmed<br />Qty
             </th>
-            <th
-              v-if="isColVisible('delivery_papers')"
-              class="text-left"
-              style="min-width: 200px; width: 240px"
-            >
-              Delivery papers
-            </th>
             <th v-if="isColVisible('brand')" class="text-center" style="width: 90px; min-width: 90px">Brand</th>
             <th v-if="isColVisible('note')" class="text-center" style="width: 72px; min-width: 72px">Note</th>
             <th v-if="isColVisible('code_barcode_id')" class="text-left" style="width: 130px; min-width: 130px">Codes</th>
@@ -224,59 +217,6 @@
               {{ getConfirmedQty(row) }}
             </td>
 
-            <td v-if="isColVisible('delivery_papers')" class="catalog-dispatch-papers-cell text-left">
-              <q-spinner-dots
-                v-if="deliveryPaperQtyLoading"
-                size="16px"
-                color="primary"
-              />
-              <span v-else-if="deliveryPaperQtyError" class="text-caption text-negative">
-                Could not load
-              </span>
-              <div
-                v-else-if="entriesForOrderItem(row.id).length"
-                class="column q-gutter-y-xs"
-              >
-                <button
-                  v-for="entry in entriesForOrderItem(row.id)"
-                  :key="entry.delivery_paper_id"
-                  type="button"
-                  class="catalog-dispatch-paper-chip column items-stretch"
-                  @click="openDeliveryPaper(entry.delivery_paper_id)"
-                >
-                  <div class="row items-center no-wrap q-gutter-x-xs catalog-dispatch-paper-chip__head">
-                    <span class="font-mono text-caption text-weight-bold">DP-{{ entry.delivery_paper_id }}</span>
-                    <TfStatusBadge
-                      class="catalog-dispatch-paper-chip__status"
-                      :status="entry.paper_status"
-                      :label="entry.paper_status"
-                    />
-                  </div>
-                  <div class="row items-center wrap catalog-dispatch-paper-chip__metrics">
-                    <span class="catalog-dispatch-paper-chip__metric">
-                      <span class="catalog-dispatch-paper-chip__lbl">Pk</span>
-                      <span class="catalog-dispatch-paper-chip__val">{{
-                        catalogOrderDeliveryPaperPackedDisplay(entry)
-                      }}</span>
-                    </span>
-                    <span class="catalog-dispatch-paper-chip__metric">
-                      <span class="catalog-dispatch-paper-chip__lbl">Ac</span>
-                      <span class="catalog-dispatch-paper-chip__val">{{ entry.accepted_qty }}</span>
-                    </span>
-                    <span class="catalog-dispatch-paper-chip__metric">
-                      <span class="catalog-dispatch-paper-chip__lbl">Cd</span>
-                      <span class="catalog-dispatch-paper-chip__val">{{ entry.conditioned_qty }}</span>
-                    </span>
-                    <span class="catalog-dispatch-paper-chip__metric">
-                      <span class="catalog-dispatch-paper-chip__lbl">Rt</span>
-                      <span class="catalog-dispatch-paper-chip__val">{{ entry.rejected_qty }}</span>
-                    </span>
-                  </div>
-                </button>
-              </div>
-              <span v-else class="text-caption text-grey-6">—</span>
-            </td>
-
             <!-- 4. Brand -->
             <td v-if="isColVisible('brand')" class="text-center col-brand">
               <div class="brand-cell">
@@ -385,7 +325,7 @@
 
             <!-- 11. Total Purchase Price -->
             <td v-if="isColVisible('purchase_price_total')" class="text-center font-mono text-weight-bold text-grey-9 tf-ops-col-tint--price" style="width: 56px; min-width: 56px">
-              {{ formatAmount((row.cost_price_amount || 0) * row.quantity) }}
+              {{ formatAmount(catalogGetPurchaseRowTotal(row)) }}
             </td>
 
             <!-- 12. Product Weight (gm) -->
@@ -629,16 +569,15 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQuasar, copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
-import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCatalogOrderDeliveryPaperQtyByItem } from '../composables/useCatalogOrderDeliveryPaperQtyByItem';
-import { catalogOrderDeliveryPaperPackedDisplay } from '../types/catalogOrderDeliveryPaperQty';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import {
   getProductWeightGm as catalogGetProductWeightGm,
   getPackageWeightGm as catalogGetPackageWeightGm,
   getTotalWeightGm as catalogGetTotalWeightGm,
   getCargoCostUnitPurchase as catalogGetCargoCostUnitPurchase,
+  getCargoCostRowPurchase as catalogGetCargoCostRowPurchase,
+  getPurchaseRowTotal as catalogGetPurchaseRowTotal,
   getLandedCostUnitPurchase as catalogGetLandedCostUnitPurchase,
   getLandedCostRowPurchase as catalogGetLandedCostRowPurchase,
   getLandedCostUnitSell as catalogGetLandedCostUnitSell,
@@ -705,7 +644,6 @@ const DISPATCH_TABLE_COLUMNS = [
   'image',
   'name',
   'qty_confirmed',
-  'delivery_papers',
 ] as const;
 
 function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
@@ -836,19 +774,6 @@ function getConfirmedQty(item: ShopOrderItem): number {
   return Math.max(0, Number(item.confirmed_quantity ?? item.quantity ?? 0) || 0);
 }
 
-function openDeliveryPaper(paperId: number) {
-  const orderId = props.order?.id;
-  if (!orderId) return;
-  void router.push({
-    name: 'app-shop-order-delivery-paper-page',
-    params: {
-      tenantSlug: authStore.tenantSlug || '',
-      id: String(orderId),
-      paperId: String(paperId),
-    },
-  });
-}
-
 function formatTableHeaderLabel(colName: string, fallback: string): string {
   const buy = buyCurrency.value;
   const sell = sellCurrency.value;
@@ -883,15 +808,6 @@ const status = computed(() => props.order?.status || 'submitted');
 const isDispatchTableView = computed(
   () => normalizeCatalogOrderStatus(status.value) === 'dispatch',
 );
-
-const { entriesForOrderItem, isLoading: deliveryPaperQtyLoading, isError: deliveryPaperQtyError } =
-  useCatalogOrderDeliveryPaperQtyByItem({
-    tenantId: computed(
-      () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
-    ),
-    orderId: computed(() => props.order?.id ?? null),
-    enabled: isDispatchTableView,
-  });
 
 const isCostingMode = computed(() => normalizeCatalogOrderStatus(status.value) === 'submitted');
 const isOfferPriceLocked = computed(() => isCatalogOfferPriceLocked(status.value));
@@ -1265,7 +1181,15 @@ const totalQuantity = computed(() => props.items.reduce((sum, i) => sum + (i.qua
 
 const totalWeightGm = computed(() => props.items.reduce((sum, i) => sum + (getTotalWeightGm(i) * i.quantity), 0));
 
-const grandTotalPurchasePrice = computed(() => props.items.reduce((sum, i) => sum + ((i.cost_price_amount || 0) * i.quantity), 0));
+const grandTotalPurchasePrice = computed(() =>
+  props.items.reduce((sum, i) => sum + catalogGetPurchaseRowTotal(i), 0),
+);
+const grandTotalCargoPurchase = computed(() =>
+  props.items.reduce(
+    (sum, i) => sum + catalogGetCargoCostRowPurchase(i, cargoRate.value, props.order?.package_weight_kg),
+    0,
+  ),
+);
 const grandTotalLandedPurchase = computed(() => props.items.reduce((sum, i) => sum + getLandedCostRowPurchase(i), 0));
 const grandTotalLandedSell = computed(() => props.items.reduce((sum, i) => sum + getLandedCostRowSell(i), 0));
 
@@ -1291,6 +1215,7 @@ const summaryTotals = computed(() => ({
   totalQuantity: totalQuantity.value,
   totalWeightGm: totalWeightGm.value,
   grandTotalPurchasePrice: grandTotalPurchasePrice.value,
+  grandTotalCargoPurchase: grandTotalCargoPurchase.value,
   grandTotalLandedPurchase: grandTotalLandedPurchase.value,
   grandTotalLandedSell: grandTotalLandedSell.value,
   grandTotalFirstOffer: grandTotalFirstOffer.value,

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/vue-query';
 import { computed, ref, watch, type Ref } from 'vue';
-import { productRepository } from 'src/modules/products/repositories/productRepository';
+import { productRepository } from 'src/modules/shop_order/submodules/products/repositories/productRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 
 export function useShopStorefrontCatalogSearchQuery(

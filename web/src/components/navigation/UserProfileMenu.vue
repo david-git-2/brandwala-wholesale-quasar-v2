@@ -12,7 +12,12 @@
           <span v-else class="user-profile-btn__initials">{{ userInitials }}</span>
         </q-avatar>
 
-        <q-icon name="ph ph-caret-down" size="12px" class="user-profile-btn__caret" />
+        <q-icon
+          v-if="!isShopScope"
+          name="ph ph-caret-down"
+          size="12px"
+          class="user-profile-btn__caret"
+        />
       </div>
 
       <!-- Profile Dropdown Menu -->
@@ -214,16 +219,21 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
-import { useShopLoginGroupsQuery } from 'src/modules/auth/composables/useShopLoginGroupsQuery';
-import { getShopSelectCompanyRouteLocation, getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
+import { useShopLoginGroupsQuery } from 'src/modules/workspace/submodules/auth/composables/useShopLoginGroupsQuery';
+import {
+  getAppRouteLocation,
+  getShopSelectCompanyRouteLocation,
+  getShopTypePathFromRoute,
+} from 'src/modules/tenant/utils/tenantRouteContext';
+import { shopTypeFromPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 import {
   formatReleaseDeployedDate,
   formatReleaseVersionLabel,
 } from 'src/utils/appReleaseVersion';
-import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/notifications/notificationsFeature';
+import { NOTIFICATIONS_ENABLED as notificationsEnabled } from 'src/modules/workspace/submodules/notifications/notificationsFeature';
 
 type ReleaseVersions = {
   backend_version: string;
@@ -251,6 +261,14 @@ const { locale } = useI18n();
 const { darkMode, setDarkMode, density, setDensity } = useAppearance();
 
 const isShopScope = computed(() => authStore.scope === 'shop');
+const shopLoginShopType = computed(() => {
+  if (!isShopScope.value) {
+    return null;
+  }
+  return shopTypeFromPathSegment(
+    getShopTypePathFromRoute(router.currentRoute.value) ?? undefined,
+  );
+});
 const { data: shopLoginGroups } = useShopLoginGroupsQuery(
   computed(() =>
     isShopScope.value && props.shopLoginGroupCount == null ? authStore.tenantId : null,
@@ -258,6 +276,7 @@ const { data: shopLoginGroups } = useShopLoginGroupsQuery(
   computed(() =>
     isShopScope.value && props.shopLoginGroupCount == null ? authStore.user?.email : null,
   ),
+  shopLoginShopType,
 );
 const canSwitchCompany = computed(() => {
   if (!isShopScope.value) {

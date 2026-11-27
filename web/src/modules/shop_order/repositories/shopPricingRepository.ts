@@ -96,7 +96,7 @@ const listCandidateAllocations = async (
   }));
 };
 
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { globalReferenceRepository } from 'src/modules/tenant/submodules/global_reference/repositories/globalReferenceRepository';
 
 const listCurrencies = async (): Promise<Currency[]> => {
   return globalReferenceRepository.listCurrencies();

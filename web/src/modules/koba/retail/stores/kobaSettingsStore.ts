@@ -3,7 +3,7 @@ import {
   kobaSettingsRepository,
   type KobaRetailSettings,
 } from '../repositories/kobaSettingsRepository';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 
 interface State {
   settings: KobaRetailSettings | null;

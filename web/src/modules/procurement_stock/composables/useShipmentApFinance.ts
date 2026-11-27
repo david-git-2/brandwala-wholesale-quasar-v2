@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/vue-query';
 import { toValue, type MaybeRefOrGetter } from 'vue';
-import { billsQueryKeys } from 'src/modules/bills_pays/services/billsQueryKeys';
-import { paysQueryKeys } from 'src/modules/bills_pays/services/paysQueryKeys';
+import { billsQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/billsQueryKeys';
+import { paysQueryKeys } from 'src/modules/finance/submodules/bills_pays/services/paysQueryKeys';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 import {

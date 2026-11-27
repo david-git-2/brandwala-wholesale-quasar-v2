@@ -1,4 +1,4 @@
-import type { ModuleKey } from 'src/modules/navigation/modulePermissions';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 export const PROCUREMENT_PRIMARY_KEYS = ['demand', 'shipment', 'warehouse'] as const;
 

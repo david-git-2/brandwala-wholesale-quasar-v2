@@ -2,7 +2,7 @@
 
 **Pre-order (PBC)** — quote and cost **before** goods are on hand. Staff build **costing files** with FX and formulas, publish offers, **confirm** lines, then hand off to **demand** and **inbound**. There is **no** `global_stocks` row until a shipment is received.
 
-Money at the end: **Delivery paper** close issues take/condition bills through the [money kernel](/docs/kernels#money-kernel) (`source_type = delivery_close`). Not the wholesale compose desk.
+Money at customer delivery: staff issue wholesale bills from the [money](/docs/modules/money) desk when ready (no auto AR from delivery recording).
 
 Sales model context: [Sales models](/docs/models). Demand / delivery: [Inbound shipment](/docs/modules/inbound).
 
@@ -27,9 +27,8 @@ Modules: `product_based_costing`, `costing_file` (legacy/alternate entry). Grant
 | Offer preview (external layout) | `/:slug/app/product-based-costing/:id/preview` |
 | Costing file (admin/staff/viewer) | `/:slug/app/costing` → role landing |
 | Demand desk | `/:slug/app/procurement/demand` |
-| Delivery fulfill | `/:slug/app/procurement/fulfill` |
 
-UI: `web/src/modules/product_based_costing/`, `web/src/modules/costingFile/`.
+UI: `web/src/modules/shop_order/submodules/product_based_costing/`, `web/src/modules/preorder_costing_file/`.
 
 ## Position in the BW lifecycle
 
@@ -39,14 +38,12 @@ flowchart LR
   DEM["Demand desk"]
   INB["Inbound shipment\nreceive"]
   WH["Warehouse lots"]
-  DEL["Delivery paper close"]
-  MON["Money bill\ntake or condition"]
+  MON["Money bill\n(wholesale desk)"]
 
   PBC -->|"confirmed"| DEM
   DEM --> INB
   INB -->|"post stock"| WH
-  DEM --> DEL
-  DEL --> MON
+  DEM --> MON
 ```
 
 | Stage | Stock | Money |
@@ -54,7 +51,7 @@ flowchart LR
 | Draft / offered file | None | None |
 | **Confirmed** → procuring | None | None |
 | Inbound received | **Lots** appear | AP on shipment ([inbound](/docs/modules/inbound)) |
-| Delivery **packed** close | Pick/issue rules | **Bill** via delivery_close |
+| Customer delivery | Ops + money desk | **Bill** when staff issue (not auto from procure) |
 
 Do not treat PBC lines as sellable warehouse qty before receive.
 
@@ -105,22 +102,8 @@ Staff path: demand → PO / shipment assignment → **inbound** receive → opti
 
 | Desk | Doc |
 | --- | --- |
-| Demand | [Inbound](/docs/modules/inbound) — US-4 demand & delivery paper |
+| Demand | [Inbound](/docs/modules/inbound) — US-4 demand buy |
 | Backlog | Shortfalls → `product_based_costing_backlog_items` → import into new drafts |
-
-## Delivery paper close (money)
-
-On **packed** close from fulfill desk:
-
-| Close choice | Warehouse | Money |
-| --- | --- | --- |
-| **take** | Issue / pick per rules | Bill at issue — sales at issue |
-| **condition** | Goods out | Bill issued; sales when **paid** |
-| **return** | Back to sellable stock | **No** AR bill |
-
-RPC: `close_preorder_demand_document` with `source_type=delivery_close`. Not dropship ship/issue.
-
-Proforma on delivery paper is **not** an issued bill until close.
 
 ## vs other modules
 
@@ -128,16 +111,16 @@ Proforma on delivery paper is **not** an issued bill until close.
 | --- | --- | --- | --- | --- |
 | Stock timing | After inbound | In hand now | Parent lots at pick | After inbound or stock-backed |
 | Quote tool | Costing file | Compose bill | Shop cart | Negotiation states |
-| Issue path | Delivery close | Compose issue | Ship + merchant bill | Delivery / stock checkout |
+| Issue path | Money desk | Compose issue | Ship + merchant bill | Demand + money desk |
 
 ## Kernels touched
 
 | Kernel | PBC use |
 | --- | --- |
 | [Access](/docs/kernels#access-kernel) | App module grants |
-| [Warehouse](/docs/kernels#warehouse-kernel) | Only after receive + delivery pick |
+| [Warehouse](/docs/kernels#warehouse-kernel) | Only after receive; stock issue on bill commit |
 | [Landed cost](/docs/kernels#landed-cost-kernel) | Inbound shipment on assigned PO — not PBC formula |
-| [Money](/docs/kernels#money-kernel) | Bills only after delivery close (or inbound AP separately) |
+| [Money](/docs/kernels#money-kernel) | Wholesale AR from desk; inbound AP on shipment |
 
 ## What PBC is not
 

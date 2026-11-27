@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/product_based_costing/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/product_based_costing/spec.md` |
 | UI | `product_based_costing/`, `costingFile/` |
 | SQL | `public.sql` |
 | State | Vue Query — `shared/queryKeys/` in module |
@@ -16,7 +16,7 @@
 | :--- | :--- |
 | Tables | Grep `pbc_`, `product_based_costing` in `public.sql` |
 | File details UI | `ProductBasedCostingFileDetailsV2Page` |
-| Demand handoff | [procurement spec](../procurement_stock/spec.md) US-4 · [preorder-fulfillment-flow](../../preorder-fulfillment-flow.md) |
+| Demand handoff | [procurement spec](../procurement_stock/spec.md) US-4 |
 
 ## Scope
 
@@ -52,7 +52,7 @@ See [scopes](../../architecture/scopes.md).
 ### US-2: Shared procurement lifecycle
 - Confirmed files → Demand desk with catalog preorders (`procuring` … `delivered`). Entering `procuring` writes `preorder_demand` rows with the file `profile_id`.
   - [ ] Stays `procuring` through PO and inbound.
-  - [ ] Packed qty on **Delivery paper**; close take/condition/return — no customer bill at `packed`.
+  - [ ] Customer delivery billed via money desk when staff are ready (not auto at procure time).
 
 ### US-3: Demand backlog
 - Shortfalls after `delivered` → `product_based_costing_backlog_items`.

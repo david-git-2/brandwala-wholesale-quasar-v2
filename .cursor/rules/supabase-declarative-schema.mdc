@@ -8,7 +8,7 @@ alwaysApply: false
 
 `supabase/schemas/` is the **current** public schema (`_extensions.sql` + `public.sql`). `supabase/migrations/` holds `00000000000000_baseline.sql` plus generated deltas; `_legacy/` is archived imperative history.
 
-How-to: [doc/supabase-schema.md](../../doc/supabase-schema.md)
+How-to: [docs/architecture/database.md](../../docs/architecture/database.md)
 
 ## Edit
 

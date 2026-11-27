@@ -94,7 +94,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useThriftDashboardMetricsQuery } from '../composables/useThriftReportsQuery';
 
 const router = useRouter();

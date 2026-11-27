@@ -43,7 +43,7 @@ const emit = defineEmits<{
         </q-card-section>
         <q-card-section class="q-pt-sm text-body2">
           <p class="text-grey-8 q-mb-md">
-            Advancing to <strong>Ready for Pickup</strong> locks picking and summary edits. The customer invoice is issued when you mark the order as shipped.
+            Advancing to <strong>Ready for Pickup</strong> locks picking and summary edits. Draft customer and courier receivable bills are created when you mark the order as shipped.
           </p>
 
           <div class="row q-col-gutter-sm">

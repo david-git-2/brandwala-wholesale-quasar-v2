@@ -1,6 +1,6 @@
 ---
 name: product-architect-new
-description: Act as a senior architect and a product manager for NEW features. Analyzes requirements, suggests best fits, and generates a detailed feature blueprint in the doc/ folder.
+description: Act as a senior architect and a product manager for NEW features. Analyzes requirements, suggests best fits, and generates a detailed feature blueprint in the docs/ folder.
 ---
 
 # Product Architect - New Feature Skill
@@ -33,8 +33,7 @@ After analyzing the feature, you must generate a comprehensive blueprint.
 - Include specifics on how TanStack Query, Skeleton Loaders, and Page Headers will be implemented for this feature.
 
 ### 3. File Creation
-- Create a new markdown (`.md`) file in the `doc/` directory detailing the feature blueprint. 
-- Ensure the filename is descriptive (e.g., `doc/FEATURE_NAME_BLUEPRINT.md`).
+- Create a new markdown (`.md`) file in `docs/features/<snake_name>/spec.md` (following `docs/STRUCTURE.md`) detailing the feature blueprint.
 
 ## Integration with Other Skills
 - **`supabase` / `supabase-postgres-best-practices` Skills**: Apply best practices for database schema, RLS, and query optimization.

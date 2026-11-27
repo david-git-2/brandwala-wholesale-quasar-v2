@@ -3,148 +3,27 @@ name: quasar
 description: Guide for creating premium, high-performance, responsive, accessible, and theme-consistent Quasar (Vue 3) interfaces for TradeFlow BD.
 ---
 
-# Quasar Framework UI & Performance Best Practices
+# Quasar UI skill (thin)
 
-Guide for designing, building, styling, and optimizing Vue 3 components using the Quasar Framework in TradeFlow BD.
+**Canon:** `.cursor/rules/quasar-ui.mdc` — read that first.
 
-## Core Principles
+**New ops list:** copy `docs/guides/OpsListPage.skeleton.vue`. Never open mega live list pages for chrome.
 
-1. **Aesthetic Polish & Tokens:** Use CSS tokens from [docs/guides/ui-standards.md](../../../docs/guides/ui-standards.md). Avoid hardcoded hex/RGB.
-2. **High Performance:** Optimize list virtualization, asset loading, reactivity overhead, and input debouncing.
-3. **Responsive & Mobile-First:** Fluid layouts, adaptive dialogs/sheets, touch gesture support, and safe-area compliance.
-4. **Accessibility & Testability:** Include ARIA labels on icon buttons, keyboard shortcuts, high contrast ratios, and explicit `data-test` attributes.
+## Must use
 
----
+- Tokens: `--tf-*` only.
+- Shared: `TfBtn`, `TfStatusBadge`, `TfSideSheet`, `TfDrawerSectionTabs*`, `TfEmptyState`, `TfSkeletonRows`, `TfEntityListShell` / `TfEntityListRow`.
+- Feedback: `appFeedback.ts` / `useNotify()`.
+- Icons: `ph ph-*`.
 
-## 1. Theme Tokens & Sizing Rules
+## Performance
 
-### Theme Scopes
-- `.theme-platform` (Teracotta/Amethyst - Platform level)
-- `.theme-app` (Emerald - Merchant app/desk)
-- `.theme-shop` (Mint / charcoal / mauve - Customer shop)
-- `.theme-investor` (Teal - Finance desk)
+- Lists >50 rows: pagination or virtual scroll.
+- Search: `debounce="300"`.
+- Skeletons over spinners for first paint.
 
-### Key CSS Theme Variables
-`--tf-theme-base`, `--tf-theme-surface`, `--tf-theme-border`, `--tf-theme-ink`, `--tf-theme-muted`, `--tf-theme-primary`, `--tf-theme-primary-soft`, `--tf-theme-shadow`.
+## Mobile / a11y
 
-### Radius Rules
-- **sm (`8px`):** buttons, chips, inputs, avatars, tables (`--tf-radius-sm`)
-- **md (`12px`):** cards, dialogs, drawers, empty states (`--tf-radius-md`)
-- **pill (`999px`):** shop CTAs only (`--tf-radius-pill`)
-
----
-
-## 2. Page Structure & Layout Patterns
-
-**Default for new app pages (lists and grids):** no in-page H1. Breadcrumbs own the title. Copy `InboundShipmentListPage.vue`. Law: `docs/guides/ui-standards.md`.
-
-```vue
-<template>
-  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
-    <q-card flat bordered class="q-pa-xs flex-shrink-0 list-toolbar-card">
-      <div class="row items-center justify-between q-gutter-xs">
-        <q-input
-          v-model="search"
-          outlined
-          rounded
-          dense
-          debounce="300"
-          placeholder="Search…"
-          class="col-grow"
-        />
-        <q-btn
-          v-if="rows.length"
-          unelevated
-          dense
-          no-caps
-          color="primary"
-          label="New Record"
-          style="border-radius: 8px"
-          @click="handleCreate"
-        />
-      </div>
-    </q-card>
-    <div class="col overflow-hidden">
-      <q-table flat class="sticky-header-table full-width" />
-    </div>
-  </q-page>
-</template>
-```
-
-**Hub / overview / investor / treasury only:** `q-page.tf-page` + `AppPageHeader`. Never use that shell for ops lists.
-
-### Core Utility Classes
-- `.page-fixed-layout`: height `calc(100vh - 55px)`, `overflow: hidden`.
-- `.tf-page` / `.tf-page__stack`: hub/overview padding only, not ops tables.
-- `.tf-entity-grid`: Grid listing (`repeat(auto-fit, minmax(240px, 1fr))`, `gap: 1rem`).
-- `.tf-inline-actions`: Action button row (`gap: 0.65rem`).
-
----
-
-## 3. Performance & Rendering Optimization
-
-1. **Virtual Scrolling & Tables:** Use `<q-virtual-scroll>` or server-side pagination on `<q-table>` for lists exceeding 50 items.
-2. **Input Debouncing:** Add `debounce="300"` on search and filter `<q-input>` components.
-3. **Asset & Image Lazy Loading:** Use `<q-img>` with ratios, WebP formats, and skeleton loading slots (`<template #loading><q-skeleton /></template>`).
-4. **Reactivity Management:** Use `shallowRef()` for large immutable objects and `v-memo` / `v-once` for static row render lists.
-5. **Icon Optimization:** Prefer explicit SVG icon imports over bundling entire webfont packages.
-
----
-
-## 4. Component Recipes & UX Polish
-
-### 4.1 Buttons
-* **Primary CTA:** `q-btn color="primary" unelevated` (Max 1 per header).
-* **Secondary:** `q-btn flat` or `q-btn outline`.
-* **Danger:** `q-btn color="negative" unelevated` or `flat color="negative"`.
-* **Icon-Only:** `flat round` with `aria-label="..."` and a nested `<q-tooltip>`.
-* **Async Feedback:** Always bind `:loading="loadingState"` and `:disable="loadingState"`.
-
-### 4.2 Forms & Validation
-* Use `outlined` and `dense` props on inputs for a lightweight aesthetic.
-* Bind `:error` and `:error-message` for inline validation feedback.
-* Leverage Quasar input masks (`mask="..."`) or `date.formatDate` utilities instead of custom formatting logic.
-
-### 4.3 Tables
-* Wrap `q-table` in `.treasury-table-wrap` (or `<treasury-table-wrap>`) for containerized horizontal scrolling.
-* Use dense typography (`11px` to `13px`) for complex data grids.
-
-### 4.4 Lift-on-Hover Card Interaction
-```css
-.card-hover {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--tf-theme-shadow);
-  }
-}
-```
-
----
-
-## 5. Centralized Feedback & Dialogs
-
-**NEVER** call `Notify.create` or `Dialog.create` directly. Use wrappers in `web/src/utils/appFeedback.ts`:
-
-```typescript
-import {
-  showSuccessNotification,
-  showErrorNotification,
-  requestConfirmation,
-  handleApiFailure
-} from 'src/utils/appFeedback';
-
-showSuccessNotification('Item saved');
-const confirmed = await requestConfirmation('Delete item?', 'Confirm', 'Delete');
-if (confirmed) {
-  // perform action
-}
-```
-
----
-
-## 6. Mobile, Accessibility & Testing Standards
-
-* **Adaptive Layouts:** Render modals as centered `<q-dialog>` on desktop and bottom sheets on mobile screens (`$q.screen.lt.sm`).
-* **Accessibility:** Enforce keyboard accessibility (`@keyup.enter` submit handlers) and ARIA attributes on non-text buttons.
-* **E2E & Testability:** Include `data-test="<action-name>"` attributes on form controls, action buttons, and table rows.
+- Icon-only: `aria-label` + `q-tooltip`.
+- Shop CTAs: `TfBtn` `size="lg"` / `shopCta` when needed.
+- `data-test` on primary actions.

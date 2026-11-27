@@ -1,7 +1,7 @@
 ---
 description: Which local Supabase command to run — default backend:local; never auto-reset prod data.
-globs:
-alwaysApply: true
+globs: ["supabase/**", "**/package.json"]
+alwaysApply: false
 ---
 
 # Local Supabase commands (agents)

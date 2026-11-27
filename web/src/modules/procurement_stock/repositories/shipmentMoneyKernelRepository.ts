@@ -1,7 +1,7 @@
 import { supabase } from 'src/boot/supabase';
-import type { BillDetailBundle } from 'src/modules/bills_pays/repositories/billsRepository';
-import { parseBillDetailBundleFromRpc } from 'src/modules/sales_invoice/repositories/invoiceRepository';
-import type { BillNetBalances } from 'src/modules/bills_pays/types/billBalances';
+import type { BillDetailBundle } from 'src/modules/finance/submodules/bills_pays/repositories/billsRepository';
+import { parseBillDetailBundleFromRpc } from 'src/modules/finance/submodules/bills_pays/repositories/billsRepository';
+import type { BillNetBalances } from 'src/modules/finance/submodules/bills_pays/types/billBalances';
 import {
   LEGACY_SHIPMENT_AP_KINDS,
   SHIPMENT_AP_COST_BUCKETS,
@@ -69,7 +69,7 @@ export const parseShipmentApBillRow = (raw: unknown): ShipmentApBillRow => {
 const parseShipmentApBillCostLines = (raw: unknown): ShipmentApBillCostLine[] | undefined => {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
   const lines = raw
-    .map((item) => {
+    .map((item): ShipmentApBillCostLine | null => {
       if (!item || typeof item !== 'object') return null;
       const row = item as Record<string, unknown>;
       const amount = Number(row.amount);

@@ -245,11 +245,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { useVendorStore } from 'src/modules/people/submodules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { globalReferenceRepository } from 'src/modules/tenant/submodules/global_reference/repositories/globalReferenceRepository';
 import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 
 const props = defineProps<{
@@ -266,7 +266,7 @@ const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
 const cargoCompanyStore = useCargoCompanyStore();
 
-const parentTenantId = computed(
+const tenantId = computed(
   () => authStore.selectedTenant?.parent_id ?? authStore.tenantId,
 );
 
@@ -348,9 +348,9 @@ onMounted(async () => {
     } finally {
       loadingCurrencies.value = false;
     }
-  } else if (parentTenantId.value) {
+  } else if (tenantId.value) {
     try {
-      await cargoCompanyStore.ensureCompaniesLoaded(parentTenantId.value);
+      await cargoCompanyStore.ensureCompaniesLoaded(tenantId.value);
       const defaultCargo = cargoCompanyStore.defaultCompany;
       if (defaultCargo) {
         form.value.cargo_company_id = defaultCargo.id;

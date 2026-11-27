@@ -1,0 +1,251 @@
+import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
+import { useAuthStore } from '../stores/authStore';
+import type { AuthScope } from '../composables/useOAuthLogin';
+import {
+  canAccessModule,
+  type ModuleAction,
+  type ModuleKey,
+} from 'src/modules/workspace/submodules/navigation/modulePermissions';
+import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router';
+import { showWarningDialog } from 'src/utils/appFeedback';
+
+type GuardRoute = {
+  name?: string | symbol | null | undefined;
+  fullPath: string;
+  params?: Record<string, unknown> | undefined;
+  query?: LocationQueryRaw | undefined;
+};
+
+export type AccessRole =
+  | 'superadmin'
+  | 'admin'
+  | 'owner'
+  | 'manager'
+  | 'staff'
+  | 'viewer'
+  | 'customer_admin'
+  | 'customer_manager'
+  | 'customer_staff'
+  | 'investor_portal'
+  | 'proxy_customer_admin'
+  | 'proxy_customer_staff'
+  | 'proxy_supplier_admin'
+  | 'proxy_supplier_staff';
+
+const PROXY_PORTAL_ROLES: AccessRole[] = [
+  'proxy_customer_admin',
+  'proxy_customer_staff',
+  'proxy_supplier_admin',
+  'proxy_supplier_staff',
+];
+
+export const mapProxyRoleToAccessRole = (
+  groupType: string,
+  memberRole: string,
+): AccessRole | null => {
+  const type = groupType.trim().toLowerCase();
+  const role = memberRole.trim().toLowerCase();
+  if (type === 'customer' && role === 'admin') return 'proxy_customer_admin';
+  if (type === 'customer' && role === 'staff') return 'proxy_customer_staff';
+  if (type === 'supplier' && role === 'admin') return 'proxy_supplier_admin';
+  if (type === 'supplier' && role === 'staff') return 'proxy_supplier_staff';
+  return null;
+};
+
+export const isProxyPortalRole = (role: AccessRole) => PROXY_PORTAL_ROLES.includes(role);
+
+const APP_DESK_ROLES: AccessRole[] = ['admin', 'owner', 'manager', 'staff', 'viewer'];
+
+export const roleMatchesAllowed = (
+  memberRole: AccessRole,
+  allowedRoles: readonly AccessRole[],
+): boolean => {
+  if (allowedRoles.includes(memberRole)) {
+    return true;
+  }
+  if (!APP_DESK_ROLES.includes(memberRole)) {
+    return false;
+  }
+  if (allowedRoles.includes('admin') && (memberRole === 'owner' || memberRole === 'manager')) {
+    return true;
+  }
+  if (allowedRoles.includes('staff') && memberRole === 'manager') {
+    return true;
+  }
+  return false;
+};
+
+export const mapShopRoleToAccessRole = (role: string): AccessRole | null => {
+  switch (role) {
+    case 'admin':
+      return 'customer_admin';
+    case 'manager':
+      return 'customer_manager';
+    case 'negotiator':
+      return 'customer_manager';
+    case 'staff':
+      return 'customer_staff';
+    case 'customer_admin':
+    case 'customer_manager':
+    case 'customer_staff':
+      return role;
+    case 'customer_negotiator':
+      return 'customer_manager';
+    default:
+      return null;
+  }
+};
+
+const ACCESS_DENIED_MESSAGE = 'You do not have permission to access this page.';
+
+const resolveAuthenticatedDenyTarget = ({
+  authStore,
+  requiredModule,
+}: {
+  authStore: ReturnType<typeof useAuthStore>;
+  requiredModule?: ModuleKey | undefined;
+}): string => {
+  const tenantSlug = authStore.tenantSlug;
+  const currentScope = authStore.scope;
+
+  if (currentScope === 'shop') {
+    return tenantSlug
+      ? `/shop/${tenantSlug}/${getLastShopTypePath(authStore.tenantId)}/dashboard`
+      : '/shop/login';
+  }
+
+  if (currentScope === 'proxy') {
+    return tenantSlug ? `/${tenantSlug}/proxy` : '/proxy/login';
+  }
+
+  if (
+    requiredModule === 'global_shipment' ||
+    requiredModule === 'procurement_demand' ||
+    requiredModule === 'procurement_fulfill' ||
+    requiredModule === 'global_stock' ||
+    requiredModule === 'global_stock_movement' ||
+    requiredModule === 'global_stock_location' ||
+    requiredModule === 'cargo_company' ||
+    requiredModule === 'shipment_progress_settings' ||
+    requiredModule === 'inventory'
+  ) {
+    return '/app/procurement';
+  }
+
+  return '/app/dashboard';
+};
+
+const notifyAccessDenied = () => {
+  showWarningDialog(ACCESS_DENIED_MESSAGE, 'Access denied');
+};
+
+export const createAccessGuard = ({
+  allowedRoles,
+  loginRoute,
+  requiredScope,
+  requireTenantContext,
+  requireCustomerGroup,
+  missingCustomerGroupRoute,
+  requiredModule,
+  requiredModuleAction,
+  validateAccess,
+}: {
+  allowedRoles?: readonly AccessRole[];
+  loginRoute: string | ((to: GuardRoute) => RouteLocationRaw);
+  requiredScope?: AuthScope;
+  requireTenantContext?: boolean;
+  requireCustomerGroup?: boolean;
+  missingCustomerGroupRoute?: (to: GuardRoute) => RouteLocationRaw;
+  requiredModule?: ModuleKey;
+  requiredModuleAction?: ModuleAction;
+  validateAccess?: (context: {
+    authStore: ReturnType<typeof useAuthStore>;
+    to: GuardRoute;
+  }) => boolean | RouteLocationRaw;
+}) => {
+  return async (to: GuardRoute) => {
+    const authStore = useAuthStore();
+
+    if (authStore.isAuthenticated && authStore.tenantId) {
+      await authStore.checkFreshness();
+    }
+
+    const memberRole = authStore.member?.role;
+    const currentScope = authStore.scope;
+    const hasTenantContext = authStore.tenantId !== null;
+    const hasRequiredModuleAccess =
+      requiredModule === undefined
+        ? true
+        : canAccessModule({
+            scope: authStore.scope,
+            tenantId: authStore.tenantId,
+            customerGroupId: authStore.customerGroupId,
+            role: authStore.matchedRole,
+            moduleKey: requiredModule,
+            activeModuleKeys: authStore.activeModuleKeys,
+            action: requiredModuleAction ?? 'view',
+            effectiveGrants: authStore.access?.effectiveGrants,
+            isAdmin: authStore.access?.isAdmin,
+          });
+
+    if (
+      !authStore.isAuthenticated ||
+      !authStore.hasAccess ||
+      (requiredScope !== undefined && currentScope !== requiredScope) ||
+      (requireTenantContext === true && !hasTenantContext) ||
+      !memberRole
+    ) {
+      if (typeof loginRoute === 'function') {
+        return loginRoute(to);
+      }
+
+      return {
+        name: loginRoute,
+        query: {
+          redirect: to.fullPath,
+        },
+      };
+    }
+
+    if (requireCustomerGroup === true && authStore.customerGroupId === null) {
+      if (missingCustomerGroupRoute) {
+        return missingCustomerGroupRoute(to);
+      }
+      if (typeof loginRoute === 'function') {
+        return loginRoute(to);
+      }
+      return {
+        name: loginRoute,
+        query: {
+          redirect: to.fullPath,
+        },
+      };
+    }
+
+    if (
+      allowedRoles !== undefined &&
+      !roleMatchesAllowed(memberRole as AccessRole, allowedRoles)
+    ) {
+      notifyAccessDenied();
+      return resolveAuthenticatedDenyTarget({ authStore, requiredModule });
+    }
+
+    if (!hasRequiredModuleAccess) {
+      notifyAccessDenied();
+      return resolveAuthenticatedDenyTarget({ authStore, requiredModule });
+    }
+
+    if (validateAccess) {
+      const validationResult = validateAccess({
+        authStore,
+        to,
+      });
+
+      if (validationResult !== true) {
+        return validationResult;
+      }
+    }
+
+    return true;
+  };
+};

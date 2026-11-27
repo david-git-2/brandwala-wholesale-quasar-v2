@@ -435,12 +435,12 @@ import { storeToRefs } from 'pinia';
 
 import { useTenantStore } from '../stores/tenantStore';
 import { useTenantModuleStore } from '../stores/tenantModuleStore';
-import { useMembershipStore } from 'src/modules/membership/stores/membershipStore';
-import type { Membership } from 'src/modules/membership/types';
+import { useMembershipStore } from 'src/modules/tenant/submodules/membership/stores/membershipStore';
+import type { Membership } from 'src/modules/tenant/submodules/membership/types';
 import AddTenantDialog from '../components/AddTenantDialog.vue';
 import SubmoduleAccessPanel from '../components/SubmoduleAccessPanel.vue';
 import type { Tenant, TenantUpdateInput } from '../types';
-import { useModuleStore } from 'src/modules/featureCatalog/stores/moduleStore';
+import { useModuleStore } from 'src/modules/tenant/submodules/feature_catalog/stores/moduleStore';
 
 type TenantForm = {
   id?: number;

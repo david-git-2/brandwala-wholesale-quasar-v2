@@ -1,5 +1,5 @@
 import { computed, ref, watch, type MaybeRefOrGetter, toValue } from 'vue';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import {
   dropshipOrderDetailV2StoreKey,
   useDropshipOrderDetailV2Store,

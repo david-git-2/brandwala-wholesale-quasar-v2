@@ -4,7 +4,7 @@ import { parseSupabaseError, showErrorNotification, showSuccessNotification } fr
 import { tenantRepository, type TenantPurgePreviewCounts, type TenantPurgeResult } from '../repositories/tenantRepository';
 
 export const useTenantPurgePreviewQuery = (
-  parentTenantId: Ref<number | undefined>,
+  tenantId: Ref<number | undefined>,
   scope: Ref<'all_hierarchy' | 'child_only'>,
   targetChildId: Ref<number | null>,
   enabled: Ref<boolean>,
@@ -13,12 +13,12 @@ export const useTenantPurgePreviewQuery = (
     queryKey: computed(() => [
       'tenant',
       'purge_preview',
-      parentTenantId.value,
+      tenantId.value,
       scope.value,
       targetChildId.value,
     ]),
     queryFn: async () => {
-      if (!parentTenantId.value) {
+      if (!tenantId.value) {
         return {
           shipments: 0,
           stocks: 0,
@@ -30,12 +30,12 @@ export const useTenantPurgePreviewQuery = (
         };
       }
       return await tenantRepository.previewPurgeData({
-        parentTenantId: parentTenantId.value,
+        tenantId: tenantId.value,
         scope: scope.value,
         targetChildId: targetChildId.value,
       });
     },
-    enabled: computed(() => enabled.value && Boolean(parentTenantId.value)),
+    enabled: computed(() => enabled.value && Boolean(tenantId.value)),
     staleTime: 5000,
   });
 };
@@ -47,7 +47,7 @@ export const useTenantPurgeMutation = () => {
     TenantPurgeResult,
     Error,
     {
-      parentTenantId: number;
+      tenantId: number;
       scope: 'all_hierarchy' | 'child_only';
       confirmationSlug: string;
       targetChildId: number | null;
@@ -56,7 +56,7 @@ export const useTenantPurgeMutation = () => {
   >({
     mutationFn: async (payload) => {
       return await tenantRepository.purgeOperationalData({
-        parentTenantId: payload.parentTenantId,
+        tenantId: payload.tenantId,
         scope: payload.scope,
         confirmationSlug: payload.confirmationSlug,
         targetChildId: payload.targetChildId,

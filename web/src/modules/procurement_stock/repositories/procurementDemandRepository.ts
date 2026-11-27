@@ -1,11 +1,8 @@
 import { supabase } from 'src/boot/supabase';
-import { productBasedCostingRepository } from 'src/modules/product_based_costing/repositories/productBasedCostingRepository';
+import { productBasedCostingRepository } from 'src/modules/shop_order/submodules/product_based_costing/repositories/productBasedCostingRepository';
 import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 
 export type ProcurementDemandStatus = 'procuring' | 'dispatch' | 'delivered' | 'closed';
-
-/** Fulfill hub delivery-papers list filter (includes all papers). */
-export type FulfillDeliveryPapersListStatus = ProcurementDemandStatus | 'all';
 
 export type ProcurementDemandDocumentType = 'shop_order' | 'pbc_costing_file';
 
@@ -46,14 +43,6 @@ export type ClosePreorderDemandDocumentResult = {
   pick_count?: number;
   unit_count?: number;
   error?: string;
-};
-
-export type ApplyDeliveryPaperOutcomeAllocation = {
-  preorder_demand_id: number;
-  global_stock_id?: number | null;
-  delivery_paper_line_id?: number;
-  quantity: number;
-  grade_tag_id?: number | null;
 };
 
 export interface ProcurementDemandItem {
@@ -214,15 +203,6 @@ export interface ListProcurementDemandGroupsParams {
   offset?: number;
 }
 
-export interface ListProcurementFulfillGroupsParams {
-  tenantId: number;
-  procurementStatus?: ProcurementDemandStatus;
-  search?: string | null;
-  profileId?: number | null;
-  limit?: number;
-  offset?: number;
-}
-
 export interface UpsertPreorderDemandParams {
   tenantId: number;
   sourceType: ProcurementDemandSourceType;
@@ -304,124 +284,6 @@ export interface PreorderDemandRow {
   updated_at: string;
 }
 
-export type DeliveryPaperStatus = 'draft' | 'packed' | 'dispatched' | 'delivered' | 'cancelled';
-
-export interface DeliveryPaperSummary {
-  id: number;
-  status: DeliveryPaperStatus;
-  created_at: string;
-  updated_at: string;
-  delivery_date: string | null;
-  note: string | null;
-  line_count: number;
-}
-
-export interface FulfillDeliveryPaperListItem extends DeliveryPaperSummary {
-  source_type: ProcurementDemandDocumentType;
-  source_id: number;
-  shop_order_no: string | null;
-  document_name: string | null;
-  profile_id: number | null;
-  profile_name: string | null;
-}
-
-export interface FulfillDeliveryPapersResponse {
-  meta: {
-    tenant_id: number;
-    procurement_status: string;
-    total_count: number;
-    limit: number;
-    offset: number;
-    has_more: boolean;
-  };
-  papers: FulfillDeliveryPaperListItem[];
-}
-
-export interface ListFulfillDeliveryPapersParams {
-  tenantId: number;
-  procurementStatus?: FulfillDeliveryPapersListStatus;
-  search?: string | null;
-  limit?: number;
-  offset?: number;
-}
-
-export interface DeliveryPaperHeader {
-  id: number;
-  status: DeliveryPaperStatus;
-  source_type: ProcurementDemandDocumentType;
-  source_id: number;
-  profile_id: number | null;
-  profile_name: string | null;
-  document_name: string | null;
-  shop_order_no: string | null;
-  created_at: string;
-  updated_at: string;
-  delivery_date: string | null;
-  note: string | null;
-  close_bills?: DeliveryPaperCloseBill[];
-}
-
-export interface DeliveryPaperCloseBill {
-  id: number;
-  invoice_no: string | null;
-  invoice_status: string | null;
-  settlement_kind?: string | null;
-}
-
-export interface DeliveryPaperDetailItem extends ProcurementDemandItem {
-  /** Packed on sibling delivery papers for the same document line (excludes this paper). */
-  packed_on_other_delivery_papers?: number;
-  /** Order remaining minus packed on other papers; cap for picks on this paper. */
-  remaining_to_pack?: number;
-  paper_picks?: Array<{
-    line_id?: number;
-    client_key?: string;
-    global_stock_id: number;
-    quantity: number;
-    close_action?: string | null;
-    line_status?: string;
-    is_close_split?: boolean;
-    shipment_name?: string | null;
-    location_name?: string | null;
-    invoice_id?: number | null;
-    returned_at?: string | null;
-    is_applied?: boolean;
-  }>;
-}
-
-export interface DeliveryPaperDetailResponse {
-  paper: DeliveryPaperHeader;
-  items: DeliveryPaperDetailItem[];
-  meta: Record<string, unknown>;
-}
-
-export interface SaveDeliveryPaperDetailItem {
-  preorder_demand_id?: number | null;
-  source_type?: string;
-  source_id?: number;
-  splits: Array<{ quantity: number; status: string }>;
-  picks?: Array<{ global_stock_id: number; quantity: number }>;
-  note?: string | null;
-}
-
-export interface SuggestDeliveryPaperLastLotLineInput {
-  preorder_demand_id?: number | null;
-  source_type?: string;
-  source_id?: number;
-  packed_on_this_paper: number;
-}
-
-export interface SuggestDeliveryPaperLastLotPick {
-  preorder_demand_id: number;
-  source_type?: string | null;
-  source_id?: number | null;
-  global_stock_id: number;
-  quantity: number;
-  shipment_name: string | null;
-  location_name: string | null;
-  available_atp?: number;
-}
-
 const listProcurementDemandBuyDocuments = async (
   params: ListProcurementDemandBuyDocumentsParams,
 ): Promise<ProcurementDemandBuyDocumentsResponse> => {
@@ -498,30 +360,6 @@ const listProcurementDemandGroups = async (
   return payload;
 };
 
-const listProcurementFulfillGroups = async (
-  params: ListProcurementFulfillGroupsParams,
-): Promise<ProcurementDemandGroupsResponse> => {
-  const { data, error } = await supabase.rpc('list_procurement_fulfill_groups', {
-    p_tenant_id: params.tenantId,
-    p_procurement_status: params.procurementStatus ?? 'procuring',
-    p_search: params.search ?? null,
-    p_profile_id: params.profileId ?? null,
-    p_limit: params.limit ?? 50,
-    p_offset: params.offset ?? 0,
-  });
-
-  if (error) throw error;
-
-  const payload = (data ?? { meta: {}, groups: [] }) as ProcurementDemandGroupsResponse;
-  payload.groups = (payload.groups ?? []).map((group) => ({
-    ...group,
-    document_name: group.document_name?.trim() || null,
-    item_count: group.item_count ?? 0,
-    unallocated_item_count: group.unallocated_item_count ?? 0,
-  }));
-  return payload;
-};
-
 const parseDemandGroupItemsCursor = (
   raw: unknown,
 ): ProcurementDemandGroupItemsCursor | null => {
@@ -536,32 +374,6 @@ const listProcurementDemandGroupItems = async (
   params: ListProcurementDemandGroupItemsParams,
 ): Promise<ProcurementDemandGroupItemsResponse> => {
   const { data, error } = await supabase.rpc('list_procurement_demand_group_items', {
-    p_tenant_id: params.tenantId,
-    p_document_type: params.documentType,
-    p_document_id: params.documentId,
-    p_search: params.search ?? null,
-    p_limit: params.limit ?? 50,
-    p_cursor_source_id: params.cursor?.source_id ?? null,
-  });
-
-  if (error) throw error;
-
-  const payload = (data ?? { meta: {}, items: [] }) as ProcurementDemandGroupItemsResponse;
-  const meta = payload.meta ?? ({} as ProcurementDemandGroupItemsMeta);
-  return {
-    items: payload.items ?? [],
-    meta: {
-      ...meta,
-      next_cursor: parseDemandGroupItemsCursor(meta.next_cursor),
-      has_more: Boolean(meta.has_more),
-    },
-  };
-};
-
-const listProcurementFulfillGroupItems = async (
-  params: ListProcurementDemandGroupItemsParams,
-): Promise<ProcurementDemandGroupItemsResponse> => {
-  const { data, error } = await supabase.rpc('list_procurement_fulfill_group_items', {
     p_tenant_id: params.tenantId,
     p_document_type: params.documentType,
     p_document_id: params.documentId,
@@ -685,7 +497,7 @@ const closePreorderDemandDocument = async (params: {
 
   const result = (data ?? {}) as ClosePreorderDemandDocumentResult;
   if (!result.success) {
-    throw new Error(result.error || 'Failed to close delivery paper picks');
+    throw new Error(result.error || 'Failed to close preorder demand document');
   }
   return result;
 };
@@ -701,165 +513,11 @@ const markDemandGroupReadyForShipment = async (
   await productBasedCostingRepository.markPbcReadyForShipment(group.document_id);
 };
 
-const createDeliveryPaperForDocument = async (params: {
-  tenantId: number;
-  documentType: ProcurementDemandDocumentType;
-  documentId: number;
-}): Promise<{ id: number; status: DeliveryPaperStatus; created_at: string }> => {
-  const { data, error } = await supabase.rpc('create_delivery_paper_for_document', {
-    p_tenant_id: params.tenantId,
-    p_document_type: params.documentType,
-    p_document_id: params.documentId,
-  });
-  if (error) throw error;
-  return data as { id: number; status: DeliveryPaperStatus; created_at: string };
-};
-
-const listDeliveryPapersForFulfillPage = async (
-  params: ListFulfillDeliveryPapersParams,
-): Promise<FulfillDeliveryPapersResponse> => {
-  const { data, error } = await supabase.rpc('list_delivery_papers_for_fulfill_page', {
-    p_tenant_id: params.tenantId,
-    p_procurement_status: params.procurementStatus ?? 'procuring',
-    p_search: params.search ?? null,
-    p_limit: params.limit ?? 50,
-    p_offset: params.offset ?? 0,
-  });
-
-  if (error) throw error;
-
-  const payload = (data ?? { meta: {}, papers: [] }) as FulfillDeliveryPapersResponse;
-  payload.papers = payload.papers ?? [];
-  return payload;
-};
-
-const listDeliveryPapersForDocument = async (params: {
-  tenantId: number;
-  documentType: ProcurementDemandDocumentType;
-  documentId: number;
-}): Promise<DeliveryPaperSummary[]> => {
-  const { data, error } = await supabase.rpc('list_delivery_papers_for_document', {
-    p_tenant_id: params.tenantId,
-    p_document_type: params.documentType,
-    p_document_id: params.documentId,
-  });
-  if (error) throw error;
-  const payload = (data ?? { papers: [] }) as { papers?: DeliveryPaperSummary[] };
-  return payload.papers ?? [];
-};
-
-const getDeliveryPaperDetail = async (params: {
-  tenantId: number;
-  deliveryPaperId: number;
-}): Promise<DeliveryPaperDetailResponse> => {
-  const { data, error } = await supabase.rpc('get_delivery_paper_detail', {
-    p_tenant_id: params.tenantId,
-    p_delivery_paper_id: params.deliveryPaperId,
-  });
-  if (error) throw error;
-  const payload = (data ?? {}) as DeliveryPaperDetailResponse;
-  return {
-    paper: payload.paper,
-    items: payload.items ?? [],
-    meta: payload.meta ?? {},
-  };
-};
-
-const suggestDeliveryPaperLastLotPicks = async (params: {
-  tenantId: number;
-  deliveryPaperId: number;
-  stockContextTenantId: number;
-  lines?: SuggestDeliveryPaperLastLotLineInput[] | null;
-}): Promise<{ picks: SuggestDeliveryPaperLastLotPick[] }> => {
-  const { data, error } = await supabase.rpc('suggest_delivery_paper_last_lot_picks', {
-    p_tenant_id: params.tenantId,
-    p_delivery_paper_id: params.deliveryPaperId,
-    p_stock_context_tenant_id: params.stockContextTenantId,
-    p_lines: params.lines?.length ? params.lines : null,
-  });
-  if (error) throw error;
-  const payload = (data ?? { picks: [] }) as { picks?: SuggestDeliveryPaperLastLotPick[] };
-  return { picks: payload.picks ?? [] };
-};
-
-const saveDeliveryPaperDetail = async (params: {
-  tenantId: number;
-  deliveryPaperId: number;
-  items: SaveDeliveryPaperDetailItem[];
-}): Promise<{ success: boolean; line_count: number; status: DeliveryPaperStatus }> => {
-  const { data, error } = await supabase.rpc('save_delivery_paper_detail', {
-    p_tenant_id: params.tenantId,
-    p_delivery_paper_id: params.deliveryPaperId,
-    p_items: params.items,
-  });
-  if (error) throw error;
-  return (data ?? { success: false, line_count: 0, status: 'draft' }) as {
-    success: boolean;
-    line_count: number;
-    status: DeliveryPaperStatus;
-  };
-};
-
-const deleteDeliveryPaper = async (params: {
-  tenantId: number;
-  deliveryPaperId: number;
-}): Promise<{ success: boolean; id: number }> => {
-  const { data, error } = await supabase.rpc('delete_delivery_paper', {
-    p_tenant_id: params.tenantId,
-    p_delivery_paper_id: params.deliveryPaperId,
-  });
-  if (error) throw error;
-  return (data ?? { success: false, id: params.deliveryPaperId }) as {
-    success: boolean;
-    id: number;
-  };
-};
-
-const updateDeliveryPaperStatus = async (params: {
-  tenantId: number;
-  deliveryPaperId: number;
-  status: DeliveryPaperStatus;
-}): Promise<{ success: boolean; status: DeliveryPaperStatus }> => {
-  const { data, error } = await supabase.rpc('update_delivery_paper_status', {
-    p_tenant_id: params.tenantId,
-    p_delivery_paper_id: params.deliveryPaperId,
-    p_status: params.status,
-  });
-  if (error) throw error;
-  return (data ?? { success: false, status: params.status }) as {
-    success: boolean;
-    status: DeliveryPaperStatus;
-  };
-};
-
-const applyDeliveryPaperOutcome = async (params: {
-  tenantId: number;
-  deliveryPaperId: number;
-  closeAction: PreorderDemandCloseAction;
-  allocations: ApplyDeliveryPaperOutcomeAllocation[];
-}): Promise<ClosePreorderDemandDocumentResult> => {
-  const { data, error } = await supabase.rpc('apply_delivery_paper_outcome', {
-    p_tenant_id: params.tenantId,
-    p_delivery_paper_id: params.deliveryPaperId,
-    p_close_action: params.closeAction,
-    p_allocations: params.allocations,
-  });
-  if (error) throw error;
-  const result = (data ?? {}) as ClosePreorderDemandDocumentResult;
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to apply delivery paper outcome');
-  }
-  return result;
-};
-
 export const procurementDemandRepository = {
   listProcurementDemandBuyDocuments,
   getProcurementDemandBuyDocument,
   listProcurementDemandGroups,
   listProcurementDemandGroupItems,
-  listProcurementFulfillGroups,
-  listDeliveryPapersForFulfillPage,
-  listProcurementFulfillGroupItems,
   upsertPreorderDemand,
   bulkUpsertPreorderDemandVendorPlacements,
   fillPreorderDemandPlacedQuantitiesForDocument,
@@ -867,14 +525,6 @@ export const procurementDemandRepository = {
   setPreorderDemandVendorForDocument,
   markDemandGroupReadyForShipment,
   closePreorderDemandDocument,
-  createDeliveryPaperForDocument,
-  listDeliveryPapersForDocument,
-  getDeliveryPaperDetail,
-  suggestDeliveryPaperLastLotPicks,
-  saveDeliveryPaperDetail,
-  deleteDeliveryPaper,
-  updateDeliveryPaperStatus,
-  applyDeliveryPaperOutcome,
 };
 
 export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>

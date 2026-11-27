@@ -1,8 +1,8 @@
 import type { NavigationGuard, RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { canAccessModule } from 'src/modules/navigation/modulePermissions';
-import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
+import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { canAccessModule } from 'src/modules/workspace/submodules/navigation/modulePermissions';
+import type { ModuleKey } from 'src/modules/workspace/submodules/navigation/moduleRegistry';
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -64,7 +64,7 @@ const withTenantSlug = (to: { params: { tenantSlug?: string | string[] } }, path
 const procurementStockRoutes: RouteRecordRaw[] = [
   // Legacy Redirects
   {
-    path: '/:tenantSlug?/app/global/shipment/:rest(.*)*',
+    path: '/app/global/shipment/:rest(.*)*',
     redirect: (to) => {
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
@@ -78,7 +78,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/global/stock/:rest(.*)*',
+    path: '/app/global/stock/:rest(.*)*',
     redirect: (to) => {
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
@@ -89,21 +89,21 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/:tenantSlug?/app/stock/:rest(.*)*',
+    path: '/app/stock/:rest(.*)*',
     redirect: (to) => withTenantSlug(to, '/app/procurement/stock'),
   },
   {
-    path: '/:tenantSlug?/app/procurement/stock/allocate/:rest(.*)*',
+    path: '/app/procurement/stock/allocate/:rest(.*)*',
     redirect: (to) => withTenantSlug(to, '/app/procurement/stock'),
   },
   {
-    path: '/:tenantSlug?/app/procurement/tenant-stock/:rest(.*)*',
+    path: '/app/procurement/tenant-stock/:rest(.*)*',
     redirect: (to) => withTenantSlug(to, '/app/procurement/stock'),
   },
 
   // Active Routes
   {
-    path: '/:tenantSlug?/app/procurement',
+    path: '/app/procurement',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -115,7 +115,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/demand',
+    path: '/app/procurement/demand',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -133,50 +133,19 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/fulfill/:rest(.*)*',
-    redirect: (to) => {
-      const rest = Array.isArray(to.params.rest)
-        ? to.params.rest.join('/')
-        : typeof to.params.rest === 'string'
-          ? to.params.rest
-          : '';
-      return withTenantSlug(
-        to,
-        `/app/procurement/delivery-paper${rest ? `/${rest}` : ''}`,
-      );
-    },
+    path: '/app/procurement/fulfill/:rest(.*)*',
+    redirect: (to) => withTenantSlug(to, '/app/procurement/demand'),
   },
   {
-    path: '/:tenantSlug?/app/procurement/delivery-paper',
-    component: () => import('layouts/AppLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'app-procurement-fulfill',
-        component: () => import('../pages/ProcurementFulfillPage.vue'),
-        beforeEnter: guard('procurement_fulfill'),
-        meta: { breadcrumb: 'Delivery paper' },
-      },
-      {
-        path: 'group/:documentType/:documentId',
-        name: 'app-procurement-fulfill-group',
-        component: () => import('../pages/ProcurementFulfillGroupPage.vue'),
-        beforeEnter: guard('procurement_fulfill'),
-      },
-      {
-        path: 'paper/:paperId',
-        name: 'app-procurement-fulfill-delivery-paper-page',
-        component: () => import('../pages/DeliveryPaperDetailPage.vue'),
-        beforeEnter: guard('procurement_fulfill'),
-      },
-    ],
+    path: '/app/procurement/delivery-paper/:rest(.*)*',
+    redirect: (to) => withTenantSlug(to, '/app/procurement/demand'),
   },
   {
-    path: '/:tenantSlug?/app/procurement/fulfill',
-    redirect: (to) => withTenantSlug(to, '/app/procurement/delivery-paper'),
+    path: '/app/procurement/fulfill',
+    redirect: (to) => withTenantSlug(to, '/app/procurement/demand'),
   },
   {
-    path: '/:tenantSlug?/app/procurement/shipment',
+    path: '/app/procurement/shipment',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -260,7 +229,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/batch-code',
+    path: '/app/procurement/batch-code',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -278,7 +247,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/stock',
+    path: '/app/procurement/stock',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -290,7 +259,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/movements',
+    path: '/app/procurement/movements',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -302,7 +271,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/locations',
+    path: '/app/procurement/locations',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -314,7 +283,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/cargo-companies',
+    path: '/app/procurement/cargo-companies',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
@@ -326,7 +295,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/shipment-progress',
+    path: '/app/procurement/shipment-progress',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {

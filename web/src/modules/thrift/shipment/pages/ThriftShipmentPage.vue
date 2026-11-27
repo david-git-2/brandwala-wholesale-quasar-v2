@@ -269,7 +269,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { useThriftShipmentsQuery } from '../composables/useThriftShipmentQuery';
 import {
@@ -284,7 +284,7 @@ import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftShipment } from '../types';
 import ShipmentImageDownloadDialog from '../components/ShipmentImageDownloadDialog.vue';
 import ThriftShipmentSkeleton from '../components/ThriftShipmentSkeleton.vue';
-import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
+import { useModulePermissions } from 'src/modules/workspace/submodules/navigation/modulePermissions';
 
 const $q = useQuasar();
 const authStore = useAuthStore();

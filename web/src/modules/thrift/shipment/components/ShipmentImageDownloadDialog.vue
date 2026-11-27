@@ -82,7 +82,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import {
   downloadShipmentImagesToDevice,
   ShipmentDownloadCancelledError,

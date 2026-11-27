@@ -1,35 +1,32 @@
 import type { RouteRecordRaw } from 'vue-router';
-import authRoutes from 'src/modules/auth/routes';
-import dashboardRoutes from 'src/modules/dashboard/routes';
+import authRoutes from 'src/modules/workspace/submodules/auth/routes';
+import dashboardRoutes from 'src/modules/workspace/submodules/dashboard/routes';
 import tenantRoutes from 'src/modules/tenant/routes';
-import featureCatalogRoutes from 'src/modules/featureCatalog/routes';
-import costingFileRoutes from 'src/modules/costingFile/routes';
-import membershipRoutes from 'src/modules/membership/routes';
-import globalReferenceRoutes from 'src/modules/global_reference/routes';
-import productBasedCostingRoutes from 'src/modules/product_based_costing/routes';
-import productRoutes from 'src/modules/products/routes';
-import vendorRoutes from 'src/modules/vendor/routes';
+import featureCatalogRoutes from 'src/modules/tenant/submodules/feature_catalog/routes';
+import costingFileRoutes from 'src/modules/preorder_costing_file/routes';
+import membershipRoutes from 'src/modules/tenant/submodules/membership/routes';
+import globalReferenceRoutes from 'src/modules/tenant/submodules/global_reference/routes';
+import productBasedCostingRoutes from 'src/modules/shop_order/submodules/product_based_costing/routes';
+import productRoutes from 'src/modules/shop_order/submodules/products/routes';
+import vendorRoutes from 'src/modules/people/submodules/vendor/routes';
 import kobaRoutes from 'src/modules/koba/routes';
-import tasksRoutes from 'src/modules/tasks/routes';
-import notificationRoutes from 'src/modules/notifications/routes';
+import notificationRoutes from 'src/modules/workspace/submodules/notifications/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
-import investorPortalRoutes from 'src/modules/investor_portal/routes';
-import globalRoutes from 'src/modules/global/routes';
+import investorPortalRoutes from 'src/modules/people/submodules/investor_portal/routes';
+import globalRoutes from 'src/modules/procurement_stock/submodules/global_stock/routes';
 import procurementStockRoutes from 'src/modules/procurement_stock/routes';
-import reportingTreasuryRoutes from 'src/modules/reporting_treasury/routes';
-import billsPaysRoutes from 'src/modules/bills_pays/routes';
-import { moneyUiRedirectRoutes } from 'src/modules/navigation/moneyUiRedirects';
-import investorCapitalAdminRoutes from 'src/modules/investor_capital/routes/adminRoutes';
+import reportingTreasuryRoutes from 'src/modules/finance/submodules/reporting_treasury/routes';
+import billsPaysRoutes from 'src/modules/finance/submodules/bills_pays/routes';
+import investorCapitalAdminRoutes from 'src/modules/people/submodules/investor_capital/routes/adminRoutes';
 import shopOrderRoutes from 'src/modules/shop_order/routes';
-import accessControlRoutes from 'src/modules/access_control/routes';
-import customerRoutes from 'src/modules/customer/routes';
-import afterSalesRoutes from 'src/modules/after_sales/routes';
+import accessControlRoutes from 'src/modules/tenant/submodules/access_control/routes';
+import customerRoutes from 'src/modules/people/submodules/customer/routes';
 import peopleRoutes from 'src/modules/people/routes';
-import landingRoutes from 'src/modules/landing/routes';
-import helpRoutes from 'src/modules/help/routes';
+import proxyPurchaseRoutes from 'src/modules/proxy_purchase/routes';
+import landingRoutes from 'src/modules/workspace/submodules/landing/routes';
+import helpRoutes from 'src/modules/docs/submodules/help/routes';
 import docsRoutes from 'src/modules/docs/routes';
-import operatingManualRoutes from 'src/modules/operating_manual/routes';
-
+import operatingManualRoutes from 'src/modules/docs/submodules/operating_manual/routes';
 const devRoutes: RouteRecordRaw[] = [
   {
     path: '/dev/designsystem',
@@ -64,56 +61,91 @@ const devRoutes: RouteRecordRaw[] = [
   },
 ];
 
-const routes: RouteRecordRaw[] = [
-  ...landingRoutes,
-  ...helpRoutes,
-  ...docsRoutes,
-  ...operatingManualRoutes,
+const legacySlugRedirects: RouteRecordRaw[] = [
   {
-    path: '/app/home',
-    redirect: '/app/dashboard',
+    path: '/:tenantSlug/app/:rest(.*)*',
+    redirect: (to) => {
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : '';
+      const suffix = rest ? `/${rest}` : '';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return `/app${suffix}${query}`;
+    },
+  },
+  {
+    path: '/:tenantSlug/investor/:rest(.*)*',
+    redirect: (to) => {
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : '';
+      const suffix = rest ? `/${rest}` : '';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return `/investor${suffix}${query}`;
+    },
+  },
+  {
+    path: '/:tenantSlug/investor',
+    redirect: '/investor',
+  },
+  {
+    path: '/:tenantSlug/shop/:rest(.*)*',
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+      const rest = Array.isArray(to.params.rest)
+        ? to.params.rest.join('/')
+        : typeof to.params.rest === 'string'
+          ? to.params.rest
+          : '';
+      const suffix = rest ? `/${rest}` : '';
+      const query =
+        to.query && Object.keys(to.query).length
+          ? `?${new URLSearchParams(to.query as Record<string, string>).toString()}`
+          : '';
+      return tenantSlug ? `/shop/${tenantSlug}${suffix}${query}` : `/shop${suffix}${query}`;
+    },
   },
   {
     path: '/app/:tenantSlug/:after(app|tenants|costing|products|product-based-costing)/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const after = typeof to.params.after === 'string' ? to.params.after : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
           : '';
-
-      return tenantSlug && after
-        ? `/${tenantSlug}/app/${after}${rest ? `/${rest}` : ''}`
-        : '/app/dashboard';
+      return after ? `/app/${after}${rest ? `/${rest}` : ''}` : '/app/dashboard';
     },
+  },
+];
+
+const routes: RouteRecordRaw[] = [
+  ...landingRoutes,
+  ...helpRoutes,
+  ...docsRoutes,
+  ...operatingManualRoutes,
+  ...legacySlugRedirects,
+  {
+    path: '/app/home',
+    redirect: '/app/dashboard',
   },
   {
     path: '/platform/home',
     redirect: '/platform/dashboard',
   },
   {
-    path: '/shop/:tenantSlug?/home',
-    redirect: (to) => ({
-      name: 'customer-dashboard',
-      params: {
-        tenantSlug: typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : undefined,
-      },
-    }),
-  },
-  {
-    path: '/shop/:tenantSlug/:rest(.*)*',
-    redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
-      const rest = Array.isArray(to.params.rest)
-        ? to.params.rest.join('/')
-        : typeof to.params.rest === 'string'
-          ? to.params.rest
-          : '';
-
-      return tenantSlug ? `/${tenantSlug}/shop/${rest}` : '/shop/dashboard';
-    },
+    path: '/shop/home',
+    redirect: '/shop/dashboard',
   },
   ...dashboardRoutes,
   ...tenantRoutes,
@@ -126,7 +158,6 @@ const routes: RouteRecordRaw[] = [
   ...costingFileRoutes,
   ...membershipRoutes,
   ...kobaRoutes,
-  ...tasksRoutes,
   ...notificationRoutes,
   ...thriftRoutes,
   ...investorPortalRoutes,
@@ -134,18 +165,15 @@ const routes: RouteRecordRaw[] = [
   ...shopOrderRoutes,
   ...globalRoutes,
   ...billsPaysRoutes,
-  ...moneyUiRedirectRoutes,
   ...reportingTreasuryRoutes,
   ...investorCapitalAdminRoutes,
   ...accessControlRoutes,
   ...customerRoutes,
-  ...afterSalesRoutes,
   ...peopleRoutes,
+  ...proxyPurchaseRoutes,
 
-  // Dev-only pages (local). Not registered in production, so Vite drops their code from the build.
   ...(import.meta.env.DEV ? devRoutes : []),
 
-  // Always leave this as last one
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

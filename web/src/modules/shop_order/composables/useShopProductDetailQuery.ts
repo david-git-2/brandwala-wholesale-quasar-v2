@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import type { Shop, ShopCatalogProductDetail } from '../types';
 import { seedCustomerShopPermissions } from './useCustomerShopPermissionsQuery';
 

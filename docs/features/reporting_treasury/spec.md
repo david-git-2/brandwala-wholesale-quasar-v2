@@ -14,7 +14,7 @@ Parent-level finance only (wholesale, procurement, dropship). Thrift `/app/thrif
 
 | | |
 | :--- | :--- |
-| Spec | `docs/features/reporting_treasury/spec.md` + [00-gaps](00-gaps.md) |
+| Spec | `docs/features/reporting_treasury/spec.md` |
 | UI | `reporting_treasury/`; pays in `cashbook/` / `payments/` |
 | SQL | Report RPCs in `supabase/schemas/` (e.g. `public.sql`, domain splits) |
 | Access | `app`; parent books |
@@ -108,8 +108,8 @@ Build order was shipment → cash in → customers → invoice book → month sn
 - Sell attribution: `bill_lines.shipment_item_id` when set; else coalesce stock / shipment line by `product_id`. **Issued only**.
 - RPC: `get_tenant_shipment_report_detail` + `get_tenant_shipment_profit_report`.
 - Detail payload includes **vendor credit notes** (child `credit_note` on batch AP), **gross and net** profit matrix fields, and `ap_books_total_bdt`.
-- [ ] Local non-capitalizable costs in P&amp;L ([RT18](00-gaps.md)).
-- [ ] **Draft:** investor capital + share-of-GP block on detail ([RT20](00-gaps.md)).
+- [ ] Local non-capitalizable costs in P&amp;L (RT18).
+- [ ] **Draft:** investor capital + share-of-GP block on detail (RT20).
 
 ### US-2: Five finance views
 
@@ -137,4 +137,4 @@ Build order was shipment → cash in → customers → invoice book → month sn
 ### US-4: Investor on shipment (draft)
 - Staff shipment detail shows `shipment_investments` rows and profit share vs shipment GP.
 - Cashbook truth for investor in/out stays [investor_capital](../investor_capital/spec.md); no duplicate ledger report here.
-- [ ] Not built ([RT20](00-gaps.md)).
+- [ ] Not built (RT20).
