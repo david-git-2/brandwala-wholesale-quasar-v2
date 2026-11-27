@@ -8,22 +8,40 @@
   >
     <div class="text-caption text-grey-7 q-mb-sm">Customer link &amp; ops fields</div>
     <div class="q-gutter-y-sm">
-      <q-input v-model="url" outlined dense hide-bottom-space label="Product URL *" type="url" />
+      <q-input
+        v-model="url"
+        class="pp-app-edit-line__url"
+        outlined
+        dense
+        hide-bottom-space
+        readonly
+        label="Product URL"
+        type="url"
+        @click="openUrl"
+      >
+        <template #append>
+          <q-icon
+            name="ph ph-arrow-square-out"
+            class="cursor-pointer"
+            @click.stop="openUrl"
+          />
+        </template>
+      </q-input>
       <q-input
         v-model.number="neededQty"
         outlined
         dense
         hide-bottom-space
+        readonly
         type="number"
-        min="1"
-        step="1"
-        label="Quantity needed *"
+        label="Quantity needed"
       />
       <q-input
         v-model="description"
         outlined
         dense
         hide-bottom-space
+        readonly
         type="textarea"
         label="Customer description"
         :rows="3"
@@ -57,19 +75,39 @@
         dense
         emit-value
         map-options
-        clearable
+        options-dense
         label="Shipment"
         :options="shipmentOptions"
         :loading="shipmentsQuery.isPending.value"
-      />
-      <q-toggle v-model="isAddedToCart" label="Added to cart" />
+      >
+        <template #option="scope">
+          <q-item v-bind="scope.itemProps">
+            <q-item-section>
+              <div class="pp-shipment-opt">
+                <div class="pp-shipment-opt__name">{{ scope.opt.name }}</div>
+                <div v-if="scope.opt.value != null" class="pp-shipment-opt__id">
+                  #{{ scope.opt.value }}
+                </div>
+              </div>
+            </q-item-section>
+          </q-item>
+        </template>
+        <template #selected-item="scope">
+          <div v-if="scope.opt" class="pp-shipment-opt">
+            <div class="pp-shipment-opt__name">{{ scope.opt.name }}</div>
+            <div v-if="scope.opt.value != null" class="pp-shipment-opt__id">
+              #{{ scope.opt.value }}
+            </div>
+          </div>
+        </template>
+      </q-select>
       <q-select
         v-model="placementStatus"
         outlined
         dense
         emit-value
         map-options
-        label="Placement"
+        label="Fulfillment"
         :options="placementOptions"
       />
       <q-input
@@ -121,7 +159,12 @@ import type {
   PpOrderLineStatus,
   PpStaffOrderLineUpdatePayload,
 } from '../types/ppPurchaseRequest';
-import { PP_SHIPMENT_STATUS_LABELS } from '../types/ppShipment';
+import { buildPpShipmentSelectOptions } from '../types/ppShipment';
+import {
+  PP_ORDER_LINE_PLACEMENT_OPTIONS,
+  ppPlacementImpliesAddedToCart,
+} from '../utils/ppOrderLinePlacement';
+import { openPpOrderLineUrl } from '../utils/ppOrderLineUrl';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -146,16 +189,11 @@ const imageUrl = ref('');
 const unitPrice = ref<number | null>(null);
 const supplierGroupId = ref<number | null>(null);
 const shipmentId = ref<number | null>(null);
-const isAddedToCart = ref(false);
 const placementStatus = ref<PpOrderLinePlacementStatus>('none');
 const placedQty = ref<number | null>(null);
 const status = ref<PpOrderLineStatus>('requested');
 
-const placementOptions = [
-  { label: 'None', value: 'none' as const },
-  { label: 'Order placed', value: 'order_placed' as const },
-  { label: 'Not available', value: 'not_available' as const },
-];
+const placementOptions = PP_ORDER_LINE_PLACEMENT_OPTIONS;
 
 const statusOptions = [
   { label: 'Draft', value: 'draft' as const },
@@ -173,10 +211,7 @@ const supplierOptions = computed(() =>
 );
 
 const shipmentOptions = computed(() =>
-  (shipmentsQuery.data.value ?? []).map((s) => ({
-    label: `${s.shipment_code} · ${PP_SHIPMENT_STATUS_LABELS[s.status]}`,
-    value: s.id,
-  })),
+  buildPpShipmentSelectOptions(shipmentsQuery.data.value ?? []),
 );
 
 const populateFromEdit = () => {
@@ -190,7 +225,6 @@ const populateFromEdit = () => {
   unitPrice.value = line.unit_price == null ? null : Number(line.unit_price);
   supplierGroupId.value = line.pp_supplier_group_id;
   shipmentId.value = line.shipment_id;
-  isAddedToCart.value = line.is_added_to_cart;
   placementStatus.value = line.placement_status;
   placedQty.value = line.placed_qty == null ? null : Number(line.placed_qty);
   status.value = line.status;
@@ -208,6 +242,10 @@ const canSubmit = computed(() => {
   return url.value.trim().length > 0 && qty != null && Number.isFinite(qty) && qty > 0;
 });
 
+const openUrl = () => {
+  openPpOrderLineUrl(url.value);
+};
+
 const submit = () => {
   const line = props.editLine;
   if (!canSubmit.value || neededQty.value == null || !line) return;
@@ -221,10 +259,37 @@ const submit = () => {
     unit_price: unitPrice.value,
     pp_supplier_group_id: supplierGroupId.value,
     shipment_id: shipmentId.value,
-    is_added_to_cart: isAddedToCart.value,
     placement_status: placementStatus.value,
+    is_added_to_cart: ppPlacementImpliesAddedToCart(placementStatus.value),
     placed_qty: placedQty.value,
     status: status.value,
   });
 };
 </script>
+
+<style scoped>
+.pp-shipment-opt__name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.pp-shipment-opt__id {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--tf-font-mono);
+  color: var(--tf-neutral-muted);
+}
+
+.pp-app-edit-line__url :deep(.q-field__control) {
+  cursor: pointer;
+}
+
+.pp-app-edit-line__url :deep(input) {
+  cursor: pointer;
+  color: var(--q-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+</style>

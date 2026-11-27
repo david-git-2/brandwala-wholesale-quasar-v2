@@ -834,7 +834,8 @@ BEGIN
         || jsonb_build_object(
           'customer_group_name', cg.name,
           'supplier_group_name', sg.name,
-          'request_number', req.request_number
+          'request_number', req.request_number,
+          'request_bucket_description', req.bucket_description
         )
         ORDER BY l.created_at DESC, l.id DESC
       ),
@@ -1048,7 +1049,10 @@ BEGIN
     RAISE EXCEPTION 'Quantity must be positive' USING ERRCODE = '22023';
   END IF;
 
-  IF v_placement <> '' AND v_placement NOT IN ('none', 'order_placed', 'not_available') THEN
+  IF v_placement <> '' AND v_placement NOT IN (
+    'none', 'added_to_cart', 'order_placed', 'cargo_warehouse',
+    'in_flight', 'local_warehouse', 'delivered', 'lost'
+  ) THEN
     RAISE EXCEPTION 'Invalid placement status: %', p_placement_status USING ERRCODE = '22023';
   END IF;
 
@@ -1088,13 +1092,19 @@ BEGIN
       unit_price = p_unit_price,
       pp_supplier_group_id = p_pp_supplier_group_id,
       shipment_id = p_shipment_id,
-      is_added_to_cart = coalesce(p_is_added_to_cart, l.is_added_to_cart),
+      placement_status = CASE WHEN v_placement = '' THEN l.placement_status ELSE v_placement END,
+      is_added_to_cart = CASE
+        WHEN v_placement <> '' THEN v_placement <> 'none'
+        ELSE coalesce(p_is_added_to_cart, l.is_added_to_cart)
+      END,
       added_to_cart_at = CASE
+        WHEN v_placement = 'none' THEN NULL
+        WHEN v_placement <> '' AND v_placement <> 'none' AND NOT l.is_added_to_cart THEN now()
+        WHEN v_placement <> '' AND v_placement <> 'none' THEN l.added_to_cart_at
         WHEN p_is_added_to_cart IS TRUE AND NOT l.is_added_to_cart THEN now()
         WHEN p_is_added_to_cart IS FALSE THEN NULL
         ELSE l.added_to_cart_at
       END,
-      placement_status = CASE WHEN v_placement = '' THEN l.placement_status ELSE v_placement END,
       placed_qty = p_placed_qty,
       status = CASE WHEN v_status = '' THEN l.status ELSE v_status END,
       updated_at = now()

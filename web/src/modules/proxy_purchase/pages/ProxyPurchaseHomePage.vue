@@ -19,7 +19,10 @@
       />
     </header>
 
-    <div class="col min-h-0 overflow-auto">
+    <div
+      class="col min-h-0"
+      :class="activeTab === 'lines' ? 'column no-wrap overflow-hidden' : 'overflow-auto'"
+    >
       <template v-if="activeTab === 'requests'">
         <TfSkeletonRows v-if="requestsQuery.isPending.value" :rows="6" :cols="1" />
         <TfEmptyState
@@ -55,13 +58,15 @@
           message="Order lines from customer requests will appear here."
           icon="ph ph-link"
         />
-        <PpOrderLineList
+        <PpAppOrderLineList
           v-else
+          ref="orderLineListRef"
+          class="col min-h-0"
           :lines="orderLines"
-          show-app-actions
-          :deleting-line-id="deletingLineId"
+          :updating-line-id="updatingLineId"
           @edit="startEditLine"
-          @delete="confirmDeleteLine"
+          @patch="onPatchLine"
+          @delete-selected="confirmDeleteSelected"
         />
       </template>
     </div>
@@ -73,14 +78,14 @@
       @submit="onLineDialogSubmit"
     />
     <TfConfirmDialog
-      v-model="showDeleteLineConfirm"
-      title="Remove item?"
-      message="This order line will be removed."
+      v-model="showDeleteSelectedConfirm"
+      title="Remove selected items?"
+      :message="deleteSelectedMessage"
       confirm-label="Remove"
       destructive
-      :confirm-loading="deleteLine.isPending.value"
-      @confirm="onConfirmDeleteLine"
-      @cancel="linePendingDelete = null"
+      :confirm-loading="deleteLines.isPending.value"
+      @confirm="onConfirmDeleteSelected"
+      @cancel="pendingDeleteIds = []"
     />
   </q-page>
 </template>
@@ -96,7 +101,7 @@ import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import PpAppEditOrderLineDialog from '../components/PpAppEditOrderLineDialog.vue';
-import PpOrderLineList from '../components/order-lines/PpOrderLineList.vue';
+import PpAppOrderLineList from '../components/order-lines/PpAppOrderLineList.vue';
 import { usePpStaffOrderLineMutations } from '../composables/usePpStaffOrderLineMutations';
 import { usePpStaffOrderLinesQuery } from '../composables/usePpStaffOrderLinesQuery';
 import { usePpStaffRequestsQuery } from '../composables/usePpStaffRequestsQuery';
@@ -125,22 +130,34 @@ const requests = computed(() => requestsQuery.data.value ?? []);
 const orderLinesQuery = usePpStaffOrderLinesQuery(staffOrderLinesQueryEnabled);
 const orderLines = computed(() => orderLinesQuery.data.value ?? []);
 
-const { updateLine, deleteLine } = usePpStaffOrderLineMutations();
+const { updateLine, deleteLines } = usePpStaffOrderLineMutations();
 
+const orderLineListRef = ref<{ clearSelection: () => void } | null>(null);
 const showLineDialog = ref(false);
 const editingLine = ref<PpOrderLine | null>(null);
-const deletingLineId = ref<number | null>(null);
-const showDeleteLineConfirm = ref(false);
-const linePendingDelete = ref<PpOrderLine | null>(null);
+const updatingLineId = ref<number | null>(null);
+const showDeleteSelectedConfirm = ref(false);
+const pendingDeleteIds = ref<number[]>([]);
+
+const deleteSelectedMessage = computed(() => {
+  const count = pendingDeleteIds.value.length;
+  return count === 1
+    ? 'This order line will be removed.'
+    : `${count} order lines will be removed.`;
+});
 
 const startEditLine = (line: PpOrderLine) => {
   editingLine.value = line;
   showLineDialog.value = true;
 };
 
-const confirmDeleteLine = (line: PpOrderLine) => {
-  linePendingDelete.value = line;
-  showDeleteLineConfirm.value = true;
+const onPatchLine = async (payload: PpStaffOrderLineUpdatePayload) => {
+  updatingLineId.value = payload.lineId;
+  try {
+    await updateLine.mutateAsync(payload);
+  } finally {
+    updatingLineId.value = null;
+  }
 };
 
 const onLineDialogSubmit = async (payload: PpStaffOrderLineUpdatePayload) => {
@@ -149,17 +166,18 @@ const onLineDialogSubmit = async (payload: PpStaffOrderLineUpdatePayload) => {
   editingLine.value = null;
 };
 
-const onConfirmDeleteLine = async () => {
-  const line = linePendingDelete.value;
-  if (!line) return;
-  deletingLineId.value = line.id;
-  try {
-    await deleteLine.mutateAsync(line.id);
-    showDeleteLineConfirm.value = false;
-    linePendingDelete.value = null;
-  } finally {
-    deletingLineId.value = null;
-  }
+const confirmDeleteSelected = (lineIds: number[]) => {
+  pendingDeleteIds.value = lineIds;
+  showDeleteSelectedConfirm.value = true;
+};
+
+const onConfirmDeleteSelected = async () => {
+  const ids = pendingDeleteIds.value;
+  if (ids.length === 0) return;
+  await deleteLines.mutateAsync(ids);
+  showDeleteSelectedConfirm.value = false;
+  pendingDeleteIds.value = [];
+  orderLineListRef.value?.clearSelection();
 };
 
 const requestLabel = (row: PpPurchaseRequestStaffListItem) =>

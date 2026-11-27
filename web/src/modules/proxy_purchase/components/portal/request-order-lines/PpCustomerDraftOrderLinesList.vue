@@ -1,5 +1,5 @@
 <template>
-  <PpOrderLineList
+  <PpCustomerOrderLineList
     :lines="lines"
     :show-image="false"
     :show-name="false"
@@ -21,12 +21,12 @@
         @click="$emit('delete', line)"
       />
     </template>
-  </PpOrderLineList>
+  </PpCustomerOrderLineList>
 </template>
 
 <script setup lang="ts">
 import TfBtn from 'src/components/ui/TfBtn.vue';
-import PpOrderLineList from '../../../components/order-lines/PpOrderLineList.vue';
+import PpCustomerOrderLineList from '../../../components/order-lines/PpCustomerOrderLineList.vue';
 import type { PpOrderLine } from '../../../types/ppPurchaseRequest';
 
 defineProps<{

@@ -69,53 +69,6 @@
           <span class="pp-order-line-item__fact-value tf-num">{{ priceLabel }}</span>
         </span>
       </div>
-
-      <p
-        v-if="showAppDetails && line.description?.trim()"
-        class="pp-order-line-item__description q-mt-xs q-mb-none"
-      >
-        {{ line.description }}
-      </p>
-
-      <div
-        v-if="showAppDetails"
-        class="pp-order-line-item__app-details column q-gutter-y-xs q-mt-xs"
-      >
-        <div class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Request</span>
-          <span class="pp-order-line-item__detail-value">
-            {{ requestLabel }}
-          </span>
-        </div>
-        <div class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Customer</span>
-          <span class="pp-order-line-item__detail-value">{{ customerLabel }}</span>
-        </div>
-        <div class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Supplier</span>
-          <span class="pp-order-line-item__detail-value">{{ supplierLabel }}</span>
-        </div>
-        <div class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Placement</span>
-          <span class="pp-order-line-item__detail-value">{{ placementLabel }}</span>
-        </div>
-        <div v-if="line.placed_qty != null" class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Placed qty</span>
-          <span class="pp-order-line-item__detail-value tf-num">{{ line.placed_qty }}</span>
-        </div>
-        <div class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Cart</span>
-          <span class="pp-order-line-item__detail-value">{{ cartLabel }}</span>
-        </div>
-        <div class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Shipment</span>
-          <span class="pp-order-line-item__detail-value">{{ shipmentLabel }}</span>
-        </div>
-        <div class="pp-order-line-item__detail-row">
-          <span class="pp-order-line-item__detail-label">Lifecycle</span>
-          <span class="pp-order-line-item__detail-value">{{ line.status }}</span>
-        </div>
-      </div>
     </div>
   </article>
 </template>
@@ -141,7 +94,6 @@ const props = withDefaults(
     showQty?: boolean;
     showPrice?: boolean;
     showStatus?: boolean;
-    showAppDetails?: boolean;
   }>(),
   {
     showId: true,
@@ -151,7 +103,6 @@ const props = withDefaults(
     showQty: true,
     showPrice: true,
     showStatus: true,
-    showAppDetails: false,
   },
 );
 
@@ -178,7 +129,7 @@ const hostLinkLabel = computed(() => {
   const host = hostLabel.value;
   if (!host) return 'Open link';
   const titleUsesHost =
-  !props.line.product_name?.trim() && props.showName && showTitle.value;
+    !props.line.product_name?.trim() && props.showName && showTitle.value;
   if (titleUsesHost) return 'View link';
   return host;
 });
@@ -190,50 +141,6 @@ const priceLabel = computed(() => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
-});
-
-const requestLabel = computed(() => {
-  const num = props.line.request_number?.trim();
-  if (num) return num;
-  return `#${props.line.purchase_request_id}`;
-});
-
-const customerLabel = computed(() => {
-  const name = props.line.customer_group_name?.trim();
-  if (name) return name;
-  return `#${props.line.pp_customer_group_id}`;
-});
-
-const supplierLabel = computed(() => {
-  if (props.line.pp_supplier_group_id == null) return '—';
-  const name = props.line.supplier_group_name?.trim();
-  if (name) return name;
-  return `#${props.line.pp_supplier_group_id}`;
-});
-
-const placementLabels: Record<string, string> = {
-  none: 'None',
-  order_placed: 'Order placed',
-  not_available: 'Not available',
-};
-
-const placementLabel = computed(
-  () => placementLabels[props.line.placement_status] ?? props.line.placement_status,
-);
-
-const cartLabel = computed(() => {
-  if (!props.line.is_added_to_cart) return 'Not in cart';
-  if (props.line.added_to_cart_at) {
-    return `In cart · ${props.line.added_to_cart_at.slice(0, 10)}`;
-  }
-  return 'In cart';
-});
-
-const shipmentLabel = computed(() => {
-  if (props.line.shipment_id == null) return '—';
-  const status = props.line.shipment_status?.trim();
-  if (status) return `#${props.line.shipment_id} · ${status}`;
-  return `#${props.line.shipment_id}`;
 });
 </script>
 
@@ -360,40 +267,6 @@ const shipmentLabel = computed(() => {
   font-size: 13px;
   font-weight: 700;
   color: var(--tf-neutral-ink);
-}
-
-.pp-order-line-item__description {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--tf-neutral-muted);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.pp-order-line-item__app-details {
-  padding-top: 8px;
-  border-top: 1px solid var(--tf-neutral-border);
-}
-
-.pp-order-line-item__detail-row {
-  display: grid;
-  grid-template-columns: 88px 1fr;
-  gap: 8px;
-  align-items: baseline;
-  font-size: 12px;
-}
-
-.pp-order-line-item__detail-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--tf-neutral-muted);
-}
-
-.pp-order-line-item__detail-value {
-  color: var(--tf-neutral-ink);
-  word-break: break-word;
 }
 
 @media (max-width: 420px) {

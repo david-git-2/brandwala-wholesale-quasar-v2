@@ -2,7 +2,16 @@ export type PpPurchaseRequestStatus = 'draft' | 'requested';
 
 export type PpOrderLineStatus = 'draft' | 'requested' | 'processing' | 'done' | 'cancelled';
 
-export type PpOrderLinePlacementStatus = 'none' | 'order_placed' | 'not_available';
+/** Stored as `placement_status`; staff UI labels this Fulfillment. */
+export type PpOrderLinePlacementStatus =
+  | 'none'
+  | 'added_to_cart'
+  | 'order_placed'
+  | 'cargo_warehouse'
+  | 'in_flight'
+  | 'local_warehouse'
+  | 'delivered'
+  | 'lost';
 
 export interface PpPurchaseRequestListItem {
   id: number;
@@ -52,6 +61,7 @@ export interface PpOrderLine {
   customer_group_name?: string | null;
   supplier_group_name?: string | null;
   request_number?: string | null;
+  request_bucket_description?: string | null;
 }
 
 export type PpStaffOrderLineUpdatePayload = {

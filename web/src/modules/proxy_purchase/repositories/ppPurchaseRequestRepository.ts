@@ -6,6 +6,7 @@ import type {
   PpPurchaseRequestStaffListItem,
   PpStaffOrderLineUpdatePayload,
 } from '../types/ppPurchaseRequest';
+import { normalizePpOrderLinePlacementStatus } from '../utils/ppOrderLinePlacement';
 
 function parseRequest(data: unknown): PpPurchaseRequest {
   if (data == null || typeof data !== 'object') {
@@ -98,10 +99,7 @@ function parseLineRow(row: Record<string, unknown>): PpOrderLine | null {
     shipment_status: typeof row.shipment_status === 'string' ? row.shipment_status : null,
     is_added_to_cart: Boolean(row.is_added_to_cart),
     added_to_cart_at: typeof row.added_to_cart_at === 'string' ? row.added_to_cart_at : null,
-    placement_status:
-      row.placement_status === 'order_placed' || row.placement_status === 'not_available'
-        ? row.placement_status
-        : 'none',
+    placement_status: normalizePpOrderLinePlacementStatus(row.placement_status),
     placed_qty: row.placed_qty == null ? null : Number(row.placed_qty),
     status: typeof row.status === 'string' ? (row.status as PpOrderLine['status']) : 'draft',
     created_at: typeof row.created_at === 'string' ? row.created_at : '',
@@ -110,6 +108,10 @@ function parseLineRow(row: Record<string, unknown>): PpOrderLine | null {
     supplier_group_name:
       typeof row.supplier_group_name === 'string' ? row.supplier_group_name : null,
     request_number: typeof row.request_number === 'string' ? row.request_number : null,
+    request_bucket_description:
+      typeof row.request_bucket_description === 'string'
+        ? row.request_bucket_description
+        : null,
   };
 }
 

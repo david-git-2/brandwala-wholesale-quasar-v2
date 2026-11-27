@@ -52,5 +52,27 @@ export function usePpStaffOrderLineMutations() {
     },
   });
 
-  return { updateLine, deleteLine };
+  const deleteLines = useMutation({
+    mutationFn: async (lineIds: number[]) => {
+      const tid = tenantId.value;
+      if (!tid) throw new Error('Tenant not ready.');
+      const uniqueIds = [...new Set(lineIds.filter((id) => Number.isFinite(id) && id > 0))];
+      if (uniqueIds.length === 0) return 0;
+      for (const lineId of uniqueIds) {
+        await ppPurchaseRequestRepository.deleteLineForStaff(tid, lineId);
+      }
+      return uniqueIds.length;
+    },
+    onSuccess: (count) => {
+      showSuccessNotification(count === 1 ? 'Item removed.' : `${count} items removed.`);
+      invalidateStaffLines();
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Could not remove items.';
+      showErrorNotification(message);
+      invalidateStaffLines();
+    },
+  });
+
+  return { updateLine, deleteLine, deleteLines };
 }

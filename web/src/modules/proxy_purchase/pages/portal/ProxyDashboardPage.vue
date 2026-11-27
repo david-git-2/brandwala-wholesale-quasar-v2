@@ -85,7 +85,7 @@
             message="Add items to a purchase request to see them here."
             icon="ph ph-link"
           />
-          <PpOrderLineList v-else :lines="orderLines" />
+          <PpCustomerOrderLineList v-else :lines="orderLines" />
         </template>
       </template>
     </div>
@@ -116,7 +116,7 @@ import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
-import PpOrderLineList from '../../components/order-lines/PpOrderLineList.vue';
+import PpCustomerOrderLineList from '../../components/order-lines/PpCustomerOrderLineList.vue';
 import { usePpCustomerDashboardQuery } from '../../composables/usePpCustomerDashboardQuery';
 import { usePpCustomerOrderLinesQuery } from '../../composables/usePpCustomerOrderLinesQuery';
 import { usePpPurchaseRequestMutations } from '../../composables/usePpPurchaseRequestMutations';
