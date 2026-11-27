@@ -50,6 +50,7 @@ Live SQL: `supabase/schemas/`. Types: `web/src/types/database.types.ts`. See [ST
 | Dashboard | [spec](features/dashboard/spec.md) | `dashboard/` | `get_app_dashboard_bundle` |
 | Investor | [spec](features/investor_capital/spec.md) | `investor_capital/`, `investor_portal/` | stub |
 | Thrift | [spec](features/thrift/spec.md) | `thrift/` | `public.sql` |
+| Proxy purchase | [spec](features/proxy_purchase/spec.md) | `proxy_purchase/` | `proxy_purchase/` (target) |
 | Landing / help | [spec](features/landing/spec.md) | `landing/`, `help/` | n/a |
 
 ---
