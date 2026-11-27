@@ -4,7 +4,7 @@ import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authS
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { ppPurchaseRequestRepository } from '../repositories/ppPurchaseRequestRepository';
 import { ppPurchaseQueryKeys } from '../shared/queryKeys/ppPurchaseQueryKeys';
-import type { PpPurchaseRequest } from '../types/ppPurchaseRequest';
+import type { PpBucketInstruction, PpPurchaseRequest } from '../types/ppPurchaseRequest';
 
 export function usePpPurchaseRequestMutations(requestId: Ref<number | null>) {
   const queryClient = useQueryClient();
@@ -106,11 +106,11 @@ export function usePpPurchaseRequestMutations(requestId: Ref<number | null>) {
   });
 
   const saveInstructions = useMutation({
-    mutationFn: async (bucketDescription: string) => {
+    mutationFn: async (bucketInstructions: PpBucketInstruction[]) => {
       const tid = tenantId.value;
       const rid = requestId.value;
       if (!tid || !rid) throw new Error('Request not ready.');
-      await ppPurchaseRequestRepository.updateInstructions(tid, rid, bucketDescription);
+      await ppPurchaseRequestRepository.updateInstructions(tid, rid, bucketInstructions);
     },
     onSuccess: () => {
       showSuccessNotification('Instructions saved.');
@@ -159,7 +159,7 @@ export function usePpPurchaseRequestMutations(requestId: Ref<number | null>) {
                   ...prev,
                   status: 'requested',
                   request_number: posted.request_number ?? prev.request_number,
-                  bucket_description: posted.bucket_description ?? prev.bucket_description,
+                  bucket_instructions: posted.bucket_instructions ?? prev.bucket_instructions,
                   updated_at: posted.updated_at || prev.updated_at,
                 }
               : prev,

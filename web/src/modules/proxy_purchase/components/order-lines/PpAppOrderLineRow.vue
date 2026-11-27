@@ -10,7 +10,10 @@
         />
       </div>
 
-      <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--product">
+      <div
+        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--product pp-app-order-line-row__cell--clickable"
+        @click="openEdit"
+      >
         <div class="pp-app-order-line-row__product row items-center">
           <div class="pp-app-order-line-row__thumb shrink-0">
             <q-img
@@ -38,7 +41,7 @@
                 icon="ph ph-arrow-square-out"
                 class="pp-app-order-line-row__link"
                 :aria-label="`Open product link for line ${line.id}`"
-                @click="openPpOrderLineUrl(line.url)"
+                @click.stop="openPpOrderLineUrl(line.url)"
               />
             </div>
           </div>
@@ -46,10 +49,60 @@
       </div>
 
       <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--description">
-        <div v-if="customerDescription" class="pp-app-order-line-row__description">
-          {{ customerDescription }}
+        <div class="pp-app-order-line-row__description-stack column min-width-0 full-width">
+          <div v-if="customerDescription" class="pp-app-order-line-row__description">
+            {{ customerDescription }}
+          </div>
+          <span
+            v-else-if="!requestInstructionDisplays.length"
+            class="pp-app-order-line-row__empty"
+          >—</span>
+          <q-btn
+            v-if="requestInstructionDisplays.length"
+            flat
+            dense
+            no-caps
+            size="sm"
+            color="primary"
+            icon="ph ph-info"
+            label="Additional info"
+            class="pp-app-order-line-row__additional-info q-mt-xs"
+            :aria-label="`Additional info for line ${line.id}`"
+            @click.stop
+          >
+            <q-menu
+              ref="additionalInfoMenuRef"
+              anchor="bottom left"
+              self="top left"
+              :offset="[0, 4]"
+              content-class="pp-app-order-line-row__instructions-menu-panel"
+              @click.stop
+            >
+              <div class="pp-app-order-line-row__instructions-menu-body column q-gutter-y-sm">
+                <div
+                  class="pp-app-order-line-row__instructions-menu-head row items-center justify-between no-wrap"
+                >
+                  <span class="pp-app-order-line-row__instructions-menu-title">Additional info</span>
+                  <TfBtn
+                    variant="icon"
+                    size="sm"
+                    icon="ph ph-x"
+                    aria-label="Close additional info"
+                    @click="closeAdditionalInfoMenu"
+                  />
+                </div>
+                <div
+                  v-for="(item, idx) in requestInstructionDisplays"
+                  :key="`${item.storeLabel}-${idx}`"
+                  class="row no-wrap items-start q-gutter-x-sm min-width-0"
+                >
+                  <span class="pp-app-order-line-row__instructions-label">{{ item.storeLabel }}</span>
+                  <span class="pp-app-order-line-row__instructions-text">{{ item.description }}</span>
+                </div>
+              </div>
+            </q-menu>
+          </q-btn>
         </div>
-        <span v-else class="pp-app-order-line-row__empty">—</span>
       </div>
 
       <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--store">
@@ -160,6 +213,7 @@
       <div
         class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--placement"
         :class="placementCellClass"
+        @click.stop
       >
         <q-select
           :model-value="placementSelectValue"
@@ -176,7 +230,10 @@
         />
       </div>
 
-      <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--supplier">
+      <div
+        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--supplier"
+        @click.stop
+      >
         <q-select
           :model-value="line.pp_supplier_group_id"
           dense
@@ -193,7 +250,10 @@
         />
       </div>
 
-      <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--shipment">
+      <div
+        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--shipment"
+        @click.stop
+      >
         <q-select
           :model-value="line.shipment_id"
           dense
@@ -239,23 +299,6 @@
           </template>
         </q-select>
       </div>
-
-      <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--actions">
-        <TfBtn
-          variant="icon"
-          icon="ph ph-pencil"
-          aria-label="Edit item"
-          @click="emit('edit', line)"
-        />
-      </div>
-    </div>
-
-    <div
-      v-if="requestInstructions"
-      class="pp-app-order-line-row__instructions-band"
-    >
-      <span class="pp-app-order-line-row__instructions-label">Request</span>
-      <span class="pp-app-order-line-row__instructions-text">{{ requestInstructions }}</span>
     </div>
   </div>
 </template>
@@ -270,6 +313,7 @@ import {
 import { PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS } from '../../utils/ppOrderLinePlacement';
 import { ppPlacementCellClass } from '../../utils/ppOrderLineSelectTones';
 import { buildPpStaffOrderLineUpdate } from '../../utils/ppStaffOrderLineUpdate';
+import { ppBucketInstructionsForLine } from '../../utils/ppBucketInstructions';
 import type { PpShipmentSelectOption } from '../../types/ppShipment';
 import type {
   PpOrderLine,
@@ -294,6 +338,16 @@ const emit = defineEmits<{
   patch: [payload: PpStaffOrderLineUpdatePayload];
   'toggle-select': [lineId: number, selected: boolean];
 }>();
+
+const openEdit = () => {
+  emit('edit', props.line);
+};
+
+const additionalInfoMenuRef = ref<{ hide: () => void } | null>(null);
+
+const closeAdditionalInfoMenu = () => {
+  additionalInfoMenuRef.value?.hide();
+};
 
 const placementOptions = PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS;
 
@@ -336,8 +390,8 @@ const customerLabel = computed(() => {
 
 const customerDescription = computed(() => props.line.description?.trim() || '');
 
-const requestInstructions = computed(
-  () => props.line.request_bucket_description?.trim() || '',
+const requestInstructionDisplays = computed(() =>
+  ppBucketInstructionsForLine(props.line.request_bucket_instructions, props.line.url),
 );
 
 const neededQtyDraft = ref<number>(props.line.needed_qty);
@@ -487,8 +541,7 @@ const onShipmentChange = (value: number | null) => {
     minmax(8.5rem, 0.85fr)
     minmax(6.75rem, 0.75fr)
     minmax(6.5rem, 0.72fr)
-    minmax(11rem, 1.15fr)
-    2.75rem;
+    minmax(11rem, 1.15fr);
   align-items: stretch;
   min-width: 0;
 }
@@ -530,7 +583,10 @@ const onShipmentChange = (value: number | null) => {
   font-weight: 600;
 }
 
-.pp-app-order-line-row__cell--actions,
+.pp-app-order-line-row__cell--clickable {
+  cursor: pointer;
+}
+
 .pp-app-order-line-row__cell--select {
   display: flex;
   justify-content: center;
@@ -591,13 +647,35 @@ const onShipmentChange = (value: number | null) => {
   color: var(--tf-neutral-muted);
 }
 
-.pp-app-order-line-row__instructions-band {
-  width: 100%;
-  padding: 0.45rem 0.65rem;
-  border-top: 1px solid var(--tf-neutral-border);
-  background: color-mix(in srgb, var(--tf-disabled-bg) 45%, var(--tf-neutral-surface));
+.pp-app-order-line-row__description-stack {
+  gap: 2px;
+}
+
+.pp-app-order-line-row__additional-info {
+  align-self: flex-start;
+  padding: 0 4px;
+  min-height: 0;
+  font-size: 11px;
+}
+
+.pp-app-order-line-row__instructions-menu-body {
+  max-width: min(22rem, 80vw);
+  padding: 0.5rem 0.65rem 0.65rem;
   font-size: 11px;
   line-height: 1.4;
+  color: var(--tf-neutral-ink);
+}
+
+.pp-app-order-line-row__instructions-menu-head {
+  gap: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--tf-neutral-border);
+  margin-bottom: 0.15rem;
+}
+
+.pp-app-order-line-row__instructions-menu-title {
+  font-size: 11px;
+  font-weight: 600;
   color: var(--tf-neutral-ink);
 }
 
@@ -980,5 +1058,13 @@ const onShipmentChange = (value: number | null) => {
 .pp-order-line-tone--placement-lost {
   background: #fca5a5;
   color: #7f1d1d;
+}
+
+.pp-app-order-line-row__instructions-menu-panel {
+  border: 1px solid var(--tf-neutral-border);
+  border-radius: 8px;
+  background: var(--tf-disabled-bg);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--tf-neutral-ink) 10%, transparent);
+  overflow: hidden;
 }
 </style>

@@ -4,7 +4,10 @@ import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authS
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { ppPurchaseRequestRepository } from '../repositories/ppPurchaseRequestRepository';
 import { ppPurchaseQueryKeys } from '../shared/queryKeys/ppPurchaseQueryKeys';
-import type { PpStaffOrderLineUpdatePayload } from '../types/ppPurchaseRequest';
+import type {
+  PpStaffOrderLineUpdatePayload,
+  PpStaffOrderLineWritePayload,
+} from '../types/ppPurchaseRequest';
 
 export function usePpStaffOrderLineMutations() {
   const queryClient = useQueryClient();
@@ -22,6 +25,22 @@ export function usePpStaffOrderLineMutations() {
       queryKey: ppPurchaseQueryKeys.staffRequests(tenantId.value),
     });
   };
+
+  const addLine = useMutation({
+    mutationFn: async (payload: { requestId: number; line: PpStaffOrderLineWritePayload }) => {
+      const tid = tenantId.value;
+      if (!tid) throw new Error('Tenant not ready.');
+      return ppPurchaseRequestRepository.addLineForStaff(tid, payload.requestId, payload.line);
+    },
+    onSuccess: () => {
+      showSuccessNotification('Item added.');
+      invalidateStaffLines();
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Could not add item.';
+      showErrorNotification(message);
+    },
+  });
 
   const updateLine = useMutation({
     mutationFn: async (payload: PpStaffOrderLineUpdatePayload) => {
@@ -77,5 +96,5 @@ export function usePpStaffOrderLineMutations() {
     },
   });
 
-  return { updateLine, deleteLine, deleteLines };
+  return { addLine, updateLine, deleteLine, deleteLines };
 }

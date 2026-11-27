@@ -1,7 +1,7 @@
 <template>
   <FilterSidebar
     :model-value="modelValue"
-    title="Edit order line"
+    :title="isAddMode ? 'Add item' : 'Edit order line'"
     width="min(480px, 92vw)"
     :resizable="false"
     @update:model-value="$emit('update:modelValue', $event)"
@@ -10,16 +10,17 @@
     <div class="q-gutter-y-sm">
       <q-input
         v-model="url"
-        class="pp-app-edit-line__url"
+        :class="{ 'pp-app-edit-line__url': !isAddMode }"
         outlined
         dense
         hide-bottom-space
-        readonly
+        :readonly="!isAddMode"
         label="Product URL"
         type="url"
-        @click="openUrl"
+        :autofocus="isAddMode"
+        @click="!isAddMode ? openUrl() : undefined"
       >
-        <template #append>
+        <template v-if="!isAddMode" #append>
           <q-icon
             name="ph ph-arrow-square-out"
             class="cursor-pointer"
@@ -34,6 +35,39 @@
         hide-bottom-space
         readonly
         label="Store"
+      />
+      <q-input
+        v-model.number="neededQty"
+        outlined
+        dense
+        hide-bottom-space
+        :readonly="!isAddMode"
+        type="number"
+        label="Quantity needed"
+        min="1"
+        step="1"
+      />
+      <q-input
+        v-model="description"
+        outlined
+        dense
+        hide-bottom-space
+        :readonly="!isAddMode"
+        type="textarea"
+        label="Customer description"
+        :rows="3"
+      />
+      <q-input v-model="productName" outlined dense hide-bottom-space label="Product name" />
+      <q-input v-model="imageUrl" outlined dense hide-bottom-space label="Image URL" type="url" />
+      <q-input
+        v-model.number="unitPrice"
+        outlined
+        dense
+        hide-bottom-space
+        type="number"
+        min="0"
+        step="0.01"
+        label="Unit price"
       />
       <q-input
         v-model="trackingUrl"
@@ -53,37 +87,6 @@
           />
         </template>
       </q-input>
-      <q-input
-        v-model.number="neededQty"
-        outlined
-        dense
-        hide-bottom-space
-        readonly
-        type="number"
-        label="Quantity needed"
-      />
-      <q-input
-        v-model="description"
-        outlined
-        dense
-        hide-bottom-space
-        readonly
-        type="textarea"
-        label="Customer description"
-        :rows="3"
-      />
-      <q-input v-model="productName" outlined dense hide-bottom-space label="Product name" />
-      <q-input v-model="imageUrl" outlined dense hide-bottom-space label="Image URL" type="url" />
-      <q-input
-        v-model.number="unitPrice"
-        outlined
-        dense
-        hide-bottom-space
-        type="number"
-        min="0"
-        step="0.01"
-        label="Unit price"
-      />
       <q-select
         v-model="supplierGroupId"
         outlined
@@ -165,7 +168,7 @@
         <TfBtn
           variant="primary"
           size="md"
-          label="Save"
+          :label="isAddMode ? 'Add' : 'Save'"
           :loading="loading"
           :disable="!canSubmit"
           @click="submit"
@@ -185,22 +188,30 @@ import type {
   PpOrderLine,
   PpOrderLinePlacementStatus,
   PpStaffOrderLineUpdatePayload,
+  PpStaffOrderLineWritePayload,
 } from '../types/ppPurchaseRequest';
 import { buildPpShipmentSelectOptions } from '../types/ppShipment';
 import { PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS } from '../utils/ppOrderLinePlacement';
-import { buildPpStaffOrderLineUpdate } from '../utils/ppStaffOrderLineUpdate';
+import {
+  buildPpStaffOrderLineUpdate,
+  buildPpStaffOrderLineWrite,
+} from '../utils/ppStaffOrderLineUpdate';
 import { openPpOrderLineUrl, ppOrderLineHostLabel } from '../utils/ppOrderLineUrl';
 
 const props = defineProps<{
   modelValue: boolean;
   loading?: boolean;
   editLine?: PpOrderLine | null;
+  addMode?: boolean;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
   submit: [payload: PpStaffOrderLineUpdatePayload];
+  create: [payload: PpStaffOrderLineWritePayload];
 }>();
+
+const isAddMode = computed(() => props.addMode === true);
 
 const supplierType = ref<'supplier'>('supplier');
 const supplierGroupsQuery = usePpPeopleGroupsQuery(supplierType);
@@ -234,6 +245,21 @@ const shipmentOptions = computed(() =>
 
 const storeLabel = computed(() => ppOrderLineHostLabel(url.value));
 
+const resetForm = () => {
+  url.value = '';
+  trackingUrl.value = '';
+  neededQty.value = null;
+  description.value = '';
+  productName.value = '';
+  imageUrl.value = '';
+  unitPrice.value = null;
+  supplierGroupId.value = null;
+  shipmentId.value = null;
+  placementStatus.value = 'requested';
+  placedQty.value = null;
+  receivedQty.value = null;
+};
+
 const populateFromEdit = () => {
   const line = props.editLine;
   if (!line) return;
@@ -252,9 +278,14 @@ const populateFromEdit = () => {
 };
 
 watch(
-  () => [props.modelValue, props.editLine] as const,
+  () => [props.modelValue, props.editLine, props.addMode] as const,
   ([open]) => {
-    if (open) populateFromEdit();
+    if (!open) return;
+    if (isAddMode.value) {
+      resetForm();
+      return;
+    }
+    populateFromEdit();
   },
 );
 
@@ -271,26 +302,30 @@ const openTrackingUrl = () => {
   openPpOrderLineUrl(trackingUrl.value);
 };
 
+const formInput = () => ({
+  url: url.value.trim(),
+  tracking_url: trackingUrl.value.trim() || null,
+  needed_qty: neededQty.value as number,
+  description: description.value.trim() || null,
+  product_name: productName.value.trim() || null,
+  image_url: imageUrl.value.trim() || null,
+  unit_price: unitPrice.value,
+  pp_supplier_group_id: supplierGroupId.value,
+  shipment_id: shipmentId.value,
+  placement_status: placementStatus.value,
+  placed_qty: placedQty.value,
+  received_qty: receivedQty.value,
+});
+
 const submit = () => {
+  if (!canSubmit.value || neededQty.value == null) return;
+  if (isAddMode.value) {
+    emit('create', buildPpStaffOrderLineWrite(formInput()));
+    return;
+  }
   const line = props.editLine;
-  if (!canSubmit.value || neededQty.value == null || !line) return;
-  emit(
-    'submit',
-    buildPpStaffOrderLineUpdate(line, {
-      url: url.value.trim(),
-      tracking_url: trackingUrl.value.trim() || null,
-      needed_qty: neededQty.value,
-      description: description.value.trim() || null,
-      product_name: productName.value.trim() || null,
-      image_url: imageUrl.value.trim() || null,
-      unit_price: unitPrice.value,
-      pp_supplier_group_id: supplierGroupId.value,
-      shipment_id: shipmentId.value,
-      placement_status: placementStatus.value,
-      placed_qty: placedQty.value,
-      received_qty: receivedQty.value,
-    }),
-  );
+  if (!line) return;
+  emit('submit', buildPpStaffOrderLineUpdate(line, formInput()));
 };
 </script>
 

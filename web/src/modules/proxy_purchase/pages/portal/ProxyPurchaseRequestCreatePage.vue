@@ -36,13 +36,13 @@
               size="md"
               label="Instructions"
               icon="ph ph-note-pencil"
-              @click="showInstructions = true"
+              @click="openInstructionsAdd"
             />
             <TfBtn
               v-if="isDraft"
               variant="primary"
               size="md"
-              label="Post"
+              label="Request"
               icon="ph ph-paper-plane-tilt"
               :loading="postRequest.isPending.value"
               :disable="!canPost"
@@ -63,20 +63,16 @@
         <PpRequestOrderLinesSection
           :view-key="orderLinesViewKey"
           :lines="lines"
+          :instructions="requestQuery.data.value?.bucket_instructions"
           :loading="requestQuery.isPending.value || linesQuery.isPending.value"
           :deleting-line-id="deletingLineId"
+          :deleting-instruction-store="deletingInstructionStore"
           @add-item="openAddLine"
           @edit-line="startEditLine"
           @delete-line="confirmDeleteLine"
+          @edit-instruction="openInstructionsEdit"
+          @delete-instruction="deleteInstruction"
         />
-
-      <section
-        v-if="requestQuery.data.value?.bucket_description"
-        class="q-mt-md q-pa-md pp-request-create-page__instructions"
-      >
-        <div class="text-caption text-weight-bold text-uppercase q-mb-xs">Instructions</div>
-        <div class="text-body2">{{ requestQuery.data.value.bucket_description }}</div>
-      </section>
       </template>
     </div>
 
@@ -88,16 +84,18 @@
     />
     <PpRequestInstructionsDialog
       v-model="showInstructions"
-      :initial-text="requestQuery.data.value?.bucket_description"
+      :initial-instructions="requestQuery.data.value?.bucket_instructions"
+      :store-hosts="instructionStoreHosts"
+      :initial-selected-store="instructionsFocusStore"
       :loading="saveInstructions.isPending.value"
       @submit="onSaveInstructions"
     />
 
     <TfConfirmDialog
       v-model="showPostConfirm"
-      title="Post to admin?"
-      message="You will not be able to edit items or instructions after posting."
-      confirm-label="Post"
+      title="Submit request?"
+      message="You will not be able to edit items or instructions after submitting."
+      confirm-label="Request"
       :confirm-loading="postRequest.isPending.value"
       @confirm="onConfirmPost"
     />
@@ -134,7 +132,8 @@ import { getProxyDashboardRouteLocation } from 'src/modules/tenant/utils/tenantR
 import PpAddOrderLineDialog from '../../components/portal/PpAddOrderLineDialog.vue';
 import PpRequestInstructionsDialog from '../../components/portal/PpRequestInstructionsDialog.vue';
 import PpRequestOrderLinesSection from '../../components/portal/request-order-lines/PpRequestOrderLinesSection.vue';
-import type { PpOrderLine } from '../../types/ppPurchaseRequest';
+import type { PpBucketInstruction, PpOrderLine } from '../../types/ppPurchaseRequest';
+import { distinctHostsFromLines } from '../../utils/ppBucketInstructions';
 import { usePpPurchaseRequestPageQuery } from '../../composables/usePpPurchaseRequestPageQuery';
 import { usePpPurchaseRequestMutations } from '../../composables/usePpPurchaseRequestMutations';
 import { usePpRequestOrderLinesView } from '../../composables/usePpRequestOrderLinesView';
@@ -169,6 +168,8 @@ const { viewKey: orderLinesViewKey } = usePpRequestOrderLinesView(requestStatus)
 const isDraft = computed(() => requestStatus.value === 'draft');
 const canPost = computed(() => isDraft.value && lines.value.length > 0 && !postRequest.isPending.value);
 
+const instructionStoreHosts = computed(() => distinctHostsFromLines(lines.value.map((l) => l.url)));
+
 const requestHeadline = computed(() => {
   const req = requestQuery.data.value;
   if (!req) return '…';
@@ -181,6 +182,8 @@ const showLineDialog = ref(false);
 const editingLine = ref<PpOrderLine | null>(null);
 const deletingLineId = ref<number | null>(null);
 const showInstructions = ref(false);
+const instructionsFocusStore = ref<string | null>(null);
+const deletingInstructionStore = ref<string | null>(null);
 const showPostConfirm = ref(false);
 const showDeleteRequestConfirm = ref(false);
 const showDeleteLineConfirm = ref(false);
@@ -257,9 +260,36 @@ const onConfirmDeleteLine = async () => {
   }
 };
 
-const onSaveInstructions = async (text: string) => {
-  await saveInstructions.mutateAsync(text);
+const openInstructionsAdd = () => {
+  const existing = new Set(
+    (requestQuery.data.value?.bucket_instructions ?? []).map((e) => e.store),
+  );
+  const nextHost = instructionStoreHosts.value.find((h) => !existing.has(h));
+  instructionsFocusStore.value = nextHost ?? null;
+  showInstructions.value = true;
+};
+
+const openInstructionsEdit = (store: string) => {
+  instructionsFocusStore.value = store;
+  showInstructions.value = true;
+};
+
+const deleteInstruction = async (store: string) => {
+  const next = (requestQuery.data.value?.bucket_instructions ?? []).filter(
+    (e) => e.store !== store,
+  );
+  deletingInstructionStore.value = store;
+  try {
+    await saveInstructions.mutateAsync(next);
+  } finally {
+    deletingInstructionStore.value = null;
+  }
+};
+
+const onSaveInstructions = async (instructions: PpBucketInstruction[]) => {
+  await saveInstructions.mutateAsync(instructions);
   showInstructions.value = false;
+  instructionsFocusStore.value = null;
 };
 
 const confirmPost = () => {
@@ -314,9 +344,4 @@ const onConfirmDeleteRequest = async () => {
   line-height: 1.2;
 }
 
-.pp-request-create-page__instructions {
-  border: 1px solid var(--tf-neutral-border);
-  border-radius: 8px;
-  background: var(--tf-neutral-surface);
-}
 </style>

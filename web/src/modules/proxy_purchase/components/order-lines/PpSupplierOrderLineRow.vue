@@ -126,11 +126,17 @@
     </div>
 
     <div
-      v-if="requestInstructions"
-      class="pp-supplier-order-line-row__instructions-band"
+      v-if="requestInstructionDisplays.length"
+      class="pp-supplier-order-line-row__instructions-band column q-gutter-y-xs"
     >
-      <span class="pp-supplier-order-line-row__instructions-label">Request</span>
-      <span class="pp-supplier-order-line-row__instructions-text">{{ requestInstructions }}</span>
+      <div
+        v-for="(item, idx) in requestInstructionDisplays"
+        :key="`${item.storeLabel}-${idx}`"
+        class="row no-wrap items-start q-gutter-x-sm min-width-0"
+      >
+        <span class="pp-supplier-order-line-row__instructions-label">{{ item.storeLabel }}</span>
+        <span class="pp-supplier-order-line-row__instructions-text">{{ item.description }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -147,6 +153,7 @@ import {
 } from '../../utils/ppOrderLinePlacement';
 import { ppPlacementCellClass } from '../../utils/ppOrderLineSelectTones';
 import { buildPpSupplierOrderLineUpdate } from '../../utils/ppSupplierOrderLineUpdate';
+import { ppBucketInstructionsForLine } from '../../utils/ppBucketInstructions';
 import type {
   PpOrderLine,
   PpOrderLinePlacementStatus,
@@ -211,8 +218,8 @@ const priceLabel = computed(() => {
 
 const customerDescription = computed(() => props.line.description?.trim() || '');
 
-const requestInstructions = computed(
-  () => props.line.request_bucket_description?.trim() || '',
+const requestInstructionDisplays = computed(() =>
+  ppBucketInstructionsForLine(props.line.request_bucket_instructions, props.line.url),
 );
 
 const placedQtyLabel = computed(() =>

@@ -1887,14 +1887,14 @@ isOneToOne: false
                   ]
                 },"pp_purchase_requests": {
                   Row: {
-                    "bucket_description": string | null,"created_at": string,"created_by_member_id": number,"deleted_at": string | null,"id": number,"people_group_id": number,"request_number": string | null,"status": string,"tenant_id": number,"updated_at": string
+                    "bucket_instructions": NonNullable<Json>,"created_at": string,"created_by_member_id": number,"deleted_at": string | null,"id": number,"people_group_id": number,"request_number": string | null,"status": string,"tenant_id": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "bucket_description"?: string | null,"created_at"?: string,"created_by_member_id": number,"deleted_at"?: string | null,"id"?: number,"people_group_id": number,"request_number"?: string | null,"status"?: string,"tenant_id": number,"updated_at"?: string
+                    "bucket_instructions"?: NonNullable<Json>,"created_at"?: string,"created_by_member_id": number,"deleted_at"?: string | null,"id"?: number,"people_group_id": number,"request_number"?: string | null,"status"?: string,"tenant_id": number,"updated_at"?: string
                   }
                   Update: {
-                    "bucket_description"?: string | null,"created_at"?: string,"created_by_member_id"?: number,"deleted_at"?: string | null,"id"?: number,"people_group_id"?: number,"request_number"?: string | null,"status"?: string,"tenant_id"?: number,"updated_at"?: string
+                    "bucket_instructions"?: NonNullable<Json>,"created_at"?: string,"created_by_member_id"?: number,"deleted_at"?: string | null,"id"?: number,"people_group_id"?: number,"request_number"?: string | null,"status"?: string,"tenant_id"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -4788,6 +4788,9 @@ isOneToOne: false
               "member_id": number,"people_group_id": number,"request_status": string
             }[]
                            },
+"_pp_normalize_bucket_instructions":
+{ Args: { "p_payload": Json }; Returns: Json
+                           },
 "_pp_order_line_to_json":
 { Args: { "l": Omit<Database["public"]['Tables']["pp_order_lines"]['Row'], Database["public"]['Tables']["pp_order_lines"]['ComputedFields']>,"p_shipment_status"?: string }; Returns: Json
                            },
@@ -5065,6 +5068,9 @@ isOneToOne: false
                            },
 "add_pp_order_line":
 { Args: { "p_description"?: string,"p_needed_qty": number,"p_request_id": number,"p_tenant_id": number,"p_url": string }; Returns: Json
+                           },
+"add_pp_order_line_staff":
+{ Args: { "p_description"?: string,"p_image_url"?: string,"p_is_added_to_cart"?: boolean,"p_needed_qty": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_pp_supplier_group_id"?: number,"p_product_name"?: string,"p_received_qty"?: number,"p_request_id": number,"p_shipment_id"?: number,"p_tenant_id": number,"p_tracking_url"?: string,"p_unit_price"?: number,"p_url": string }; Returns: Json
                            },
 "add_shipment_item_from_product":
 { Args: { "p_product_id": number,"p_quantity": number,"p_shipment_id": number }; Returns: {
@@ -7394,7 +7400,7 @@ isOneToOne: false
 { Args: { "p_source_id": string,"p_source_type": string,"p_tenant_id": number }; Returns: Json
                            },
 "list_pp_order_lines":
-{ Args: { "p_placement_statuses"?: (string)[],"p_pp_customer_group_id"?: number,"p_pp_supplier_group_id"?: number,"p_shipment_id"?: number,"p_tenant_id": number,"p_url_hosts"?: (string)[] }; Returns: Json
+{ Args: { "p_placement_statuses"?: (string)[],"p_pp_customer_group_id"?: number,"p_pp_supplier_group_id"?: number,"p_purchase_request_id"?: number,"p_shipment_id"?: number,"p_tenant_id": number,"p_url_hosts"?: (string)[] }; Returns: Json
                            },
 "list_pp_order_lines_for_customer":
 { Args: { "p_tenant_id": number }; Returns: Json
@@ -8995,7 +9001,7 @@ isOneToOne: false
 { Args: { "p_line_id": number,"p_people_group_member_id": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "update_pp_purchase_request_instructions":
-{ Args: { "p_bucket_description": string,"p_request_id": number,"p_tenant_id": number }; Returns: Json
+{ Args: { "p_bucket_instructions": Json,"p_request_id": number,"p_tenant_id": number }; Returns: Json
                            },
 "update_product_based_costing_items":
 { Args: { "p_items": Json }; Returns: {

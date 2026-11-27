@@ -43,6 +43,18 @@
         :loading="loading"
       />
       <q-select
+        :model-value="draft.purchase_request_id"
+        @update:model-value="patchDraft({ purchase_request_id: $event })"
+        :options="purchaseRequestOptions"
+        outlined
+        dense
+        label="Request"
+        emit-value
+        map-options
+        clearable
+        :loading="loading"
+      />
+      <q-select
         :model-value="draft.pp_supplier_group_id"
         @update:model-value="patchDraft({ pp_supplier_group_id: $event })"
         :options="supplierGroupOptions"
@@ -128,6 +140,7 @@ import {
   normalizePpAppOrderLineUrlHosts,
   type PpAppOrderLineGroupBy,
   type PpAppOrderLineListFilters,
+  ppAppOrderLineRequestFilterLabel,
   type PpAppOrderLineStaffFilterOptions,
 } from '../../types/ppAppOrderLineFilters';
 
@@ -190,6 +203,17 @@ const customerGroupOptions = computed(() =>
     label: g.name,
     value: g.id,
   })),
+);
+
+const purchaseRequestOptions = computed(() =>
+  (props.filterOptions?.purchase_requests ?? []).map((r) => {
+    const base = ppAppOrderLineRequestFilterLabel(r);
+    const group = r.people_group_name?.trim();
+    return {
+      label: group ? `${base} · ${group}` : base,
+      value: r.id,
+    };
+  }),
 );
 
 const supplierGroupOptions = computed(() =>

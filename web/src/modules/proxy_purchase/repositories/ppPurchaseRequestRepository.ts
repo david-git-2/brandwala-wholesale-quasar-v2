@@ -1,12 +1,15 @@
 import { supabase } from 'src/boot/supabase';
 import type {
+  PpBucketInstruction,
   PpOrderLine,
   PpPurchaseRequest,
   PpPurchaseRequestListItem,
   PpPurchaseRequestStaffListItem,
   PpStaffOrderLineUpdatePayload,
+  PpStaffOrderLineWritePayload,
   PpSupplierOrderLineUpdatePayload,
 } from '../types/ppPurchaseRequest';
+import { parsePpBucketInstructions } from '../utils/ppBucketInstructions';
 import type {
   PpAppOrderLineListFilters,
   PpAppOrderLineStaffFilterOptions,
@@ -23,12 +26,17 @@ function parseRequest(data: unknown): PpPurchaseRequest {
   if (!Number.isFinite(id) || !status) {
     throw new Error('Invalid purchase request response.');
   }
-  return { ...(data as PpPurchaseRequest), id, status } as PpPurchaseRequest;
+  return {
+    ...(data as PpPurchaseRequest),
+    id,
+    status,
+    bucket_instructions: parsePpBucketInstructions(row.bucket_instructions),
+  } as PpPurchaseRequest;
 }
 
 export type PpPurchaseRequestPostResult = Pick<
   PpPurchaseRequest,
-  'id' | 'status' | 'request_number' | 'bucket_description' | 'updated_at'
+  'id' | 'status' | 'request_number' | 'bucket_instructions' | 'updated_at'
 >;
 
 function parsePostResult(data: unknown): PpPurchaseRequestPostResult {
@@ -45,8 +53,7 @@ function parsePostResult(data: unknown): PpPurchaseRequestPostResult {
     id,
     status: 'requested',
     request_number: typeof row.request_number === 'string' ? row.request_number : null,
-    bucket_description:
-      typeof row.bucket_description === 'string' ? row.bucket_description : null,
+    bucket_instructions: parsePpBucketInstructions(row.bucket_instructions),
     updated_at: typeof row.updated_at === 'string' ? row.updated_at : '',
   };
 }
@@ -81,6 +88,7 @@ function parseStaffRequestList(data: unknown): PpPurchaseRequestStaffListItem[] 
         ...base,
         people_group_id: peopleGroupId,
         people_group_name: peopleGroupName,
+        bucket_instructions: parsePpBucketInstructions(r.bucket_instructions),
       };
     })
     .filter((row): row is PpPurchaseRequestStaffListItem => row != null);
@@ -115,10 +123,7 @@ function parseLineRow(row: Record<string, unknown>): PpOrderLine | null {
     supplier_group_name:
       typeof row.supplier_group_name === 'string' ? row.supplier_group_name : null,
     request_number: typeof row.request_number === 'string' ? row.request_number : null,
-    request_bucket_description:
-      typeof row.request_bucket_description === 'string'
-        ? row.request_bucket_description
-        : null,
+    request_bucket_instructions: parsePpBucketInstructions(row.request_bucket_instructions),
   };
 }
 
@@ -163,12 +168,34 @@ function parseStaffOrderLineFilterOptions(data: unknown): PpAppOrderLineStaffFil
         })
         .filter((s): s is { id: number; name: string; shipment_code: string } => s != null)
     : [];
+  const purchaseRequests = Array.isArray(row.purchase_requests)
+    ? row.purchase_requests
+        .map((item) => {
+          if (item == null || typeof item !== 'object') return null;
+          const r = item as Record<string, unknown>;
+          const id = typeof r.id === 'number' ? r.id : Number(r.id);
+          const requestNumber =
+            typeof r.request_number === 'string' ? r.request_number : null;
+          const peopleGroupName =
+            typeof r.people_group_name === 'string' ? r.people_group_name : '';
+          if (!Number.isFinite(id)) return null;
+          return { id, request_number: requestNumber, people_group_name: peopleGroupName };
+        })
+        .filter(
+          (r): r is {
+            id: number;
+            request_number: string | null;
+            people_group_name: string;
+          } => r != null,
+        )
+    : [];
   return {
     url_hosts: urlHosts,
     placement_statuses: placementStatuses,
     customer_groups: parseGroups(row.customer_groups),
     supplier_groups: parseGroups(row.supplier_groups),
     shipments,
+    purchase_requests: purchaseRequests,
   };
 }
 
@@ -218,6 +245,7 @@ export const ppPurchaseRequestRepository = {
       p_pp_customer_group_id: filters?.pp_customer_group_id ?? undefined,
       p_pp_supplier_group_id: filters?.pp_supplier_group_id ?? undefined,
       p_shipment_id: filters?.shipment_id ?? undefined,
+      p_purchase_request_id: filters?.purchase_request_id ?? undefined,
       p_placement_statuses:
         filters?.placement_statuses?.length ? filters.placement_statuses : undefined,
       p_url_hosts: filters?.url_hosts?.length ? filters.url_hosts : undefined,
@@ -287,6 +315,34 @@ export const ppPurchaseRequestRepository = {
       p_line_id: lineId,
     });
     if (error) throw error;
+  },
+
+  async addLineForStaff(
+    tenantId: number,
+    requestId: number,
+    payload: PpStaffOrderLineWritePayload,
+  ): Promise<PpOrderLine> {
+    const { data, error } = await supabase.rpc('add_pp_order_line_staff', {
+      p_tenant_id: tenantId,
+      p_request_id: requestId,
+      p_url: payload.url,
+      p_needed_qty: payload.needed_qty,
+      p_tracking_url: payload.tracking_url ?? undefined,
+      p_description: payload.description ?? undefined,
+      p_product_name: payload.product_name ?? undefined,
+      p_image_url: payload.image_url ?? undefined,
+      p_unit_price: payload.unit_price ?? undefined,
+      p_pp_supplier_group_id: payload.pp_supplier_group_id ?? undefined,
+      p_shipment_id: payload.shipment_id ?? undefined,
+      p_is_added_to_cart: payload.is_added_to_cart,
+      p_placement_status: payload.placement_status,
+      p_placed_qty: payload.placed_qty ?? undefined,
+      p_received_qty: payload.received_qty ?? undefined,
+    });
+    if (error) throw error;
+    const parsed = parseLineRow(data as Record<string, unknown>);
+    if (!parsed) throw new Error('Invalid order line response.');
+    return parsed;
   },
 
   async createDraft(tenantId: number): Promise<PpPurchaseRequest> {
@@ -365,12 +421,12 @@ export const ppPurchaseRequestRepository = {
   async updateInstructions(
     tenantId: number,
     requestId: number,
-    bucketDescription: string,
+    bucketInstructions: PpBucketInstruction[],
   ): Promise<void> {
     const { error } = await supabase.rpc('update_pp_purchase_request_instructions', {
       p_tenant_id: tenantId,
       p_request_id: requestId,
-      p_bucket_description: bucketDescription,
+      p_bucket_instructions: bucketInstructions,
     });
     if (error) throw error;
   },

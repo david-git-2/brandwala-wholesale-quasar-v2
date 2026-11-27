@@ -6,6 +6,7 @@ export type PpAppOrderLineListFilters = {
   pp_customer_group_id: number | null;
   pp_supplier_group_id: number | null;
   shipment_id: number | null;
+  purchase_request_id: number | null;
   placement_statuses: PpOrderLinePlacementStatus[];
   url_hosts: string[];
 };
@@ -14,6 +15,7 @@ export const emptyPpAppOrderLineListFilters = (): PpAppOrderLineListFilters => (
   pp_customer_group_id: null,
   pp_supplier_group_id: null,
   shipment_id: null,
+  purchase_request_id: null,
   placement_statuses: [],
   url_hosts: [],
 });
@@ -29,19 +31,34 @@ export type PpAppOrderLineFilterShipmentOption = {
   shipment_code: string;
 };
 
+export type PpAppOrderLineFilterRequestOption = {
+  id: number;
+  request_number: string | null;
+  people_group_name: string;
+};
+
 export type PpAppOrderLineStaffFilterOptions = {
   url_hosts: string[];
   placement_statuses: PpOrderLinePlacementStatus[];
   customer_groups: PpAppOrderLineFilterGroupOption[];
   supplier_groups: PpAppOrderLineFilterGroupOption[];
   shipments: PpAppOrderLineFilterShipmentOption[];
+  purchase_requests: PpAppOrderLineFilterRequestOption[];
 };
+
+export function ppAppOrderLineRequestFilterLabel(
+  option: Pick<PpAppOrderLineFilterRequestOption, 'id' | 'request_number'>,
+): string {
+  const num = option.request_number?.trim();
+  return num || `Request #${option.id}`;
+}
 
 export function countActivePpAppOrderLineFilters(filters: PpAppOrderLineListFilters): number {
   let count = 0;
   if (filters.pp_customer_group_id != null) count += 1;
   if (filters.pp_supplier_group_id != null) count += 1;
   if (filters.shipment_id != null) count += 1;
+  if (filters.purchase_request_id != null) count += 1;
   if (filters.placement_statuses.length > 0) count += 1;
   if (filters.url_hosts.length > 0) count += 1;
   return count;
@@ -54,6 +71,7 @@ export function serializePpAppOrderLineListFilters(
     c: filters.pp_customer_group_id,
     s: filters.pp_supplier_group_id,
     sh: filters.shipment_id,
+    pr: filters.purchase_request_id,
     p: [...filters.placement_statuses].sort(),
     u: filters.url_hosts.map((h) => h.trim().toLowerCase()).filter(Boolean).sort(),
   });

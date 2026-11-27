@@ -40,7 +40,6 @@
             <span class="text-center">Fulfillment</span>
             <span class="text-center">Supplier</span>
             <span class="text-center">Shipment</span>
-            <span class="text-center">Edit</span>
           </div>
           <template v-for="block in lineBlocks" :key="block.key">
             <div
@@ -252,8 +251,7 @@ defineExpose({ clearSelection: () => { selectedIds.value = []; } });
     minmax(8.5rem, 0.85fr)
     minmax(6.75rem, 0.75fr)
     minmax(6.5rem, 0.72fr)
-    minmax(11rem, 1.15fr)
-    2.75rem;
+    minmax(11rem, 1.15fr);
   align-items: stretch;
 }
 

@@ -611,7 +611,7 @@ BEGIN
     'created_by_member_id', v_row.created_by_member_id,
     'status', v_row.status,
     'request_number', v_row.request_number,
-    'bucket_description', v_row.bucket_description,
+    'bucket_instructions', v_row.bucket_instructions,
     'created_at', v_row.created_at,
     'updated_at', v_row.updated_at
   );
@@ -645,7 +645,7 @@ BEGIN
     'created_by_member_id', v_row.created_by_member_id,
     'status', v_row.status,
     'request_number', v_row.request_number,
-    'bucket_description', v_row.bucket_description,
+    'bucket_instructions', v_row.bucket_instructions,
     'created_at', v_row.created_at,
     'updated_at', v_row.updated_at
   );
@@ -726,6 +726,7 @@ BEGIN
           'updated_at', req.updated_at,
           'people_group_id', req.people_group_id,
           'people_group_name', g.name,
+          'bucket_instructions', req.bucket_instructions,
           'line_count', (
             SELECT count(*)::bigint
             FROM public.pp_order_lines l
@@ -876,7 +877,7 @@ BEGIN
           'customer_group_name', cg.name,
           'supplier_group_name', sg.name,
           'request_number', req.request_number,
-          'request_bucket_description', req.bucket_description
+          'request_bucket_instructions', req.bucket_instructions
         )
         ORDER BY l.created_at DESC, l.id DESC
       ),
@@ -932,6 +933,7 @@ CREATE OR REPLACE FUNCTION "public"."list_pp_order_lines"(
     "p_pp_customer_group_id" bigint DEFAULT NULL::bigint,
     "p_pp_supplier_group_id" bigint DEFAULT NULL::bigint,
     "p_shipment_id" bigint DEFAULT NULL::bigint,
+    "p_purchase_request_id" bigint DEFAULT NULL::bigint,
     "p_placement_statuses" "text"[] DEFAULT NULL::"text"[],
     "p_url_hosts" "text"[] DEFAULT NULL::"text"[]
 ) RETURNS "jsonb"
@@ -953,7 +955,7 @@ BEGIN
           'customer_group_name', cg.name,
           'supplier_group_name', sg.name,
           'request_number', req.request_number,
-          'request_bucket_description', req.bucket_description
+          'request_bucket_instructions', req.bucket_instructions
         )
         ORDER BY l.created_at DESC, l.id DESC
       ),
@@ -972,6 +974,7 @@ BEGIN
       AND (p_pp_customer_group_id IS NULL OR l.pp_customer_group_id = p_pp_customer_group_id)
       AND (p_pp_supplier_group_id IS NULL OR l.pp_supplier_group_id = p_pp_supplier_group_id)
       AND (p_shipment_id IS NULL OR l.shipment_id = p_shipment_id)
+      AND (p_purchase_request_id IS NULL OR l.purchase_request_id = p_purchase_request_id)
       AND (
         p_placement_statuses IS NULL
         OR cardinality(p_placement_statuses) = 0
@@ -991,6 +994,7 @@ ALTER FUNCTION "public"."list_pp_order_lines"(
   "p_pp_customer_group_id" bigint,
   "p_pp_supplier_group_id" bigint,
   "p_shipment_id" bigint,
+  "p_purchase_request_id" bigint,
   "p_placement_statuses" "text"[],
   "p_url_hosts" "text"[]
 ) OWNER TO "postgres";
@@ -1090,6 +1094,33 @@ BEGIN
         ON sh.id = shids.id
         AND sh.tenant_id = p_tenant_id
         AND sh.deleted_at IS NULL
+    ),
+    'purchase_requests', (
+      SELECT COALESCE(
+        jsonb_agg(
+          jsonb_build_object(
+            'id', req.id,
+            'request_number', req.request_number,
+            'people_group_name', g.name
+          )
+          ORDER BY req.created_at DESC, req.id DESC
+        ),
+        '[]'::jsonb
+      )
+      FROM (
+        SELECT DISTINCT l.purchase_request_id AS id
+        FROM public.pp_order_lines l
+        WHERE l.tenant_id = p_tenant_id
+          AND l.deleted_at IS NULL
+          AND l.purchase_request_id IS NOT NULL
+      ) rids
+      INNER JOIN public.pp_purchase_requests req
+        ON req.id = rids.id
+        AND req.tenant_id = p_tenant_id
+        AND req.deleted_at IS NULL
+      LEFT JOIN public.pp_people_group g
+        ON g.id = req.people_group_id
+        AND g.deleted_at IS NULL
     )
   );
 END;
@@ -1521,6 +1552,179 @@ $$;
 
 ALTER FUNCTION "public"."update_pp_order_line_supplier"("p_tenant_id" bigint, "p_people_group_member_id" bigint, "p_line_id" bigint, "p_placed_qty" numeric, "p_placement_status" "text") OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."add_pp_order_line_staff"(
+    "p_tenant_id" bigint,
+    "p_request_id" bigint,
+    "p_url" "text",
+    "p_needed_qty" numeric,
+    "p_tracking_url" "text" DEFAULT NULL::"text",
+    "p_description" "text" DEFAULT NULL::"text",
+    "p_product_name" "text" DEFAULT NULL::"text",
+    "p_image_url" "text" DEFAULT NULL::"text",
+    "p_unit_price" numeric DEFAULT NULL::numeric,
+    "p_pp_supplier_group_id" bigint DEFAULT NULL::bigint,
+    "p_shipment_id" bigint DEFAULT NULL::bigint,
+    "p_is_added_to_cart" boolean DEFAULT NULL::boolean,
+    "p_placement_status" "text" DEFAULT NULL::"text",
+    "p_placed_qty" numeric DEFAULT NULL::numeric,
+    "p_received_qty" numeric DEFAULT NULL::numeric
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_req public.pp_purchase_requests%ROWTYPE;
+  v_url text := trim(coalesce(p_url, ''));
+  v_tracking text := nullif(trim(coalesce(p_tracking_url, '')), '');
+  v_desc text := nullif(trim(coalesce(p_description, '')), '');
+  v_product_name text := nullif(trim(coalesce(p_product_name, '')), '');
+  v_image_url text := nullif(trim(coalesce(p_image_url, '')), '');
+  v_qty numeric := p_needed_qty;
+  v_row public.pp_order_lines%ROWTYPE;
+  v_shipment_status text;
+  v_placement text := lower(trim(coalesce(p_placement_status, 'requested')));
+  v_final_placement text := v_placement;
+  v_not_in_cart boolean;
+  v_in_cart boolean;
+  v_line_status text;
+BEGIN
+  IF NOT "public"."has_active_tenant_membership"("p_tenant_id") THEN
+    RAISE EXCEPTION 'Not allowed for tenant %', "p_tenant_id" USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_req
+  FROM public.pp_purchase_requests r
+  WHERE r.id = p_request_id
+    AND r.tenant_id = p_tenant_id
+    AND r.deleted_at IS NULL;
+
+  IF v_req.id IS NULL THEN
+    RAISE EXCEPTION 'Purchase request not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_req.status <> 'requested' THEN
+    RAISE EXCEPTION 'Only requested purchase requests can receive new items' USING ERRCODE = '22023';
+  END IF;
+
+  IF length(v_url) = 0 THEN
+    RAISE EXCEPTION 'URL is required' USING ERRCODE = '22023';
+  END IF;
+
+  IF v_qty IS NULL OR v_qty <= 0 THEN
+    RAISE EXCEPTION 'Quantity must be positive' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_received_qty IS NOT NULL AND p_received_qty < 0 THEN
+    RAISE EXCEPTION 'Received quantity cannot be negative' USING ERRCODE = '22023';
+  END IF;
+
+  IF v_final_placement NOT IN (
+    'none', 'draft', 'requested', 'processing', 'cancelled',
+    'added_to_cart', 'order_placed', 'cargo_warehouse',
+    'in_flight', 'local_warehouse', 'delivered', 'lost'
+  ) THEN
+    RAISE EXCEPTION 'Invalid placement status: %', p_placement_status USING ERRCODE = '22023';
+  END IF;
+
+  IF p_pp_supplier_group_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.pp_people_group g
+    WHERE g.id = p_pp_supplier_group_id
+      AND g.tenant_id = p_tenant_id
+      AND g.type = 'supplier'
+      AND g.deleted_at IS NULL;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Invalid supplier group' USING ERRCODE = '22023';
+    END IF;
+  END IF;
+
+  IF p_shipment_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.pp_shipment sh
+    WHERE sh.id = p_shipment_id
+      AND sh.tenant_id = p_tenant_id
+      AND sh.deleted_at IS NULL;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Invalid shipment' USING ERRCODE = '22023';
+    END IF;
+  END IF;
+
+  v_not_in_cart := v_final_placement IN ('none', 'draft', 'requested', 'processing', 'cancelled');
+  v_in_cart := CASE
+    WHEN p_is_added_to_cart IS NOT NULL THEN p_is_added_to_cart
+    ELSE NOT v_not_in_cart
+  END;
+  v_line_status := public.pp_derive_order_line_status_from_placement(v_final_placement);
+
+  INSERT INTO public.pp_order_lines (
+    tenant_id,
+    purchase_request_id,
+    pp_customer_group_id,
+    url,
+    tracking_url,
+    needed_qty,
+    description,
+    product_name,
+    image_url,
+    unit_price,
+    pp_supplier_group_id,
+    shipment_id,
+    placement_status,
+    is_added_to_cart,
+    added_to_cart_at,
+    placed_qty,
+    received_qty,
+    status
+  ) VALUES (
+    p_tenant_id,
+    p_request_id,
+    v_req.people_group_id,
+    v_url,
+    v_tracking,
+    v_qty,
+    v_desc,
+    v_product_name,
+    v_image_url,
+    p_unit_price,
+    p_pp_supplier_group_id,
+    p_shipment_id,
+    v_final_placement,
+    v_in_cart,
+    CASE WHEN v_in_cart THEN now() ELSE NULL END,
+    p_placed_qty,
+    p_received_qty,
+    v_line_status
+  )
+  RETURNING * INTO v_row;
+
+  SELECT s.status INTO v_shipment_status
+  FROM public.pp_shipment s
+  WHERE s.id = v_row.shipment_id
+    AND s.deleted_at IS NULL;
+
+  RETURN public._pp_order_line_to_json(v_row, v_shipment_status);
+END;
+$$;
+
+ALTER FUNCTION "public"."add_pp_order_line_staff"(
+  "p_tenant_id" bigint,
+  "p_request_id" bigint,
+  "p_url" "text",
+  "p_needed_qty" numeric,
+  "p_tracking_url" "text",
+  "p_description" "text",
+  "p_product_name" "text",
+  "p_image_url" "text",
+  "p_unit_price" numeric,
+  "p_pp_supplier_group_id" bigint,
+  "p_shipment_id" bigint,
+  "p_is_added_to_cart" boolean,
+  "p_placement_status" "text",
+  "p_placed_qty" numeric,
+  "p_received_qty" numeric
+) OWNER TO "postgres";
+
 CREATE OR REPLACE FUNCTION "public"."delete_pp_order_line_staff"(
     "p_tenant_id" bigint,
     "p_line_id" bigint
@@ -1551,10 +1755,64 @@ $$;
 
 ALTER FUNCTION "public"."delete_pp_order_line_staff"("p_tenant_id" bigint, "p_line_id" bigint) OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."_pp_normalize_bucket_instructions"("p_payload" "jsonb")
+RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    IMMUTABLE
+    AS $$
+DECLARE
+  v_item jsonb;
+  v_store text;
+  v_desc text;
+  v_map jsonb := '{}'::jsonb;
+BEGIN
+  IF p_payload IS NULL OR jsonb_typeof(p_payload) <> 'array' THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(p_payload)
+  LOOP
+    IF jsonb_typeof(v_item) <> 'object' THEN
+      CONTINUE;
+    END IF;
+
+    v_store := lower(trim(coalesce(v_item ->> 'store', '')));
+    v_desc := trim(coalesce(v_item ->> 'description', ''));
+
+    IF v_store = '' OR v_desc = '' THEN
+      CONTINUE;
+    END IF;
+
+    IF v_store <> 'general'
+      AND NOT (v_store ~ '^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$')
+    THEN
+      CONTINUE;
+    END IF;
+
+    v_map := v_map || jsonb_build_object(v_store, v_desc);
+  END LOOP;
+
+  RETURN COALESCE(
+    (
+      SELECT jsonb_agg(
+        jsonb_build_object('store', key, 'description', value)
+        ORDER BY
+          CASE WHEN key = 'general' THEN 0 ELSE 1 END,
+          key
+      )
+      FROM jsonb_each_text(v_map)
+    ),
+    '[]'::jsonb
+  );
+END;
+$$;
+
+ALTER FUNCTION "public"."_pp_normalize_bucket_instructions"("p_payload" "jsonb") OWNER TO "postgres";
+
 CREATE OR REPLACE FUNCTION "public"."update_pp_purchase_request_instructions"(
     "p_tenant_id" bigint,
     "p_request_id" bigint,
-    "p_bucket_description" "text"
+    "p_bucket_instructions" "jsonb"
 ) RETURNS "jsonb"
     LANGUAGE "plpgsql"
     SECURITY DEFINER
@@ -1563,7 +1821,7 @@ CREATE OR REPLACE FUNCTION "public"."update_pp_purchase_request_instructions"(
 DECLARE
   v_status text;
   v_row public.pp_purchase_requests%ROWTYPE;
-  v_desc text := nullif(trim(coalesce(p_bucket_description, '')), '');
+  v_instructions jsonb;
 BEGIN
   SELECT a.request_status INTO v_status
   FROM public._pp_assert_customer_request_access(p_tenant_id, p_request_id) a
@@ -1573,8 +1831,10 @@ BEGIN
     RAISE EXCEPTION 'Only draft requests can be edited' USING ERRCODE = '22023';
   END IF;
 
+  v_instructions := public._pp_normalize_bucket_instructions(p_bucket_instructions);
+
   UPDATE public.pp_purchase_requests r
-  SET bucket_description = v_desc,
+  SET bucket_instructions = v_instructions,
       updated_at = now()
   WHERE r.id = p_request_id
     AND r.tenant_id = p_tenant_id
@@ -1583,14 +1843,14 @@ BEGIN
 
   RETURN jsonb_build_object(
     'id', v_row.id,
-    'bucket_description', v_row.bucket_description,
+    'bucket_instructions', v_row.bucket_instructions,
     'status', v_row.status,
     'updated_at', v_row.updated_at
   );
 END;
 $$;
 
-ALTER FUNCTION "public"."update_pp_purchase_request_instructions"("p_tenant_id" bigint, "p_request_id" bigint, "p_bucket_description" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."update_pp_purchase_request_instructions"("p_tenant_id" bigint, "p_request_id" bigint, "p_bucket_instructions" "jsonb") OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."post_pp_purchase_request"("p_tenant_id" bigint, "p_request_id" bigint)
 RETURNS "jsonb"
@@ -1658,7 +1918,7 @@ BEGIN
     'id', v_row.id,
     'status', v_row.status,
     'request_number', v_row.request_number,
-    'bucket_description', v_row.bucket_description,
+    'bucket_instructions', v_row.bucket_instructions,
     'updated_at', v_row.updated_at
   );
 END;

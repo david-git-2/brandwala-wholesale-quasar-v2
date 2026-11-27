@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS "public"."pp_purchase_requests" (
     "created_by_member_id" bigint NOT NULL,
     "status" "text" DEFAULT 'draft'::"text" NOT NULL,
     "request_number" "text",
-    "bucket_description" "text",
+    "bucket_instructions" "jsonb" DEFAULT '[]'::jsonb NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "deleted_at" timestamp with time zone,

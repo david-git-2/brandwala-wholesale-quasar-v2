@@ -1,3 +1,5 @@
+import type { PpBucketInstruction } from '../utils/ppBucketInstructions';
+
 export type PpPurchaseRequestStatus = 'draft' | 'requested';
 
 export type PpOrderLineStatus = 'draft' | 'requested' | 'processing' | 'done' | 'cancelled';
@@ -29,6 +31,7 @@ export interface PpPurchaseRequestListItem {
 export interface PpPurchaseRequestStaffListItem extends PpPurchaseRequestListItem {
   people_group_id: number;
   people_group_name: string;
+  bucket_instructions: PpBucketInstruction[];
 }
 
 export interface PpPurchaseRequest {
@@ -38,7 +41,7 @@ export interface PpPurchaseRequest {
   created_by_member_id: number;
   status: PpPurchaseRequestStatus;
   request_number: string | null;
-  bucket_description: string | null;
+  bucket_instructions: PpBucketInstruction[];
   created_at: string;
   updated_at: string;
 }
@@ -67,8 +70,10 @@ export interface PpOrderLine {
   customer_group_name?: string | null;
   supplier_group_name?: string | null;
   request_number?: string | null;
-  request_bucket_description?: string | null;
+  request_bucket_instructions?: PpBucketInstruction[];
 }
+
+export type { PpBucketInstruction };
 
 export type PpSupplierOrderLineUpdatePayload = {
   lineId: number;
@@ -76,8 +81,7 @@ export type PpSupplierOrderLineUpdatePayload = {
   placement_status?: PpOrderLinePlacementStatus;
 };
 
-export type PpStaffOrderLineUpdatePayload = {
-  lineId: number;
+export type PpStaffOrderLineWritePayload = {
   url: string;
   tracking_url?: string | null;
   needed_qty: number;
@@ -92,4 +96,8 @@ export type PpStaffOrderLineUpdatePayload = {
   placed_qty?: number | null;
   received_qty?: number | null;
   status: PpOrderLineStatus;
+};
+
+export type PpStaffOrderLineUpdatePayload = PpStaffOrderLineWritePayload & {
+  lineId: number;
 };

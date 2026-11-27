@@ -8,6 +8,29 @@
           :tabs="tabOptions"
           aria-label="Proxy purchase sections"
         />
+        <q-chip
+          v-if="activeTab === 'lines' && activeRequestFilterLabel"
+          dense
+          removable
+          color="primary"
+          text-color="white"
+          class="flex-shrink-0"
+          :aria-label="`Clear filter: ${activeRequestFilterLabel}`"
+          @remove="clearRequestLineFilter"
+        >
+          {{ activeRequestFilterLabel }}
+        </q-chip>
+        <TfBtn
+          v-if="activeTab === 'lines' && filteredRequestId != null"
+          variant="secondary"
+          size="sm"
+          label="Add item"
+          icon="ph ph-plus"
+          class="flex-shrink-0"
+          aria-label="Add item to filtered request"
+          :loading="addLine.isPending.value && addItemRequestId === filteredRequestId"
+          @click="openAddItemForFilteredRequest"
+        />
         <q-btn
           v-if="activeTab === 'lines'"
           flat
@@ -55,7 +78,13 @@
           icon="ph ph-folder"
         />
         <TfEntityListShell v-else>
-          <TfEntityListRow v-for="row in requests" :key="row.id">
+          <TfEntityListRow
+            v-for="row in requests"
+            :key="row.id"
+            clickable
+            show-chevron
+            @click="viewLinesForRequest(row)"
+          >
             <template #title>
               <span class="text-weight-medium">{{ requestLabel(row) }}</span>
             </template>
@@ -67,7 +96,22 @@
               </span>
             </template>
             <template #aside>
-              <TfStatusBadge :status="row.status" :label="statusLabel(row.status)" />
+              <div class="row items-center no-wrap q-gutter-xs">
+                <PpGeneralInstructionMenuBtn
+                  :instructions="row.bucket_instructions"
+                  :request-label="requestLabel(row)"
+                />
+                <TfBtn
+                  variant="secondary"
+                  size="sm"
+                  label="Add item"
+                  icon="ph ph-plus"
+                  aria-label="Add item to request"
+                  :loading="addLine.isPending.value && addItemRequestId === row.id"
+                  @click.stop="openAddItemForRequest(row)"
+                />
+                <TfStatusBadge :status="row.status" :label="statusLabel(row.status)" />
+              </div>
             </template>
           </TfEntityListRow>
         </TfEntityListShell>
@@ -114,6 +158,12 @@
     </div>
 
     <PpAppEditOrderLineDialog
+      v-model="showAddItemDialog"
+      add-mode
+      :loading="addLine.isPending.value"
+      @create="onAddItemDialogSubmit"
+    />
+    <PpAppEditOrderLineDialog
       v-model="showLineDialog"
       :edit-line="editingLine"
       :loading="updateLine.isPending.value"
@@ -142,7 +192,9 @@ import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
 import TfEntityListShell from 'src/components/ui/TfEntityListShell.vue';
 import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
+import TfBtn from 'src/components/ui/TfBtn.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
+import PpGeneralInstructionMenuBtn from '../components/PpGeneralInstructionMenuBtn.vue';
 import PpAppEditOrderLineDialog from '../components/PpAppEditOrderLineDialog.vue';
 import PpAppOrderLineFilterDrawer from '../components/order-lines/PpAppOrderLineFilterDrawer.vue';
 import PpAppOrderLineList from '../components/order-lines/PpAppOrderLineList.vue';
@@ -153,6 +205,7 @@ import { usePpStaffRequestsQuery } from '../composables/usePpStaffRequestsQuery'
 import {
   countActivePpAppOrderLineFilters,
   emptyPpAppOrderLineListFilters,
+  ppAppOrderLineRequestFilterLabel,
   type PpAppOrderLineGroupBy,
   type PpAppOrderLineListFilters,
 } from '../types/ppAppOrderLineFilters';
@@ -161,6 +214,7 @@ import type {
   PpPurchaseRequestStaffListItem,
   PpPurchaseRequestStatus,
   PpStaffOrderLineUpdatePayload,
+  PpStaffOrderLineWritePayload,
 } from '../types/ppPurchaseRequest';
 
 type DashboardTab = 'requests' | 'lines';
@@ -223,6 +277,7 @@ const draftLineFilters = ref<PpAppOrderLineListFilters>(emptyPpAppOrderLineListF
 const draftLineGroupBy = ref<PpAppOrderLineGroupBy>('none');
 const lineFilterDrawerOpen = ref(false);
 const lineGroupBy = ref<PpAppOrderLineGroupBy>('none');
+const activeRequestFilterLabel = ref<string | null>(null);
 
 const lineFilterOptionsQueryEnabled = computed(
   () => activeTab.value === 'lines' || lineFilterDrawerOpen.value,
@@ -234,6 +289,8 @@ const orderLines = computed(() => orderLinesQuery.data.value ?? []);
 
 const activeLineFilterCount = computed(() => countActivePpAppOrderLineFilters(appliedLineFilters.value));
 
+const filteredRequestId = computed(() => appliedLineFilters.value.purchase_request_id);
+
 const lineListViewBadgeCount = computed(
   () => activeLineFilterCount.value + (lineGroupBy.value === 'store_url' ? 1 : 0),
 );
@@ -244,9 +301,19 @@ const openLineFilterDrawer = () => {
   lineFilterDrawerOpen.value = true;
 };
 
+const purchaseRequestFilterLabel = (id: number | null): string | null => {
+  if (id == null) return null;
+  const match = lineFilterOptionsQuery.data.value?.purchase_requests?.find((r) => r.id === id);
+  if (match) return ppAppOrderLineRequestFilterLabel(match);
+  return `Request #${id}`;
+};
+
 const applyLineFilters = () => {
   appliedLineFilters.value = { ...draftLineFilters.value };
   lineGroupBy.value = draftLineGroupBy.value;
+  activeRequestFilterLabel.value = purchaseRequestFilterLabel(
+    appliedLineFilters.value.purchase_request_id,
+  );
 };
 
 const resetLineFilters = () => {
@@ -254,9 +321,60 @@ const resetLineFilters = () => {
   draftLineGroupBy.value = 'none';
   appliedLineFilters.value = emptyPpAppOrderLineListFilters();
   lineGroupBy.value = 'none';
+  activeRequestFilterLabel.value = null;
 };
 
-const { updateLine, deleteLines } = usePpStaffOrderLineMutations();
+const clearRequestLineFilter = () => {
+  activeRequestFilterLabel.value = null;
+  appliedLineFilters.value = {
+    ...appliedLineFilters.value,
+    purchase_request_id: null,
+  };
+  draftLineFilters.value = {
+    ...draftLineFilters.value,
+    purchase_request_id: null,
+  };
+};
+
+const viewLinesForRequest = (row: PpPurchaseRequestStaffListItem) => {
+  activeRequestFilterLabel.value = requestLabel(row);
+  draftLineFilters.value = {
+    ...emptyPpAppOrderLineListFilters(),
+    purchase_request_id: row.id,
+  };
+  appliedLineFilters.value = {
+    ...emptyPpAppOrderLineListFilters(),
+    purchase_request_id: row.id,
+  };
+  lineGroupBy.value = 'none';
+  draftLineGroupBy.value = 'none';
+  activeTab.value = 'lines';
+};
+
+const { addLine, updateLine, deleteLines } = usePpStaffOrderLineMutations();
+
+const showAddItemDialog = ref(false);
+const addItemRequestId = ref<number | null>(null);
+
+const openAddItemForRequest = (row: PpPurchaseRequestStaffListItem) => {
+  addItemRequestId.value = row.id;
+  showAddItemDialog.value = true;
+};
+
+const openAddItemForFilteredRequest = () => {
+  const id = filteredRequestId.value;
+  if (id == null) return;
+  addItemRequestId.value = id;
+  showAddItemDialog.value = true;
+};
+
+const onAddItemDialogSubmit = async (payload: PpStaffOrderLineWritePayload) => {
+  const requestId = addItemRequestId.value;
+  if (requestId == null) return;
+  await addLine.mutateAsync({ requestId, line: payload });
+  showAddItemDialog.value = false;
+  addItemRequestId.value = null;
+};
 
 const orderLineListRef = ref<{ clearSelection: () => void } | null>(null);
 const showLineDialog = ref(false);
