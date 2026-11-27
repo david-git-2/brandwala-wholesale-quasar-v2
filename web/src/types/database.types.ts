@@ -4791,8 +4791,16 @@ isOneToOne: false
 "_pp_order_line_to_json":
 { Args: { "l": Omit<Database["public"]['Tables']["pp_order_lines"]['Row'], Database["public"]['Tables']["pp_order_lines"]['ComputedFields']>,"p_shipment_status"?: string }; Returns: Json
                            },
+"_pp_order_line_url_host":
+{ Args: { "p_url": string }; Returns: string
+                           },
 "_pp_resolve_proxy_customer_member":
 { Args: { "p_tenant_id": number }; Returns: {
+              "member_id": number,"people_group_id": number
+            }[]
+                           },
+"_pp_resolve_proxy_supplier_member":
+{ Args: { "p_people_group_member_id"?: number,"p_tenant_id": number }; Returns: {
               "member_id": number,"people_group_id": number
             }[]
                            },
@@ -7386,13 +7394,19 @@ isOneToOne: false
 { Args: { "p_source_id": string,"p_source_type": string,"p_tenant_id": number }; Returns: Json
                            },
 "list_pp_order_lines":
-{ Args: { "p_tenant_id": number }; Returns: Json
+{ Args: { "p_placement_statuses"?: (string)[],"p_pp_customer_group_id"?: number,"p_pp_supplier_group_id"?: number,"p_shipment_id"?: number,"p_tenant_id": number,"p_url_hosts"?: (string)[] }; Returns: Json
                            },
 "list_pp_order_lines_for_customer":
 { Args: { "p_tenant_id": number }; Returns: Json
                            },
 "list_pp_order_lines_for_request":
 { Args: { "p_request_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_order_lines_for_supplier":
+{ Args: { "p_people_group_member_id"?: number,"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_order_lines_staff_filter_options":
+{ Args: { "p_tenant_id": number }; Returns: Json
                            },
 "list_pp_people_group_members":
 { Args: { "p_people_group_id": number,"p_tenant_id": number }; Returns: Json
@@ -8275,6 +8289,9 @@ isOneToOne: false
 "post_vendor_credit_refund":
 { Args: { "p_amount": number,"p_cash_location_id"?: number,"p_cashbook_point_id"?: number,"p_cashbook_point_pot_id"?: number,"p_credit_note_id": number,"p_exchange_rate"?: number,"p_foreign_amount"?: number,"p_note"?: string,"p_received_on"?: string,"p_settlement_currency_code"?: string,"p_source_currency_code"?: string,"p_transaction_rate"?: number }; Returns: Json
                            },
+"pp_derive_order_line_status_from_placement":
+{ Args: { "p_placement": string }; Returns: string
+                           },
 "preorder_demand_invoice_items_stale":
 { Args: { "p_document_id": number,"p_document_type": string,"p_invoice_id": number }; Returns: boolean
                            },
@@ -8973,6 +8990,9 @@ isOneToOne: false
                            },
 "update_pp_order_line_staff":
 { Args: { "p_description"?: string,"p_image_url"?: string,"p_is_added_to_cart"?: boolean,"p_line_id": number,"p_needed_qty": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_pp_supplier_group_id"?: number,"p_product_name"?: string,"p_received_qty"?: number,"p_shipment_id"?: number,"p_tenant_id": number,"p_tracking_url"?: string,"p_unit_price"?: number,"p_url": string }; Returns: Json
+                           },
+"update_pp_order_line_supplier":
+{ Args: { "p_line_id": number,"p_people_group_member_id": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_tenant_id": number }; Returns: Json
                            },
 "update_pp_purchase_request_instructions":
 { Args: { "p_bucket_description": string,"p_request_id": number,"p_tenant_id": number }; Returns: Json

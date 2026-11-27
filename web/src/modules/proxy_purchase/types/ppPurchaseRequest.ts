@@ -70,6 +70,12 @@ export interface PpOrderLine {
   request_bucket_description?: string | null;
 }
 
+export type PpSupplierOrderLineUpdatePayload = {
+  lineId: number;
+  placed_qty?: number | null;
+  placement_status?: PpOrderLinePlacementStatus;
+};
+
 export type PpStaffOrderLineUpdatePayload = {
   lineId: number;
   url: string;

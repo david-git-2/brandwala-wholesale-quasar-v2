@@ -1,5 +1,5 @@
 <template>
-  <article class="pp-order-line-item row no-wrap items-start">
+  <article class="pp-order-line-item row no-wrap items-center">
     <div v-if="showImage" class="pp-order-line-item__thumb shrink-0">
       <q-img
         v-if="line.image_url?.trim()"
@@ -22,8 +22,8 @@
             {{ titleLabel }}
           </div>
           <div
-            v-if="showId || (showUrl && line.url.trim())"
-            class="pp-order-line-item__meta row items-center no-wrap"
+            v-if="showMetaRow"
+            class="pp-order-line-item__meta row items-baseline no-wrap"
           >
             <span v-if="showId" class="pp-order-line-item__id">#{{ line.id }}</span>
             <span
@@ -37,10 +37,39 @@
               size="sm"
               :label="hostLinkLabel"
               icon="ph ph-arrow-square-out"
-              class="pp-order-line-item__host-link col min-width-0"
+              class="pp-order-line-item__host-link"
               :aria-label="`Open product link for line ${line.id}`"
               @click="openPpOrderLineUrl(line.url)"
             />
+            <span
+              v-if="showPrice && (showId || (showUrl && line.url.trim()))"
+              class="pp-order-line-item__meta-dot"
+              aria-hidden="true"
+            >·</span>
+            <span v-if="showPrice" class="pp-order-line-item__fact">
+              <span class="pp-order-line-item__fact-label">Price</span>
+              <span class="pp-order-line-item__fact-value tf-num">{{ priceLabel }}</span>
+            </span>
+          </div>
+          <div
+            v-if="showDetailRow"
+            class="pp-order-line-item__detail row items-baseline min-width-0"
+          >
+            <span v-if="showQty" class="pp-order-line-item__qty">
+              <span class="pp-order-line-item__fact-label">Qty</span>
+              <span class="pp-order-line-item__qty-value tf-num">{{ line.needed_qty }}</span>
+            </span>
+            <span
+              v-if="showQty && showDescription && descriptionText"
+              class="pp-order-line-item__detail-divider"
+              aria-hidden="true"
+            >|</span>
+            <p
+              v-if="showDescription && descriptionText"
+              class="pp-order-line-item__description q-mb-none col min-width-0"
+            >
+              {{ descriptionText }}
+            </p>
           </div>
         </div>
         <div class="pp-order-line-item__head-end row items-center no-wrap shrink-0 q-gutter-x-xs">
@@ -54,20 +83,6 @@
             <slot name="actions" />
           </div>
         </div>
-      </div>
-
-      <div
-        v-if="showQty || showPrice"
-        class="pp-order-line-item__facts row items-center justify-between"
-      >
-        <span v-if="showQty" class="pp-order-line-item__fact">
-          <span class="pp-order-line-item__fact-label">Qty</span>
-          <span class="pp-order-line-item__fact-value tf-num">{{ line.needed_qty }}</span>
-        </span>
-        <span v-if="showPrice" class="pp-order-line-item__fact">
-          <span class="pp-order-line-item__fact-label">Price</span>
-          <span class="pp-order-line-item__fact-value tf-num">{{ priceLabel }}</span>
-        </span>
       </div>
     </div>
   </article>
@@ -94,6 +109,7 @@ const props = withDefaults(
     showQty?: boolean;
     showPrice?: boolean;
     showStatus?: boolean;
+    showDescription?: boolean;
   }>(),
   {
     showId: true,
@@ -103,10 +119,24 @@ const props = withDefaults(
     showQty: true,
     showPrice: true,
     showStatus: true,
+    showDescription: true,
   },
 );
 
+const descriptionText = computed(() => props.line.description?.trim() || '');
+
 const displayStatus = computed(() => ppOrderLineDisplayStatus(props.line));
+
+const showMetaRow = computed(
+  () =>
+    props.showId
+    || (props.showUrl && props.line.url.trim())
+    || props.showPrice,
+);
+
+const showDetailRow = computed(
+  () => props.showQty || (props.showDescription && Boolean(descriptionText.value)),
+);
 
 const hostLabel = computed(() => ppOrderLineHostLabel(props.line.url));
 
@@ -154,14 +184,15 @@ const priceLabel = computed(() => {
 }
 
 .pp-order-line-item__thumb {
-  width: 64px;
+  width: 1in;
+  flex-shrink: 0;
 }
 
 .pp-order-line-item__thumb-img,
 .pp-order-line-item__thumb-placeholder {
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
+  width: 1in;
+  height: 1in;
+  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -203,6 +234,32 @@ const priceLabel = computed(() => {
   margin-top: 2px;
   gap: 4px;
   min-width: 0;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+.pp-order-line-item__detail {
+  margin-top: 6px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pp-order-line-item__detail-divider {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tf-neutral-muted);
+  user-select: none;
+}
+
+.pp-order-line-item__description {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--tf-neutral-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pp-order-line-item__id {
@@ -218,6 +275,12 @@ const priceLabel = computed(() => {
   color: var(--tf-neutral-muted);
   font-size: 11px;
   user-select: none;
+}
+
+.pp-order-line-item__host-link {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pp-order-line-item__host-link :deep(.q-btn) {
@@ -242,12 +305,6 @@ const priceLabel = computed(() => {
   max-width: 100%;
 }
 
-.pp-order-line-item__facts {
-  padding-top: 4px;
-  border-top: 1px solid var(--tf-neutral-border);
-  gap: 12px;
-}
-
 .pp-order-line-item__fact {
   display: inline-flex;
   align-items: baseline;
@@ -267,6 +324,23 @@ const priceLabel = computed(() => {
   font-size: 13px;
   font-weight: 700;
   color: var(--tf-neutral-ink);
+}
+
+.pp-order-line-item__qty {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.pp-order-line-item__qty-value {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--tf-neutral-ink);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 420px) {

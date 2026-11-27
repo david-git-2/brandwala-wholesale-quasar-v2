@@ -1,14 +1,13 @@
 <template>
-  <q-page class="tf-page-fill theme-shop proxy-dashboard-page">
-    <div class="proxy-dashboard-page__inner">
-      <TfEmptyState
-        v-if="!isCustomerRole"
-        title="Proxy dashboard"
-        message="Your assigned purchase lines will appear here in a later step."
-        icon="ph ph-list-dashes"
-      />
-
-      <template v-else>
+  <q-page
+    class="theme-shop proxy-dashboard-page"
+    :class="isCustomerRole ? 'tf-page-fill' : isSupplierRole ? 'q-pa-sm page-fixed-layout column no-wrap overflow-hidden' : 'tf-page-fill'"
+  >
+    <div
+      class="proxy-dashboard-page__inner"
+      :class="{ 'proxy-dashboard-page__inner--supplier column col min-h-0 no-wrap': isSupplierRole }"
+    >
+      <template v-if="isCustomerRole">
         <header class="proxy-dashboard-page__head row items-center justify-between q-mb-sm q-gutter-sm">
           <TfDrawerSectionTabs
             v-model="activeTab"
@@ -88,6 +87,38 @@
           <PpCustomerOrderLineList v-else :lines="orderLines" />
         </template>
       </template>
+
+      <template v-else-if="isSupplierRole">
+        <header class="proxy-dashboard-page__head row items-center justify-between q-mb-sm">
+          <div>
+            <h1 class="text-h6 text-weight-medium q-my-none">Assigned order lines</h1>
+            <p v-if="supplierGroupName" class="text-caption text-grey-7 q-mb-none q-mt-xs">
+              {{ supplierGroupName }}
+            </p>
+          </div>
+        </header>
+        <TfSkeletonRows v-if="supplierOrderLinesQuery.isPending.value" :rows="6" :cols="1" />
+        <TfEmptyState
+          v-else-if="!supplierOrderLines.length"
+          title="No order lines"
+          message="Lines assigned to your supplier group will appear here after app staff assigns them."
+          icon="ph ph-list-dashes"
+        />
+        <PpSupplierOrderLineList
+          v-else
+          class="proxy-dashboard-page__supplier-table col min-h-0"
+          :lines="supplierOrderLines"
+          :updating-line-id="supplierUpdatingLineId"
+          @patch="onSupplierPatchLine"
+        />
+      </template>
+
+      <TfEmptyState
+        v-else
+        title="Proxy dashboard"
+        message="Your account does not have access to this area."
+        icon="ph ph-warning"
+      />
     </div>
 
     <TfConfirmDialog
@@ -117,10 +148,17 @@ import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
 import PpCustomerOrderLineList from '../../components/order-lines/PpCustomerOrderLineList.vue';
+import PpSupplierOrderLineList from '../../components/order-lines/PpSupplierOrderLineList.vue';
 import { usePpCustomerDashboardQuery } from '../../composables/usePpCustomerDashboardQuery';
 import { usePpCustomerOrderLinesQuery } from '../../composables/usePpCustomerOrderLinesQuery';
+import { usePpSupplierOrderLinesQuery } from '../../composables/usePpSupplierOrderLinesQuery';
+import { usePpSupplierOrderLineMutations } from '../../composables/usePpSupplierOrderLineMutations';
 import { usePpPurchaseRequestMutations } from '../../composables/usePpPurchaseRequestMutations';
-import type { PpPurchaseRequestListItem, PpPurchaseRequestStatus } from '../../types/ppPurchaseRequest';
+import type {
+  PpPurchaseRequestListItem,
+  PpPurchaseRequestStatus,
+  PpSupplierOrderLineUpdatePayload,
+} from '../../types/ppPurchaseRequest';
 
 const route = useRoute();
 const router = useRouter();
@@ -140,6 +178,29 @@ const isCustomerRole = computed(() => {
   const role = authStore.matchedRole;
   return role === 'proxy_customer_admin' || role === 'proxy_customer_staff';
 });
+
+const isSupplierRole = computed(() => {
+  const role = authStore.matchedRole;
+  return role === 'proxy_supplier_admin' || role === 'proxy_supplier_staff';
+});
+
+const supplierOrderLinesQueryEnabled = computed(() => isSupplierRole.value);
+const supplierOrderLinesQuery = usePpSupplierOrderLinesQuery(supplierOrderLinesQueryEnabled);
+const supplierOrderLines = computed(() => supplierOrderLinesQuery.data.value ?? []);
+
+const supplierGroupName = computed(() => authStore.customerGroup?.name?.trim() || null);
+
+const { updateLine: updateSupplierLine } = usePpSupplierOrderLineMutations();
+const supplierUpdatingLineId = ref<number | null>(null);
+
+const onSupplierPatchLine = async (payload: PpSupplierOrderLineUpdatePayload) => {
+  supplierUpdatingLineId.value = payload.lineId;
+  try {
+    await updateSupplierLine.mutateAsync(payload);
+  } finally {
+    supplierUpdatingLineId.value = null;
+  }
+};
 
 const customerRequestsQueryEnabled = computed(
   () => isCustomerRole.value && activeTab.value === 'requests',
@@ -209,5 +270,17 @@ const onConfirmDeleteRequest = async () => {
 
 .proxy-dashboard-page__head {
   flex-wrap: wrap;
+}
+
+.proxy-dashboard-page__inner--supplier {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0 0 0.5rem;
+}
+
+.proxy-dashboard-page__supplier-table {
+  min-height: 0;
+  flex: 1 1 auto;
 }
 </style>

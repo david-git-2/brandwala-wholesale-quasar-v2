@@ -5,7 +5,12 @@ import type {
   PpPurchaseRequestListItem,
   PpPurchaseRequestStaffListItem,
   PpStaffOrderLineUpdatePayload,
+  PpSupplierOrderLineUpdatePayload,
 } from '../types/ppPurchaseRequest';
+import type {
+  PpAppOrderLineListFilters,
+  PpAppOrderLineStaffFilterOptions,
+} from '../types/ppAppOrderLineFilters';
 import { normalizePpOrderLinePlacementStatus } from '../utils/ppOrderLinePlacement';
 
 function parseRequest(data: unknown): PpPurchaseRequest {
@@ -124,10 +129,65 @@ function parseLines(data: unknown): PpOrderLine[] {
     .filter((line): line is PpOrderLine => line != null);
 }
 
+function parseStaffOrderLineFilterOptions(data: unknown): PpAppOrderLineStaffFilterOptions {
+  const row = data != null && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+  const urlHosts = Array.isArray(row.url_hosts)
+    ? row.url_hosts.filter((h): h is string => typeof h === 'string')
+    : [];
+  const placementStatuses = Array.isArray(row.placement_statuses)
+    ? row.placement_statuses.map((s) => normalizePpOrderLinePlacementStatus(s))
+    : [];
+  const parseGroups = (raw: unknown) => {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((item) => {
+        if (item == null || typeof item !== 'object') return null;
+        const g = item as Record<string, unknown>;
+        const id = typeof g.id === 'number' ? g.id : Number(g.id);
+        const name = typeof g.name === 'string' ? g.name : '';
+        if (!Number.isFinite(id) || !name) return null;
+        return { id, name };
+      })
+      .filter((g): g is { id: number; name: string } => g != null);
+  };
+  const shipments = Array.isArray(row.shipments)
+    ? row.shipments
+        .map((item) => {
+          if (item == null || typeof item !== 'object') return null;
+          const s = item as Record<string, unknown>;
+          const id = typeof s.id === 'number' ? s.id : Number(s.id);
+          const name = typeof s.name === 'string' ? s.name : '';
+          const shipmentCode = typeof s.shipment_code === 'string' ? s.shipment_code : '';
+          if (!Number.isFinite(id)) return null;
+          return { id, name, shipment_code: shipmentCode };
+        })
+        .filter((s): s is { id: number; name: string; shipment_code: string } => s != null)
+    : [];
+  return {
+    url_hosts: urlHosts,
+    placement_statuses: placementStatuses,
+    customer_groups: parseGroups(row.customer_groups),
+    supplier_groups: parseGroups(row.supplier_groups),
+    shipments,
+  };
+}
+
 export const ppPurchaseRequestRepository = {
   async listLinesForCustomer(tenantId: number): Promise<PpOrderLine[]> {
     const { data, error } = await supabase.rpc('list_pp_order_lines_for_customer', {
       p_tenant_id: tenantId,
+    });
+    if (error) throw error;
+    return parseLines(data);
+  },
+
+  async listLinesForSupplier(
+    tenantId: number,
+    peopleGroupMemberId: number,
+  ): Promise<PpOrderLine[]> {
+    const { data, error } = await supabase.rpc('list_pp_order_lines_for_supplier', {
+      p_tenant_id: tenantId,
+      p_people_group_member_id: peopleGroupMemberId,
     });
     if (error) throw error;
     return parseLines(data);
@@ -149,12 +209,49 @@ export const ppPurchaseRequestRepository = {
     return parseStaffRequestList(data);
   },
 
-  async listLinesForStaff(tenantId: number): Promise<PpOrderLine[]> {
+  async listLinesForStaff(
+    tenantId: number,
+    filters?: PpAppOrderLineListFilters,
+  ): Promise<PpOrderLine[]> {
     const { data, error } = await supabase.rpc('list_pp_order_lines', {
       p_tenant_id: tenantId,
+      p_pp_customer_group_id: filters?.pp_customer_group_id ?? undefined,
+      p_pp_supplier_group_id: filters?.pp_supplier_group_id ?? undefined,
+      p_shipment_id: filters?.shipment_id ?? undefined,
+      p_placement_statuses:
+        filters?.placement_statuses?.length ? filters.placement_statuses : undefined,
+      p_url_hosts: filters?.url_hosts?.length ? filters.url_hosts : undefined,
     });
     if (error) throw error;
     return parseLines(data);
+  },
+
+  async listStaffOrderLineFilterOptions(
+    tenantId: number,
+  ): Promise<PpAppOrderLineStaffFilterOptions> {
+    const { data, error } = await supabase.rpc('list_pp_order_lines_staff_filter_options', {
+      p_tenant_id: tenantId,
+    });
+    if (error) throw error;
+    return parseStaffOrderLineFilterOptions(data);
+  },
+
+  async updateLineForSupplier(
+    tenantId: number,
+    peopleGroupMemberId: number,
+    payload: PpSupplierOrderLineUpdatePayload,
+  ): Promise<PpOrderLine> {
+    const { data, error } = await supabase.rpc('update_pp_order_line_supplier', {
+      p_tenant_id: tenantId,
+      p_people_group_member_id: peopleGroupMemberId,
+      p_line_id: payload.lineId,
+      p_placed_qty: payload.placed_qty ?? undefined,
+      p_placement_status: payload.placement_status ?? undefined,
+    });
+    if (error) throw error;
+    const parsed = parseLineRow(data as Record<string, unknown>);
+    if (!parsed) throw new Error('Invalid order line response.');
+    return parsed;
   },
 
   async updateLineForStaff(

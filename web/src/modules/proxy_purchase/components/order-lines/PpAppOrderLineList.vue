@@ -42,25 +42,33 @@
             <span class="text-center">Shipment</span>
             <span class="text-center">Edit</span>
           </div>
-          <div
-            v-for="line in lines"
-            :key="line.id"
-            class="pp-app-order-line-table__body-row"
-            :class="{ 'pp-app-order-line-table__body-row--selected': selectedSet.has(line.id) }"
-          >
-            <PpAppOrderLineRow
-              :line="line"
-              :selected="selectedSet.has(line.id)"
-              :updating="updatingLineId === line.id"
-              :supplier-options="supplierOptions"
-              :shipment-options="shipmentOptions"
-              :supplier-loading="supplierGroupsQuery.isPending.value"
-              :shipment-loading="shipmentsQuery.isPending.value"
-              @edit="emit('edit', $event)"
-              @patch="emit('patch', $event)"
-              @toggle-select="onToggleSelect"
-            />
-          </div>
+          <template v-for="block in lineBlocks" :key="block.key">
+            <div
+              v-if="showGroupHeaders && block.label"
+              class="pp-app-order-line-table__group-head"
+            >
+              {{ block.label }}
+            </div>
+            <div
+              v-for="line in block.lines"
+              :key="line.id"
+              class="pp-app-order-line-table__body-row"
+              :class="{ 'pp-app-order-line-table__body-row--selected': selectedSet.has(line.id) }"
+            >
+              <PpAppOrderLineRow
+                :line="line"
+                :selected="selectedSet.has(line.id)"
+                :updating="updatingLineId === line.id"
+                :supplier-options="supplierOptions"
+                :shipment-options="shipmentOptions"
+                :supplier-loading="supplierGroupsQuery.isPending.value"
+                :shipment-loading="shipmentsQuery.isPending.value"
+                @edit="emit('edit', $event)"
+                @patch="emit('patch', $event)"
+                @toggle-select="onToggleSelect"
+              />
+            </div>
+          </template>
         </div>
       </div>
       <ExcelTableScrollFooter
@@ -79,18 +87,46 @@ import TfBtn from 'src/components/ui/TfBtn.vue';
 import { usePpPeopleGroupsQuery } from '../../composables/usePpPeopleGroupsQuery';
 import { usePpShipmentsQuery } from '../../composables/usePpShipmentsQuery';
 import { buildPpShipmentSelectOptions } from '../../types/ppShipment';
+import type { PpAppOrderLineGroupBy } from '../../types/ppAppOrderLineFilters';
 import type { PpOrderLine, PpStaffOrderLineUpdatePayload } from '../../types/ppPurchaseRequest';
+import { ppOrderLineHostLabel } from '../../utils/ppOrderLineUrl';
 import PpAppOrderLineRow from './PpAppOrderLineRow.vue';
 
 const props = withDefaults(
   defineProps<{
     lines: PpOrderLine[];
     updatingLineId?: number | null;
+    groupBy?: PpAppOrderLineGroupBy;
   }>(),
   {
     updatingLineId: null,
+    groupBy: 'none',
   },
 );
+
+type LineBlock = { key: string; label: string; lines: PpOrderLine[] };
+
+const showGroupHeaders = computed(() => props.groupBy === 'store_url');
+
+const lineBlocks = computed((): LineBlock[] => {
+  if (props.groupBy !== 'store_url') {
+    return [{ key: '__all', label: '', lines: props.lines }];
+  }
+  const map = new Map<string, PpOrderLine[]>();
+  for (const line of props.lines) {
+    const label = ppOrderLineHostLabel(line.url) || 'Unknown store';
+    const bucket = map.get(label) ?? [];
+    bucket.push(line);
+    map.set(label, bucket);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, lines]) => ({
+      key: label,
+      label,
+      lines,
+    }));
+});
 
 const emit = defineEmits<{
   edit: [line: PpOrderLine];
@@ -261,6 +297,20 @@ defineExpose({ clearSelection: () => { selectedIds.value = []; } });
 .pp-app-order-line-table__body-row:hover :deep(.pp-app-order-line-row),
 .pp-app-order-line-table__body-row--selected :deep(.pp-app-order-line-row) {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tf-neutral-ink) 18%, transparent);
+}
+
+.pp-app-order-line-table__group-head {
+  position: sticky;
+  top: 2.25rem;
+  z-index: 1;
+  padding: 0.4rem 0.75rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-neutral-muted);
+  background: color-mix(in srgb, var(--tf-disabled-bg) 92%, var(--tf-neutral-surface));
+  border-bottom: 1px solid var(--tf-neutral-border);
 }
 
 .pp-app-order-line-table__body-row--selected :deep(.pp-app-order-line-row) {

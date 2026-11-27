@@ -11,6 +11,7 @@
       :show-qty="showQty"
       :show-price="showPrice"
       :show-status="showStatus"
+      :show-description="showDescription"
     >
       <template v-if="$slots.actions" #actions>
         <slot name="actions" :line="line" />
@@ -33,6 +34,7 @@ withDefaults(
     showQty?: boolean;
     showPrice?: boolean;
     showStatus?: boolean;
+    showDescription?: boolean;
   }>(),
   {
     showId: true,
@@ -42,6 +44,7 @@ withDefaults(
     showQty: true,
     showPrice: true,
     showStatus: true,
+    showDescription: true,
   },
 );
 </script>

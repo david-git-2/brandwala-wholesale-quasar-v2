@@ -13,7 +13,10 @@ export function usePpStaffOrderLineMutations() {
 
   const invalidateStaffLines = () => {
     void queryClient.invalidateQueries({
-      queryKey: ppPurchaseQueryKeys.staffOrderLines(tenantId.value),
+      queryKey: ['pp-purchase-staff-order-lines', tenantId.value],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ppPurchaseQueryKeys.staffOrderLineFilterOptions(tenantId.value),
     });
     void queryClient.invalidateQueries({
       queryKey: ppPurchaseQueryKeys.staffRequests(tenantId.value),

@@ -11,7 +11,7 @@
       </div>
 
       <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--product">
-        <div class="pp-app-order-line-row__product row items-start">
+        <div class="pp-app-order-line-row__product row items-center">
           <div class="pp-app-order-line-row__thumb shrink-0">
             <q-img
               v-if="line.image_url?.trim()"
@@ -509,7 +509,6 @@ const onShipmentChange = (value: number | null) => {
   text-align: center;
 }
 
-.pp-app-order-line-row__cell--product,
 .pp-app-order-line-row__cell--description {
   align-items: flex-start;
   padding-top: 0.45rem;
@@ -517,7 +516,9 @@ const onShipmentChange = (value: number | null) => {
 }
 
 .pp-app-order-line-row__cell--product {
-  align-items: flex-start;
+  align-items: center;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
 }
 
 .pp-app-order-line-row__cell:last-child {

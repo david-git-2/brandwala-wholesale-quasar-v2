@@ -18,10 +18,14 @@ export const PP_ORDER_LINE_PLACEMENT_STATUSES = [
   'lost',
 ] as const satisfies readonly PpOrderLinePlacementStatus[];
 
-/** Staff fulfillment dropdown (legacy `none` omitted). */
-export const PP_ORDER_LINE_STAFF_PLACEMENT_STATUSES = PP_ORDER_LINE_PLACEMENT_STATUSES.filter(
-  (value) => value !== 'none',
+/** Staff fulfillment dropdown (`none` omitted; `cancelled` last). */
+const PP_ORDER_LINE_STAFF_PLACEMENT_MIDDLE = PP_ORDER_LINE_PLACEMENT_STATUSES.filter(
+  (value) => value !== 'none' && value !== 'cancelled',
 );
+export const PP_ORDER_LINE_STAFF_PLACEMENT_STATUSES = [
+  ...PP_ORDER_LINE_STAFF_PLACEMENT_MIDDLE,
+  'cancelled',
+] as const satisfies readonly PpOrderLinePlacementStatus[];
 
 export const PP_ORDER_LINE_PLACEMENT_LABELS: Record<PpOrderLinePlacementStatus, string> = {
   none: 'None',
@@ -49,6 +53,30 @@ export const PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS = PP_ORDER_LINE_STAFF_PLACEME
     value,
   }),
 );
+
+export function ppSupplierPlacementSelectOptions(current: PpOrderLinePlacementStatus) {
+  if (current === 'added_to_cart') {
+    return [
+      { label: PP_ORDER_LINE_PLACEMENT_LABELS.added_to_cart, value: 'added_to_cart' as const },
+      { label: PP_ORDER_LINE_PLACEMENT_LABELS.order_placed, value: 'order_placed' as const },
+    ];
+  }
+
+  return [
+    {
+      label: PP_ORDER_LINE_PLACEMENT_LABELS[current] ?? current,
+      value: current,
+    },
+  ];
+}
+
+export function canSupplierEditPlacedQty(placement: PpOrderLinePlacementStatus): boolean {
+  return placement === 'added_to_cart' || placement === 'order_placed';
+}
+
+export function canSupplierChangePlacement(placement: PpOrderLinePlacementStatus): boolean {
+  return placement === 'added_to_cart';
+}
 
 const PLACEMENT_SET = new Set<string>(PP_ORDER_LINE_PLACEMENT_STATUSES);
 

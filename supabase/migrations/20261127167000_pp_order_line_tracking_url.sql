@@ -40,8 +40,8 @@ CREATE OR REPLACE FUNCTION public.update_pp_order_line_staff(
     p_tenant_id bigint,
     p_line_id bigint,
     p_url text,
-    p_tracking_url text DEFAULT NULL::text,
     p_needed_qty numeric,
+    p_tracking_url text DEFAULT NULL::text,
     p_description text DEFAULT NULL::text,
     p_product_name text DEFAULT NULL::text,
     p_image_url text DEFAULT NULL::text,
@@ -179,5 +179,5 @@ END;
 $$;
 
 GRANT ALL ON FUNCTION public.update_pp_order_line_staff(
-    bigint, bigint, text, text, numeric, text, text, text, numeric, bigint, bigint, boolean, text, numeric, numeric
+    bigint, bigint, text, numeric, text, text, text, text, numeric, bigint, bigint, boolean, text, numeric, numeric
 ) TO anon, authenticated, service_role;

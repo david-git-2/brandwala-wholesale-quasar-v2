@@ -1,12 +1,35 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <header class="row items-center justify-between q-pb-sm flex-shrink-0 q-gutter-sm">
-      <TfDrawerSectionTabs
-        v-model="activeTab"
-        class="col"
-        :tabs="tabOptions"
-        aria-label="Proxy purchase sections"
-      />
+      <div class="row items-center no-wrap col min-width-0 q-gutter-x-xs">
+        <TfDrawerSectionTabs
+          v-model="activeTab"
+          class="col min-width-0"
+          :tabs="tabOptions"
+          aria-label="Proxy purchase sections"
+        />
+        <q-btn
+          v-if="activeTab === 'lines'"
+          flat
+          round
+          dense
+          color="primary"
+          icon="ph ph-faders"
+          class="flex-shrink-0"
+          :ripple="false"
+          aria-label="Filter and group order lines"
+          @click="openLineFilterDrawer"
+        >
+          <q-badge
+            v-if="lineListViewBadgeCount > 0"
+            color="primary"
+            floating
+            rounded
+            :label="String(lineListViewBadgeCount)"
+          />
+          <q-tooltip>Filter &amp; group</q-tooltip>
+        </q-btn>
+      </div>
       <q-btn
         flat
         round
@@ -51,24 +74,43 @@
       </template>
 
       <template v-else>
-        <TfSkeletonRows v-if="orderLinesQuery.isPending.value" :rows="6" :cols="1" />
-        <TfEmptyState
-          v-else-if="!orderLines.length"
-          title="No order lines"
-          message="Order lines from customer requests will appear here."
-          icon="ph ph-link"
-        />
-        <PpAppOrderLineList
-          v-else
-          ref="orderLineListRef"
-          class="col min-h-0"
-          :lines="orderLines"
-          :updating-line-id="updatingLineId"
-          @edit="startEditLine"
-          @patch="onPatchLine"
-          @delete-selected="confirmDeleteSelected"
-        />
+        <div class="column no-wrap col min-h-0">
+          <TfSkeletonRows v-if="orderLinesQuery.isPending.value" :rows="6" :cols="1" />
+          <TfEmptyState
+            v-else-if="!orderLines.length"
+            :title="activeLineFilterCount > 0 ? 'No matching order lines' : 'No order lines'"
+            :message="
+              activeLineFilterCount > 0
+                ? 'Try changing or clearing filters.'
+                : 'Order lines from customer requests will appear here.'
+            "
+            icon="ph ph-link"
+          />
+          <PpAppOrderLineList
+            v-else
+            ref="orderLineListRef"
+            class="col min-h-0"
+            :lines="orderLines"
+            :group-by="lineGroupBy"
+            :updating-line-id="updatingLineId"
+            @edit="startEditLine"
+            @patch="onPatchLine"
+            @delete-selected="confirmDeleteSelected"
+          />
+        </div>
       </template>
+
+    <PpAppOrderLineFilterDrawer
+      v-model="lineFilterDrawerOpen"
+      :draft="draftLineFilters"
+      :draft-group-by="draftLineGroupBy"
+      :filter-options="lineFilterOptionsQuery.data.value"
+      :loading="lineFilterOptionsQuery.isPending.value"
+      @update:draft="draftLineFilters = $event"
+      @update:draft-group-by="draftLineGroupBy = $event"
+      @apply="applyLineFilters"
+      @reset="resetLineFilters"
+    />
     </div>
 
     <PpAppEditOrderLineDialog
@@ -102,10 +144,18 @@ import TfSkeletonRows from 'src/components/ui/TfSkeletonRows.vue';
 import TfStatusBadge from 'src/components/ui/TfStatusBadge.vue';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import PpAppEditOrderLineDialog from '../components/PpAppEditOrderLineDialog.vue';
+import PpAppOrderLineFilterDrawer from '../components/order-lines/PpAppOrderLineFilterDrawer.vue';
 import PpAppOrderLineList from '../components/order-lines/PpAppOrderLineList.vue';
+import { usePpStaffOrderLineFilterOptionsQuery } from '../composables/usePpStaffOrderLineFilterOptionsQuery';
 import { usePpStaffOrderLineMutations } from '../composables/usePpStaffOrderLineMutations';
 import { usePpStaffOrderLinesQuery } from '../composables/usePpStaffOrderLinesQuery';
 import { usePpStaffRequestsQuery } from '../composables/usePpStaffRequestsQuery';
+import {
+  countActivePpAppOrderLineFilters,
+  emptyPpAppOrderLineListFilters,
+  type PpAppOrderLineGroupBy,
+  type PpAppOrderLineListFilters,
+} from '../types/ppAppOrderLineFilters';
 import type {
   PpOrderLine,
   PpPurchaseRequestStaffListItem,
@@ -168,8 +218,43 @@ const staffOrderLinesQueryEnabled = computed(() => activeTab.value === 'lines');
 const requestsQuery = usePpStaffRequestsQuery(staffRequestsQueryEnabled);
 const requests = computed(() => requestsQuery.data.value ?? []);
 
-const orderLinesQuery = usePpStaffOrderLinesQuery(staffOrderLinesQueryEnabled);
+const appliedLineFilters = ref<PpAppOrderLineListFilters>(emptyPpAppOrderLineListFilters());
+const draftLineFilters = ref<PpAppOrderLineListFilters>(emptyPpAppOrderLineListFilters());
+const draftLineGroupBy = ref<PpAppOrderLineGroupBy>('none');
+const lineFilterDrawerOpen = ref(false);
+const lineGroupBy = ref<PpAppOrderLineGroupBy>('none');
+
+const lineFilterOptionsQueryEnabled = computed(
+  () => activeTab.value === 'lines' || lineFilterDrawerOpen.value,
+);
+const lineFilterOptionsQuery = usePpStaffOrderLineFilterOptionsQuery(lineFilterOptionsQueryEnabled);
+
+const orderLinesQuery = usePpStaffOrderLinesQuery(staffOrderLinesQueryEnabled, appliedLineFilters);
 const orderLines = computed(() => orderLinesQuery.data.value ?? []);
+
+const activeLineFilterCount = computed(() => countActivePpAppOrderLineFilters(appliedLineFilters.value));
+
+const lineListViewBadgeCount = computed(
+  () => activeLineFilterCount.value + (lineGroupBy.value === 'store_url' ? 1 : 0),
+);
+
+const openLineFilterDrawer = () => {
+  draftLineFilters.value = { ...appliedLineFilters.value };
+  draftLineGroupBy.value = lineGroupBy.value;
+  lineFilterDrawerOpen.value = true;
+};
+
+const applyLineFilters = () => {
+  appliedLineFilters.value = { ...draftLineFilters.value };
+  lineGroupBy.value = draftLineGroupBy.value;
+};
+
+const resetLineFilters = () => {
+  draftLineFilters.value = emptyPpAppOrderLineListFilters();
+  draftLineGroupBy.value = 'none';
+  appliedLineFilters.value = emptyPpAppOrderLineListFilters();
+  lineGroupBy.value = 'none';
+};
 
 const { updateLine, deleteLines } = usePpStaffOrderLineMutations();
 
