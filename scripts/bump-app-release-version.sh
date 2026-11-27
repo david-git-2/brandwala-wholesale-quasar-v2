@@ -16,10 +16,17 @@ const webPkgPath = path.join(rootDir, 'web', 'package.json');
 const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
 const parts = String(rootPkg.version || '0.0.0').trim().split('.').map((n) => Number.parseInt(n, 10) || 0);
 while (parts.length < 3) parts.push(0);
-parts[2] += 1;
+// Patch is 0-9 only. Legacy patch >9 (e.g. 1.0.79) rolls to next minor at .0.
+// Normal: 1.1.0 → 1.1.1 … 1.1.9 → 1.2.0. Major is manual.
 if (parts[2] > 9) {
-  parts[2] = 0;
   parts[1] += 1;
+  parts[2] = 0;
+} else {
+  parts[2] += 1;
+  if (parts[2] > 9) {
+    parts[2] = 0;
+    parts[1] += 1;
+  }
 }
 const next = parts.join('.');
 rootPkg.version = next;

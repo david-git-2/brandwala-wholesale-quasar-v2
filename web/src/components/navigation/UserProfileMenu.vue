@@ -11,13 +11,6 @@
           />
           <span v-else class="user-profile-btn__initials">{{ userInitials }}</span>
         </q-avatar>
-
-        <q-icon
-          v-if="!isShopScope"
-          name="ph ph-caret-down"
-          size="12px"
-          class="user-profile-btn__caret"
-        />
       </div>
 
       <!-- Profile Dropdown Menu -->
@@ -51,29 +44,33 @@
               {{ currentRoleLabel }}
             </span>
           </div>
-          <div v-if="releaseVersions" class="user-profile-dropdown__releases q-mt-xs">
+          <div v-if="releaseVersions" class="user-profile-dropdown__releases q-mt-sm">
             <div class="user-profile-dropdown__release-row">
               <span class="user-profile-dropdown__release-kind">API</span>
-              <span class="user-profile-dropdown__release-version">
-                {{ formatReleaseVersionLabel(releaseVersions.backend_version) }}
-              </span>
-              <span
-                v-if="formatReleaseDeployedDate(releaseVersions.backend_updated_at)"
-                class="user-profile-dropdown__release-date"
-              >
-                {{ formatReleaseDeployedDate(releaseVersions.backend_updated_at) }}
+              <span class="user-profile-dropdown__release-meta">
+                <span class="user-profile-dropdown__release-version">
+                  {{ formatReleaseVersionLabel(releaseVersions.backend_version) }}
+                </span>
+                <span
+                  v-if="formatReleaseDeployedDate(releaseVersions.backend_updated_at)"
+                  class="user-profile-dropdown__release-date"
+                >
+                  {{ formatReleaseDeployedDate(releaseVersions.backend_updated_at) }}
+                </span>
               </span>
             </div>
             <div class="user-profile-dropdown__release-row">
               <span class="user-profile-dropdown__release-kind">App</span>
-              <span class="user-profile-dropdown__release-version">
-                {{ formatReleaseVersionLabel(releaseVersions.frontend_version) }}
-              </span>
-              <span
-                v-if="formatReleaseDeployedDate(releaseVersions.frontend_updated_at)"
-                class="user-profile-dropdown__release-date"
-              >
-                {{ formatReleaseDeployedDate(releaseVersions.frontend_updated_at) }}
+              <span class="user-profile-dropdown__release-meta">
+                <span class="user-profile-dropdown__release-version">
+                  {{ formatReleaseVersionLabel(releaseVersions.frontend_version) }}
+                </span>
+                <span
+                  v-if="formatReleaseDeployedDate(releaseVersions.frontend_updated_at)"
+                  class="user-profile-dropdown__release-date"
+                >
+                  {{ formatReleaseDeployedDate(releaseVersions.frontend_updated_at) }}
+                </span>
               </span>
             </div>
           </div>
@@ -395,11 +392,6 @@ const loadReleaseVersions = async () => {
   border: 1px solid color-mix(in srgb, var(--tf-brand-accent) 20%, transparent);
 }
 
-.user-profile-btn__caret {
-  color: var(--tf-neutral-chrome);
-  margin-left: 2px;
-}
-
 .user-profile-dropdown {
   display: flex;
   flex-direction: column;
@@ -444,46 +436,46 @@ const loadReleaseVersions = async () => {
 .user-profile-dropdown__releases {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--tf-neutral-border) 18%, var(--tf-neutral-surface) 82%);
-  border: 1px solid color-mix(in srgb, var(--tf-neutral-border) 70%, transparent);
+  gap: 0.35rem;
   font-variant-numeric: tabular-nums;
 }
 
 .user-profile-dropdown__release-row {
   display: flex;
   align-items: baseline;
-  gap: 5px;
-  min-height: 0;
-  line-height: 1.15;
-  font-size: 9.5px;
+  justify-content: space-between;
+  gap: 0.75rem;
+  line-height: 1.25;
+  font-size: 11px;
 }
 
 .user-profile-dropdown__release-kind {
-  flex: 0 0 1.65rem;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--tf-neutral-chrome);
 }
 
+.user-profile-dropdown__release-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
 .user-profile-dropdown__release-version {
-  flex: 0 0 auto;
   font-weight: 600;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
   color: var(--tf-neutral-ink);
 }
 
 .user-profile-dropdown__release-date {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--tf-neutral-muted);
-  text-align: right;
   white-space: nowrap;
 }
 
