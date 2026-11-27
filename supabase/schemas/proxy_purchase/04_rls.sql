@@ -63,3 +63,11 @@ GRANT ALL ON FUNCTION "public"."list_pp_shipments"("p_tenant_id" bigint) TO "ser
 GRANT ALL ON FUNCTION "public"."create_pp_shipment"("p_tenant_id" bigint, "p_name" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_pp_shipment"("p_tenant_id" bigint, "p_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_pp_shipment"("p_tenant_id" bigint, "p_name" "text") TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."check_proxy_login_access"("p_email" "text", "p_tenant_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."check_proxy_login_access"("p_email" "text", "p_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_proxy_login_access"("p_email" "text", "p_tenant_id" bigint) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_proxy_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_people_group_member_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_proxy_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_people_group_member_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_proxy_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_people_group_member_id" bigint) TO "service_role";

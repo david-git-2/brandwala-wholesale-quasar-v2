@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/workspace/submodules/auth/guards/accessGuard';
+import proxyPortalRoutes from './portalRoutes';
 
 const proxyPurchaseGuard = createAccessGuard({
   loginRoute: 'admin-login-page',
@@ -36,4 +37,9 @@ const proxyPurchaseRoutes: RouteRecordRaw[] = [
   },
 ];
 
-export default proxyPurchaseRoutes;
+const proxyPurchaseModuleRoutes: RouteRecordRaw[] = [
+  ...proxyPortalRoutes,
+  ...proxyPurchaseRoutes,
+];
+
+export default proxyPurchaseModuleRoutes;

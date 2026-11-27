@@ -6,6 +6,7 @@ import { getLastShopTypePath } from 'src/modules/shop_order/utils/catalogShop';
 import {
   getAppRouteLocation,
   getInvestorLoginRouteLocation,
+  getProxyLoginRouteLocation,
   getScopeFromPath,
   getShopLoginRouteLocation,
   getShopTypePathFromRoute,
@@ -64,6 +65,7 @@ export async function handleUnauthorizedResponse() {
         'customer-login-page',
         'superadmin-login-page',
         'investor-login-page',
+        'proxy-login-page',
         'auth-callback-page',
         'auth-callback',
         'dev-documentation-codex',
@@ -144,6 +146,8 @@ export async function handleUnauthorizedResponse() {
       await router.replace(loginRouteLocation);
     } else if (scope === 'investor') {
       await router.replace(getInvestorLoginRouteLocation(currentRoute, extraQuery, tenantSlug));
+    } else if (scope === 'proxy') {
+      await router.replace(getProxyLoginRouteLocation(currentRoute, extraQuery, tenantSlug));
     } else {
       const loginRouteLocation = getAppRouteLocation(
         {

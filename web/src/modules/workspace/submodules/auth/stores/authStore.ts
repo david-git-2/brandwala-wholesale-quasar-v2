@@ -3,7 +3,11 @@ import { computed, ref } from 'vue';
 
 import { supabase } from 'src/boot/supabase';
 import type { AuthScope } from '../composables/useOAuthLogin';
-import { mapShopRoleToAccessRole, type AccessRole } from '../guards/accessGuard';
+import {
+  mapProxyRoleToAccessRole,
+  mapShopRoleToAccessRole,
+  type AccessRole,
+} from '../guards/accessGuard';
 import { clearTenantWorkspaceStorage, useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useMembershipPreferenceStore } from 'src/modules/tenant/submodules/membership/stores/membershipPreferenceStore';
@@ -20,7 +24,7 @@ export interface AuthMemberSnapshot {
   id: number;
   email: string;
   role: AccessRole;
-  actorType: 'membership' | 'customer_group_member';
+  actorType: 'membership' | 'customer_group_member' | 'pp_people_group_member';
   name: string | null;
   tenantId: number | null;
   customerGroupId: number | null;
@@ -154,7 +158,10 @@ export const useAuthStore = defineStore('auth', () => {
     snapshot.value?.member?.actorType === 'membership' ? snapshot.value.member.id : null,
   );
   const customerGroupMemberId = computed(() =>
-    snapshot.value?.member?.actorType === 'customer_group_member' ? snapshot.value.member.id : null,
+    snapshot.value?.member?.actorType === 'customer_group_member' ||
+    snapshot.value?.member?.actorType === 'pp_people_group_member'
+      ? snapshot.value.member.id
+      : null,
   );
   const tenantId = computed(
     () =>
@@ -327,6 +334,68 @@ export const useAuthStore = defineStore('auth', () => {
         });
         writeFreshnessTimestamp(Date.now());
         return true;
+      } else if (scopeVal === 'proxy') {
+        if (!snapshot.value.customerGroup?.id) {
+          return false;
+        }
+        const tenantIdVal = snapshot.value.tenant?.id ?? null;
+        const memberIdVal = snapshot.value.member?.id ?? null;
+        const { data, error } = await supabase.rpc('get_proxy_bootstrap_context', {
+          p_email: email,
+          p_tenant_id: tenantIdVal,
+          p_people_group_member_id: memberIdVal,
+        });
+        if (error || !data) return false;
+        const bootstrap = Array.isArray(data) ? data[0] : data;
+        if (!bootstrap) return false;
+
+        const proxyRole = mapProxyRoleToAccessRole(
+          bootstrap.people_group_type ?? '',
+          bootstrap.member_role ?? '',
+        );
+        if (!proxyRole) return false;
+
+        saveAccess({
+          scope: 'proxy',
+          matchedRole: proxyRole,
+          user: snapshot.value.user,
+          member: {
+            ...snapshot.value.member,
+            role: proxyRole,
+            name: bootstrap.member_name ?? null,
+            isActive: Boolean(bootstrap.member_is_active),
+            tenantId: bootstrap.tenant_id,
+            customerGroupId: bootstrap.people_group_id,
+            actorType: 'pp_people_group_member',
+          },
+          tenant: {
+            id: bootstrap.tenant_id,
+            name: bootstrap.tenant_name,
+            slug: bootstrap.tenant_slug,
+            isActive: Boolean(bootstrap.tenant_is_active),
+          },
+          customerGroup: {
+            id: bootstrap.people_group_id,
+            name: bootstrap.people_group_name,
+            isActive: Boolean(bootstrap.people_group_is_active),
+            accentColor: null,
+          },
+          activeModuleKeys: bootstrap.active_module_keys || [],
+          effectiveGrants: (bootstrap.effective_grants || []) as Array<{
+            module_key: string;
+            action: string;
+          }>,
+          tenantRoleId: bootstrap.tenant_role_id ?? null,
+          isAdmin: Boolean(bootstrap.is_admin),
+          permissionVersion: bootstrap.permission_version ?? null,
+          savedAt: new Date().toISOString(),
+        });
+        tenantStore.hydrateSelectedTenantFromAuth({
+          id: bootstrap.tenant_id,
+          slug: bootstrap.tenant_slug,
+        });
+        writeFreshnessTimestamp(Date.now());
+        return true;
       }
     } catch (e) {
       console.error('[authStore] silent re-bootstrap error', e);
@@ -337,6 +406,7 @@ export const useAuthStore = defineStore('auth', () => {
   const checkFreshness = async () => {
     if (!tenantId.value) return;
     if (scope.value === 'shop' && !customerGroupId.value) return;
+    if (scope.value === 'proxy' && !customerGroupId.value) return;
     const lastCheck = readFreshnessTimestamp();
     if (lastCheck !== null && Date.now() - lastCheck < FRESHNESS_TTL_MS) {
       return;

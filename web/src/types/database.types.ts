@@ -5619,6 +5619,11 @@ isOneToOne: false
               "has_match": boolean,"matched_role": Database["public"]['Enums']["app_role"],"member_created_at": string,"member_email": string,"member_id": number,"member_is_active": boolean,"member_tenant_id": number,"member_updated_at": string
             }[]
                            },
+"check_proxy_login_access":
+{ Args: { "p_email": string,"p_tenant_id"?: number }; Returns: {
+              "has_match": boolean,"matched_role": string,"member_created_at": string,"member_email": string,"member_id": number,"member_is_active": boolean,"member_name": string,"member_tenant_id": number,"member_updated_at": string,"people_group_id": number,"people_group_is_active": boolean,"people_group_name": string,"people_group_type": string
+            }[]
+                           },
 "check_shipment_bill_references":
 { Args: { "p_shipment_id": number }; Returns: (string)[]
                            },
@@ -6513,6 +6518,11 @@ isOneToOne: false
       } },
 "get_profile_kernel_pay_detail_for_staff":
 { Args: { "p_pays_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"get_proxy_bootstrap_context":
+{ Args: { "p_email"?: string,"p_people_group_member_id"?: number,"p_tenant_id"?: number }; Returns: {
+              "active_module_keys": (string)[],"effective_grants": Json,"is_admin": boolean,"member_email": string,"member_id": number,"member_is_active": boolean,"member_name": string,"member_role": string,"people_group_id": number,"people_group_is_active": boolean,"people_group_name": string,"people_group_type": string,"permission_version": number,"tenant_id": number,"tenant_is_active": boolean,"tenant_name": string,"tenant_role_id": number,"tenant_slug": string
+            }[]
                            },
 "get_recipient_profile_by_phone":
 { Args: { "p_phone": string,"p_tenant_id": number }; Returns: Json

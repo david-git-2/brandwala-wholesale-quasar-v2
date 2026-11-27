@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { supabase } from 'src/boot/supabase';
-import { mapShopRoleToAccessRole } from '../guards/accessGuard';
+import { mapProxyRoleToAccessRole, mapShopRoleToAccessRole } from '../guards/accessGuard';
 import {
   rememberShopTypePath,
 } from 'src/modules/shop_order/utils/catalogShop';
@@ -15,6 +15,9 @@ import {
   getTenantHostnameForEntry,
   getInvestorDashboardRouteLocation,
   getInvestorLoginRouteLocation,
+  getProxyDashboardRouteLocation,
+  getProxyLoginRouteLocation,
+  getProxySelectGroupRouteLocation,
   getShopLoginRouteLocation,
   getShopSelectCompanyRouteLocation,
   getTenantSlugFromRoute,
@@ -36,8 +39,12 @@ import {
   bootstrapShopCustomerGroup,
   listShopLoginGroups,
 } from '../utils/shopCustomerGroupSession';
+import {
+  bootstrapProxyPeopleGroup,
+  listProxyLoginGroups,
+} from '../utils/proxyPeopleGroupSession';
 
-export type AuthScope = 'platform' | 'app' | 'shop' | 'investor';
+export type AuthScope = 'platform' | 'app' | 'shop' | 'investor' | 'proxy';
 
 const scopeConfig: Record<
   AuthScope,
@@ -61,6 +68,10 @@ const scopeConfig: Record<
   investor: {
     homeRouteName: 'investor-dashboard-page',
     loginRouteName: 'investor-login-page',
+  },
+  proxy: {
+    homeRouteName: 'proxy-dashboard-page',
+    loginRouteName: 'proxy-login-page',
   },
 };
 
@@ -165,6 +176,13 @@ export function useOAuthLogin(
       return;
     }
 
+    if (resolvedScope === 'proxy') {
+      await router.replace(
+        getProxyLoginRouteLocation(route, extraQuery, options?.tenantSlug ?? null),
+      );
+      return;
+    }
+
     await router.replace({
       name: currentScope.loginRouteName,
       query: extraQuery,
@@ -227,7 +245,7 @@ export function useOAuthLogin(
       }
     }
 
-    if (payload.scope === 'app' || payload.scope === 'shop') {
+    if (payload.scope === 'app' || payload.scope === 'shop' || payload.scope === 'proxy') {
       tenantStore.hydrateSelectedTenantFromAuth(payload.tenant);
     }
 
@@ -280,6 +298,11 @@ export function useOAuthLogin(
 
     if (resolvedScope === 'investor') {
       await router.replace(getInvestorDashboardRouteLocation(route, payload.tenant?.slug));
+      return;
+    }
+
+    if (resolvedScope === 'proxy') {
+      await router.replace(getProxyDashboardRouteLocation(route, payload.tenant?.slug));
       return;
     }
 
@@ -677,6 +700,121 @@ export function useOAuthLogin(
     return true;
   };
 
+  const processProxyLogin = async (userEmail: string, user: AuthUserSnapshot) => {
+    const entryTenant = await resolveShopTenantEntry();
+
+    if (!entryTenant) {
+      return false;
+    }
+
+    let matches;
+    try {
+      matches = await listProxyLoginGroups(userEmail, entryTenant.id);
+    } catch (error) {
+      console.error('[auth:proxy] Login access check failed', error);
+      await sendBackToLogin('Proxy login access check failed', error);
+      return false;
+    }
+
+    if (matches.length === 0) {
+      await sendBackToLogin(
+        'No matching proxy group membership for this tenant',
+        {
+          tenantId: entryTenant.id,
+          tenantSlug: entryTenant.slug,
+        },
+        'wrong_tenant',
+      );
+      return false;
+    }
+
+    const chosen = matches.length === 1 ? matches[0] : null;
+
+    if (!chosen) {
+      const first = matches[0];
+      const pendingRole =
+        mapProxyRoleToAccessRole(first?.people_group_type ?? '', first?.matched_role ?? '') ??
+        'proxy_customer_staff';
+      authStore.saveAccess({
+        scope: 'proxy',
+        matchedRole: pendingRole,
+        user,
+        member: {
+          id: first?.member_id ?? 0,
+          email: userEmail,
+          role: pendingRole,
+          actorType: 'pp_people_group_member',
+          name: first?.member_name ?? null,
+          tenantId: entryTenant.id,
+          customerGroupId: null,
+          isActive: true,
+          createdAt: first?.member_created_at ?? null,
+          updatedAt: first?.member_updated_at ?? null,
+        },
+        tenant: {
+          id: entryTenant.id,
+          name: entryTenant.name,
+          slug: entryTenant.slug,
+          isActive: true,
+        },
+        customerGroup: null,
+        activeModuleKeys: [],
+        effectiveGrants: [],
+        tenantRoleId: null,
+        isAdmin: false,
+        permissionVersion: null,
+        savedAt: new Date().toISOString(),
+      });
+      tenantStore.hydrateSelectedTenantFromAuth({
+        id: entryTenant.id,
+        slug: entryTenant.slug,
+      });
+
+      const redirectPath =
+        typeof route.query.redirect === 'string' ? route.query.redirect.trim() : '';
+      await router.replace(
+        getProxySelectGroupRouteLocation(
+          route,
+          redirectPath ? { redirect: redirectPath } : undefined,
+          entryTenant.slug,
+        ),
+      );
+      return true;
+    }
+
+    try {
+      const snapshot = await bootstrapProxyPeopleGroup({
+        user,
+        email: userEmail,
+        tenantId: entryTenant.id,
+        memberId: chosen.member_id,
+        createdAt: chosen.member_created_at,
+        updatedAt: chosen.member_updated_at,
+      });
+
+      if (!snapshot) {
+        await sendBackToLogin('Proxy bootstrap returned no usable context', chosen);
+        return false;
+      }
+
+      if (snapshot.tenant?.id !== entryTenant.id) {
+        await sendBackToLogin(
+          'Proxy bootstrap tenant did not match the entry tenant',
+          { snapshot, entryTenant },
+          'wrong_tenant',
+        );
+        return false;
+      }
+
+      await saveAndRedirect(snapshot);
+      return true;
+    } catch (error) {
+      console.error('[auth:proxy] Bootstrap fetch failed', error);
+      await sendBackToLogin('Proxy bootstrap fetch failed', error);
+      return false;
+    }
+  };
+
   const processLoginResult = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData.session;
@@ -721,6 +859,10 @@ export function useOAuthLogin(
       return processInvestorLogin(userEmail, user);
     }
 
+    if (resolvedScope === 'proxy') {
+      return processProxyLogin(userEmail, user);
+    }
+
     return processShopLogin(userEmail, user);
   };
 
@@ -739,7 +881,10 @@ export function useOAuthLogin(
     }
 
     if (
-      (resolvedScope === 'shop' || resolvedScope === 'app' || resolvedScope === 'investor') &&
+      (resolvedScope === 'shop' ||
+        resolvedScope === 'app' ||
+        resolvedScope === 'investor' ||
+        resolvedScope === 'proxy') &&
       tenantSlug
     ) {
       callbackSearchParams.set('tenant_slug', tenantSlug);

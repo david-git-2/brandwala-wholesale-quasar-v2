@@ -586,7 +586,7 @@ const props = defineProps<{
   useHeaderProfile?: boolean;
 }>();
 
-const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor', 'theme-proxy'];
 
 const drawerOpen = ref(false);
 const showLogoutDialog = ref(false);

@@ -221,6 +221,27 @@ body.body--dark {
     --tf-theme-shadow: 0 12px 30px -12px rgb(139 182 238 / 0.25);
   }
 
+  &.theme-proxy,
+  .theme-proxy {
+    @include tf-quasar-brand-map;
+    --tf-theme-base: var(--tf-neutral-canvas);
+    --tf-theme-surface: var(--tf-neutral-surface);
+    --tf-theme-border: var(--tf-neutral-border);
+    --tf-theme-ink: var(--tf-neutral-ink);
+    --tf-theme-muted: var(--tf-neutral-muted);
+    --tf-proxy-paper: var(--tf-neutral-canvas);
+    --tf-theme-accent: #0d6b5c;
+    --tf-brand-accent: #9fb3c8;
+    --tf-brand-accent-rgb: 159 179 200;
+    --tf-theme-primary: #e5e7eb;
+    --tf-theme-primary-hover: #f3f4f6;
+    --tf-theme-primary-active: #ffffff;
+    --tf-theme-on-primary: #111827;
+    --tf-theme-primary-rgb: 229 231 235;
+    --tf-theme-primary-soft: rgb(229 231 235 / 0.12);
+    --tf-theme-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.4);
+  }
+
   &.theme-investor,
   .theme-investor {
     @include tf-quasar-brand-map;
@@ -280,6 +301,7 @@ body.body--dark {
 .theme-app,
 .theme-shop,
 .theme-investor,
+.theme-proxy,
 .theme-docs {
   @include tf-quasar-brand-map;
   --tf-theme-base: var(--tf-brand-base);
@@ -358,7 +380,25 @@ body.body--dark {
   --tf-theme-shadow: 0 12px 32px -16px rgb(43 95 168 / 0.16);
 }
 
-/* 4. Investor Theme — umber headings, coral accent */
+/* 4. Proxy Theme — same ink / teal family as app desk */
+.theme-proxy {
+  --tf-proxy-paper: #faf9f9;
+  --tf-theme-accent: #0d6b5c;
+  --tf-theme-base: var(--tf-neutral-canvas);
+  --tf-theme-surface: var(--tf-neutral-surface);
+  --tf-theme-border: var(--tf-neutral-border);
+  --tf-theme-ink: var(--tf-neutral-ink);
+  --tf-theme-muted: var(--tf-neutral-muted);
+  --tf-theme-primary: #1f2937;
+  --tf-theme-primary-hover: #111827;
+  --tf-theme-primary-active: #0b1220;
+  --tf-theme-on-primary: #ffffff;
+  --tf-theme-primary-rgb: 31 41 55;
+  --tf-theme-primary-soft: rgb(31 41 55 / 0.06);
+  --tf-theme-shadow: 0 10px 30px -4px rgba(31 41 55 / 0.12), 0 4px 12px -2px rgba(23 20 18 / 0.04);
+}
+
+/* 5. Investor Theme — umber headings, coral accent */
 .theme-investor {
   --tf-investor-paper: #faf6ee;
   --tf-investor-coral: #f2765e;

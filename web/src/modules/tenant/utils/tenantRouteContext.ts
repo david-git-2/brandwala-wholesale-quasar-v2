@@ -48,10 +48,10 @@ export const getTenantSlugFromPath = (path: string): string | null => {
     }
   }
 
-  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
+  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor|proxy)(\/|$)/);
   if (scopedMatch?.[1]) {
     const first = normalizeRouteToken(scopedMatch[1]);
-    if (first === 'app' || first === 'shop' || first === 'investor' || first === 'platform') {
+    if (first === 'app' || first === 'shop' || first === 'investor' || first === 'platform' || first === 'proxy') {
       return null;
     }
     return first;
@@ -62,17 +62,18 @@ export const getTenantSlugFromPath = (path: string): string | null => {
 
 export const getScopeFromPath = (
   path: string,
-): 'platform' | 'app' | 'shop' | 'investor' | null => {
+): 'platform' | 'app' | 'shop' | 'investor' | 'proxy' | null => {
   const normalizedPath = path.split('?')[0]?.split('#')[0] ?? path;
 
   if (/^\/platform(\/|$)/.test(normalizedPath)) {
     return 'platform';
   }
 
-  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
+  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor|proxy)(\/|$)/);
   if (scopedMatch?.[2] === 'shop') return 'shop';
   if (scopedMatch?.[2] === 'investor') return 'investor';
   if (scopedMatch?.[2] === 'app') return 'app';
+  if (scopedMatch?.[2] === 'proxy') return 'proxy';
   if (/^\/shop(\/|$)/.test(normalizedPath)) return 'shop';
   if (/^\/investor(\/|$)/.test(normalizedPath)) return 'investor';
   if (/^\/app(\/|$)/.test(normalizedPath)) return 'app';
@@ -294,6 +295,69 @@ export const getInvestorDashboardRouteLocation = (
 ): RouteLocationRaw => {
   return {
     name: 'investor-dashboard-page',
+  };
+};
+
+export const getProxyLoginRouteLocation = (
+  route: RouteLike,
+  extraQuery?: Record<string, string>,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug =
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? '';
+
+  if (tenantSlug) {
+    return {
+      name: 'proxy-login-page',
+      params: { tenantSlug },
+      query: { ...extraQuery },
+    };
+  }
+
+  return {
+    path: '/proxy/login',
+    query: { ...extraQuery },
+  };
+};
+
+export const getProxySelectGroupRouteLocation = (
+  route: RouteLike,
+  extraQuery?: Record<string, string>,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug =
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? '';
+
+  if (tenantSlug) {
+    return {
+      name: 'proxy-select-group-page',
+      params: { tenantSlug },
+      query: { ...extraQuery },
+    };
+  }
+
+  return {
+    path: '/proxy/select-group',
+    query: { ...extraQuery },
+  };
+};
+
+export const getProxyDashboardRouteLocation = (
+  route: RouteLike,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug =
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? '';
+
+  if (tenantSlug) {
+    return {
+      name: 'proxy-dashboard-page',
+      params: { tenantSlug },
+    };
+  }
+
+  return {
+    path: '/proxy',
   };
 };
 

@@ -8,6 +8,15 @@
         aria-label="Proxy people type"
       />
       <TfBtn
+        variant="icon"
+        size="md"
+        icon="ph ph-copy"
+        aria-label="Copy proxy login URL"
+        class="col-auto"
+        :disable="!tenantSlug"
+        @click="copyProxyLoginUrl"
+      />
+      <TfBtn
         variant="primary"
         size="md"
         label="Create group"
@@ -75,7 +84,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { copyToClipboard } from 'quasar';
 import TfBtn from 'src/components/ui/TfBtn.vue';
+import { useAuthStore } from 'src/modules/workspace/submodules/auth/stores/authStore';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import TfDrawerSectionTabs from 'src/components/ui/TfDrawerSectionTabs.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
@@ -86,6 +98,25 @@ import PpPeopleGroupDrawer from './PpPeopleGroupDrawer.vue';
 import { usePpPeopleGroupsQuery } from '../composables/usePpPeopleGroupsQuery';
 import { usePpPeopleMutations } from '../composables/usePpPeopleMutations';
 import type { PpPeopleGroup, PpPeopleGroupType, PpPeopleMemberRole } from '../types/ppPeople';
+
+const authStore = useAuthStore();
+const tenantSlug = computed(() => authStore.tenantSlug ?? '');
+
+const copyProxyLoginUrl = async () => {
+  const slug = tenantSlug.value;
+  if (!slug) {
+    showErrorNotification('Tenant slug is not available.');
+    return;
+  }
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  const url = `${origin}/${slug}/proxy/login`;
+  try {
+    await copyToClipboard(url);
+    showSuccessNotification('Proxy login URL copied.');
+  } catch {
+    showErrorNotification('Could not copy the login URL.');
+  }
+};
 
 const peopleTab = ref<PpPeopleGroupType>('customer');
 const peopleTabs = [

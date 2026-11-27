@@ -26,7 +26,33 @@ export type AccessRole =
   | 'customer_admin'
   | 'customer_manager'
   | 'customer_staff'
-  | 'investor_portal';
+  | 'investor_portal'
+  | 'proxy_customer_admin'
+  | 'proxy_customer_staff'
+  | 'proxy_supplier_admin'
+  | 'proxy_supplier_staff';
+
+const PROXY_PORTAL_ROLES: AccessRole[] = [
+  'proxy_customer_admin',
+  'proxy_customer_staff',
+  'proxy_supplier_admin',
+  'proxy_supplier_staff',
+];
+
+export const mapProxyRoleToAccessRole = (
+  groupType: string,
+  memberRole: string,
+): AccessRole | null => {
+  const type = groupType.trim().toLowerCase();
+  const role = memberRole.trim().toLowerCase();
+  if (type === 'customer' && role === 'admin') return 'proxy_customer_admin';
+  if (type === 'customer' && role === 'staff') return 'proxy_customer_staff';
+  if (type === 'supplier' && role === 'admin') return 'proxy_supplier_admin';
+  if (type === 'supplier' && role === 'staff') return 'proxy_supplier_staff';
+  return null;
+};
+
+export const isProxyPortalRole = (role: AccessRole) => PROXY_PORTAL_ROLES.includes(role);
 
 const APP_DESK_ROLES: AccessRole[] = ['admin', 'owner', 'manager', 'staff', 'viewer'];
 
@@ -86,6 +112,10 @@ const resolveAuthenticatedDenyTarget = ({
     return tenantSlug
       ? `/shop/${tenantSlug}/${getLastShopTypePath(authStore.tenantId)}/dashboard`
       : '/shop/login';
+  }
+
+  if (currentScope === 'proxy') {
+    return tenantSlug ? `/${tenantSlug}/proxy` : '/proxy/login';
   }
 
   if (

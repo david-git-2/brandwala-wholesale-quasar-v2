@@ -260,7 +260,7 @@ import {
 import { filterActiveCartsByShopTypePath } from 'src/modules/shop_order/utils/shopCartScope';
 import { shopTypeFromPathSegment, shopTypeToPathSegment } from 'src/modules/shop_order/utils/shopRouteTypes';
 
-const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
+const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor', 'theme-proxy'];
 
 const props = defineProps<{
   logoutTo: string;
