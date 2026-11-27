@@ -13,6 +13,7 @@ FROM (
     (NULL::bigint, 'ap_bill', 'AP', 'none', 'month', 4::smallint, '-', 'UTC', true),
     (NULL::bigint, 'dropship_b2b_invoice', 'DS', 'none', 'month', 4::smallint, '-', 'UTC', true),
     (NULL::bigint, 'shipment', 'SHP', 'none', 'none', 4::smallint, '-', 'UTC', true),
+    (NULL::bigint, 'proxy_shipment', 'PPS', 'none', 'day', 4::smallint, '-', 'UTC', true),
     (NULL::bigint, 'stock_movement', 'MOV', 'none', 'day', 4::smallint, '-', 'UTC', true),
     (NULL::bigint, 'stock_movement_manual', 'SM', 'none', 'day', 4::smallint, '-', 'UTC', true),
     (NULL::bigint, 'receive_putaway', 'RP', 'none', 'day', 4::smallint, '-', 'UTC', true),

@@ -1841,6 +1841,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pp_shipment": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"id": number,"name": string,"shipment_code": string,"status": string,"tenant_id": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name": string,"shipment_code": string,"status"?: string,"tenant_id": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name"?: string,"shipment_code"?: string,"status"?: string,"tenant_id"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_shipment_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"preorder_demand": {
                   Row: {
                     "confirmed_quantity": number,"created_at": string,"delivered_quantity": number,"id": number,"notes": string | null,"open_quantity": number,"placed_quantity": number,"profile_id": number | null,"source_id": number,"source_type": Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks": NonNullable<Json>,"tenant_id": number,"updated_at": string,"updated_by_user_id": string | null,"vendor_id": number | null,"vendor_placements": NonNullable<Json>
@@ -5768,6 +5788,9 @@ isOneToOne: false
 "create_pp_people_group_member":
 { Args: { "p_email": string,"p_name": string,"p_people_group_id": number,"p_role": string,"p_tenant_id": number }; Returns: Json
                            },
+"create_pp_shipment":
+{ Args: { "p_name": string,"p_tenant_id": number }; Returns: Json
+                           },
 "create_sales_invoice":
 { Args: { "p_due_date"?: string,"p_invoice_date"?: string,"p_invoice_no"?: string,"p_invoice_type"?: Database["public"]['Enums']["global_invoice_type"],"p_note"?: string,"p_profile_id"?: number,"p_recipient_address"?: string,"p_recipient_name"?: string,"p_recipient_phone"?: string,"p_recipient_profile_id"?: number,"p_retail_billing_mode"?: Database["public"]['Enums']["retail_billing_mode"],"p_tenant_id": number }; Returns: {
               "ap_kind": string | null,
@@ -7250,6 +7273,9 @@ isOneToOne: false
                            },
 "list_pp_people_groups":
 { Args: { "p_tenant_id": number,"p_type": string }; Returns: Json
+                           },
+"list_pp_shipments":
+{ Args: { "p_tenant_id": number }; Returns: Json
                            },
 "list_procurement_demand_buy_documents":
 { Args: { "p_child_tenant_id"?: number,"p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: Json

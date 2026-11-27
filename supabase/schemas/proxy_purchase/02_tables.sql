@@ -86,3 +86,50 @@ CREATE OR REPLACE TRIGGER "trg_pp_people_group_updated_at"
 CREATE OR REPLACE TRIGGER "trg_pp_people_group_member_updated_at"
     BEFORE UPDATE ON "public"."pp_people_group_member"
     FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+-- Proxy purchase: shipments
+
+CREATE TABLE IF NOT EXISTS "public"."pp_shipment" (
+    "id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
+    "name" "text" NOT NULL,
+    "shipment_code" "text" NOT NULL,
+    "status" "text" DEFAULT 'draft'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "deleted_at" timestamp with time zone,
+    CONSTRAINT "pp_shipment_name_not_blank" CHECK (("length"(TRIM(BOTH FROM "name")) > 0)),
+    CONSTRAINT "pp_shipment_code_not_blank" CHECK (("length"(TRIM(BOTH FROM "shipment_code")) > 0)),
+    CONSTRAINT "pp_shipment_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'in_transit'::"text", 'received'::"text", 'cancelled'::"text"])))
+);
+
+ALTER TABLE "public"."pp_shipment" OWNER TO "postgres";
+
+CREATE SEQUENCE IF NOT EXISTS "public"."pp_shipment_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE "public"."pp_shipment_id_seq" OWNER TO "postgres";
+ALTER SEQUENCE "public"."pp_shipment_id_seq" OWNED BY "public"."pp_shipment"."id";
+ALTER TABLE ONLY "public"."pp_shipment" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."pp_shipment_id_seq"'::"regclass");
+
+ALTER TABLE ONLY "public"."pp_shipment"
+    ADD CONSTRAINT "pp_shipment_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."pp_shipment"
+    ADD CONSTRAINT "pp_shipment_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "pp_shipment_tenant_code_active_uidx"
+    ON "public"."pp_shipment" ("tenant_id", "shipment_code")
+    WHERE ("deleted_at" IS NULL);
+
+CREATE INDEX IF NOT EXISTS "pp_shipment_tenant_active_idx"
+    ON "public"."pp_shipment" ("tenant_id", "created_at" DESC)
+    WHERE ("deleted_at" IS NULL);
+
+CREATE OR REPLACE TRIGGER "trg_pp_shipment_updated_at"
+    BEFORE UPDATE ON "public"."pp_shipment"
+    FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();

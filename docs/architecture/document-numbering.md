@@ -29,6 +29,7 @@ Timezone for buckets: `tenants.preference->>'timezone'`, then config default, th
 | `ap_bill` | `AP-2511-0031` |
 | `dropship_b2b_invoice` | `DS-2511-0009` |
 | `shipment` | `SHP-1042` (`tenant_shipment_id` = numeric suffix) |
+| `proxy_shipment` | `PPS-251105-0007` |
 | `stock_movement` / `SM` / `RP` / `VR` | `MOV-251105-0187`, etc. |
 
 Historical rows keep old strings (`ORD-*`, `INV-DS-{order_no}`, …). Only **new** rows use the formats above.
