@@ -89,6 +89,7 @@ function parseLineRow(row: Record<string, unknown>): PpOrderLine | null {
     purchase_request_id: Number(row.purchase_request_id),
     pp_customer_group_id: Number(row.pp_customer_group_id),
     url: row.url,
+    tracking_url: typeof row.tracking_url === 'string' ? row.tracking_url : null,
     needed_qty: Number(row.needed_qty),
     description: typeof row.description === 'string' ? row.description : null,
     product_name: typeof row.product_name === 'string' ? row.product_name : null,
@@ -101,6 +102,7 @@ function parseLineRow(row: Record<string, unknown>): PpOrderLine | null {
     added_to_cart_at: typeof row.added_to_cart_at === 'string' ? row.added_to_cart_at : null,
     placement_status: normalizePpOrderLinePlacementStatus(row.placement_status),
     placed_qty: row.placed_qty == null ? null : Number(row.placed_qty),
+    received_qty: row.received_qty == null ? null : Number(row.received_qty),
     status: typeof row.status === 'string' ? (row.status as PpOrderLine['status']) : 'draft',
     created_at: typeof row.created_at === 'string' ? row.created_at : '',
     customer_group_name:
@@ -163,6 +165,7 @@ export const ppPurchaseRequestRepository = {
       p_tenant_id: tenantId,
       p_line_id: payload.lineId,
       p_url: payload.url,
+      p_tracking_url: payload.tracking_url ?? null,
       p_needed_qty: payload.needed_qty,
       p_description: payload.description ?? undefined,
       p_product_name: payload.product_name ?? undefined,
@@ -173,7 +176,7 @@ export const ppPurchaseRequestRepository = {
       p_is_added_to_cart: payload.is_added_to_cart,
       p_placement_status: payload.placement_status,
       p_placed_qty: payload.placed_qty ?? undefined,
-      p_status: payload.status,
+      p_received_qty: payload.received_qty ?? undefined,
     });
     if (error) throw error;
     const parsed = parseLineRow(data as Record<string, unknown>);

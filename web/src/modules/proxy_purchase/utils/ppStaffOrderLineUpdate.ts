@@ -1,5 +1,8 @@
 import type { PpOrderLine, PpStaffOrderLineUpdatePayload } from '../types/ppPurchaseRequest';
-import { ppPlacementImpliesAddedToCart } from './ppOrderLinePlacement';
+import {
+  derivePpLineStatusFromPlacement,
+  ppPlacementImpliesAddedToCart,
+} from './ppOrderLinePlacement';
 
 export function buildPpStaffOrderLineUpdate(
   line: PpOrderLine,
@@ -9,6 +12,7 @@ export function buildPpStaffOrderLineUpdate(
   return {
     lineId: line.id,
     url: line.url,
+    tracking_url: line.tracking_url,
     needed_qty: line.needed_qty,
     description: line.description,
     product_name: line.product_name,
@@ -17,9 +21,10 @@ export function buildPpStaffOrderLineUpdate(
     pp_supplier_group_id: line.pp_supplier_group_id,
     shipment_id: line.shipment_id,
     placed_qty: line.placed_qty,
-    status: line.status,
+    received_qty: line.received_qty,
     ...patch,
     placement_status,
     is_added_to_cart: ppPlacementImpliesAddedToCart(placement_status),
+    status: derivePpLineStatusFromPlacement(placement_status),
   };
 }

@@ -186,6 +186,7 @@ CREATE TABLE IF NOT EXISTS "public"."pp_order_lines" (
     "purchase_request_id" bigint NOT NULL,
     "pp_customer_group_id" bigint NOT NULL,
     "url" "text" NOT NULL,
+    "tracking_url" "text",
     "needed_qty" numeric NOT NULL,
     "description" "text",
     "product_name" "text",
@@ -197,6 +198,7 @@ CREATE TABLE IF NOT EXISTS "public"."pp_order_lines" (
     "added_to_cart_at" timestamp with time zone,
     "placement_status" "text" DEFAULT 'none'::"text" NOT NULL,
     "placed_qty" numeric,
+    "received_qty" numeric,
     "status" "text" DEFAULT 'draft'::"text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -204,7 +206,8 @@ CREATE TABLE IF NOT EXISTS "public"."pp_order_lines" (
     CONSTRAINT "pp_order_lines_url_not_blank" CHECK (("length"(TRIM(BOTH FROM "url")) > 0)),
     CONSTRAINT "pp_order_lines_needed_qty_positive" CHECK (("needed_qty" > (0)::numeric)),
     CONSTRAINT "pp_order_lines_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'requested'::"text", 'processing'::"text", 'done'::"text", 'cancelled'::"text"]))),
-    CONSTRAINT "pp_order_lines_placement_status_check" CHECK (("placement_status" = ANY (ARRAY['none'::"text", 'added_to_cart'::"text", 'order_placed'::"text", 'cargo_warehouse'::"text", 'in_flight'::"text", 'local_warehouse'::"text", 'delivered'::"text", 'lost'::"text"])))
+    CONSTRAINT "pp_order_lines_placement_status_check" CHECK (("placement_status" = ANY (ARRAY['none'::"text", 'draft'::"text", 'requested'::"text", 'processing'::"text", 'cancelled'::"text", 'added_to_cart'::"text", 'order_placed'::"text", 'cargo_warehouse'::"text", 'in_flight'::"text", 'local_warehouse'::"text", 'delivered'::"text", 'lost'::"text"]))),
+    CONSTRAINT "pp_order_lines_received_qty_nonneg" CHECK (("received_qty" IS NULL OR "received_qty" >= (0)::numeric))
 );
 
 ALTER TABLE "public"."pp_order_lines" OWNER TO "postgres";

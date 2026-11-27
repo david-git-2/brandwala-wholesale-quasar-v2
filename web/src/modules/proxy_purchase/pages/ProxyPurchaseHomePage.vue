@@ -92,7 +92,8 @@
 
 <script setup lang="ts">
 import { date } from 'quasar';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import TfConfirmDialog from 'src/components/ui/TfConfirmDialog.vue';
 import TfEmptyState from 'src/components/ui/TfEmptyState.vue';
 import TfEntityListRow from 'src/components/ui/TfEntityListRow.vue';
@@ -114,7 +115,47 @@ import type {
 
 type DashboardTab = 'requests' | 'lines';
 
+const DASHBOARD_TABS = ['requests', 'lines'] as const satisfies readonly DashboardTab[];
+
+const isDashboardTab = (value: string): value is DashboardTab =>
+  (DASHBOARD_TABS as readonly string[]).includes(value);
+
+const route = useRoute();
+const router = useRouter();
+
 const activeTab = ref<DashboardTab>('requests');
+
+const tabQueryValue = (tab: DashboardTab): string | undefined =>
+  tab === 'requests' ? undefined : tab;
+
+const syncTabFromQuery = () => {
+  const raw = route.query.tab;
+  const next = typeof raw === 'string' && isDashboardTab(raw) ? raw : 'requests';
+  if (activeTab.value !== next) {
+    activeTab.value = next;
+  }
+};
+
+watch(() => route.query.tab, () => syncTabFromQuery());
+
+watch(activeTab, (tab) => {
+  const desired = tabQueryValue(tab);
+  const current = typeof route.query.tab === 'string' ? route.query.tab : undefined;
+  if (current === desired || (desired === undefined && !current)) {
+    return;
+  }
+  void router.replace({
+    name: route.name ?? 'proxy-purchase-home-page',
+    query: {
+      ...route.query,
+      tab: desired,
+    },
+  });
+});
+
+onMounted(() => {
+  syncTabFromQuery();
+});
 
 const tabOptions = [
   { name: 'requests', label: 'Requests' },

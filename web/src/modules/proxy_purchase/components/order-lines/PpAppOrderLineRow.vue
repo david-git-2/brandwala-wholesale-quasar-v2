@@ -52,47 +52,71 @@
         <span v-else class="pp-app-order-line-row__empty">—</span>
       </div>
 
-      <div
-        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--qty tf-num"
-        @click.stop
-      >
-        <q-input
-          :model-value="neededQtyDraft"
-          type="number"
-          min="1"
-          step="1"
-          dense
-          borderless
-          hide-bottom-space
-          input-class="font-mono text-center excel-cell-input-native"
-          class="excel-cell-input excel-cell-input--qty-tint pp-app-order-line-row__qty-input"
-          :disable="updating"
-          @update:model-value="onNeededQtyInput"
-          @blur="saveNeededQty"
-          @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
-        />
+      <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--store">
+        <span v-if="storeLabel" class="pp-app-order-line-row__store-text">{{ storeLabel }}</span>
+        <span v-else class="pp-app-order-line-row__empty">—</span>
       </div>
 
       <div
-        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--placed tf-num"
+        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--quantities tf-num"
         @click.stop
       >
-        <q-input
-          :model-value="placedQtyDisplay"
-          type="number"
-          min="0"
-          step="1"
-          dense
-          borderless
-          hide-bottom-space
-          placeholder="—"
-          input-class="font-mono text-center excel-cell-input-native"
-          class="excel-cell-input excel-cell-input--qty-tint pp-app-order-line-row__qty-input"
-          :disable="updating"
-          @update:model-value="onPlacedQtyInput"
-          @blur="savePlacedQty"
-          @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
-        />
+        <div class="pp-app-order-line-row__qty-tier">
+          <span class="pp-app-order-line-row__qty-tier-label">Customer</span>
+          <q-input
+            :model-value="neededQtyDraft"
+            type="number"
+            min="1"
+            step="1"
+            dense
+            borderless
+            hide-bottom-space
+            input-class="font-mono text-center excel-cell-input-native"
+            class="excel-cell-input excel-cell-input--qty-tint pp-app-order-line-row__qty-input"
+            :disable="updating"
+            @update:model-value="onNeededQtyInput"
+            @blur="saveNeededQty"
+            @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
+          />
+        </div>
+        <div class="pp-app-order-line-row__qty-tier">
+          <span class="pp-app-order-line-row__qty-tier-label">Ordered</span>
+          <q-input
+            :model-value="placedQtyDisplay"
+            type="number"
+            min="0"
+            step="1"
+            dense
+            borderless
+            hide-bottom-space
+            placeholder="—"
+            input-class="font-mono text-center excel-cell-input-native"
+            class="excel-cell-input excel-cell-input--qty-tint pp-app-order-line-row__qty-input"
+            :disable="updating"
+            @update:model-value="onPlacedQtyInput"
+            @blur="savePlacedQty"
+            @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
+          />
+        </div>
+        <div class="pp-app-order-line-row__qty-tier">
+          <span class="pp-app-order-line-row__qty-tier-label">Received</span>
+          <q-input
+            :model-value="receivedQtyDisplay"
+            type="number"
+            min="0"
+            step="1"
+            dense
+            borderless
+            hide-bottom-space
+            placeholder="—"
+            input-class="font-mono text-center excel-cell-input-native"
+            class="excel-cell-input excel-cell-input--qty-tint pp-app-order-line-row__qty-input"
+            :disable="updating"
+            @update:model-value="onReceivedQtyInput"
+            @blur="saveReceivedQty"
+            @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
+          />
+        </div>
       </div>
 
       <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--price tf-num">
@@ -104,11 +128,41 @@
       </div>
 
       <div
+        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--tracking"
+        @click.stop
+      >
+        <div class="pp-app-order-line-row__tracking-row">
+          <q-input
+            :model-value="trackingUrlDraft"
+            dense
+            borderless
+            hide-bottom-space
+            placeholder="—"
+            input-class="excel-cell-input-native"
+            class="excel-cell-input pp-app-order-line-row__tracking-input"
+            :disable="updating"
+            @update:model-value="onTrackingUrlInput"
+            @blur="saveTrackingUrl"
+            @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
+          />
+          <TfBtn
+            v-if="trackingUrlOpenable"
+            variant="icon"
+            size="sm"
+            icon="ph ph-arrow-square-out"
+            class="pp-app-order-line-row__tracking-open shrink-0"
+            :aria-label="`Open tracking link for line ${line.id}`"
+            @click="openPpOrderLineUrl(trackingUrlDraft)"
+          />
+        </div>
+      </div>
+
+      <div
         class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--placement"
         :class="placementCellClass"
       >
         <q-select
-          :model-value="line.placement_status"
+          :model-value="placementSelectValue"
           dense
           borderless
           emit-value
@@ -186,25 +240,6 @@
         </q-select>
       </div>
 
-      <div
-        class="pp-app-order-line-row__cell pp-app-order-line-row__cell--center pp-app-order-line-row__cell--status"
-        :class="statusCellClass"
-      >
-        <q-select
-          :model-value="line.status"
-          dense
-          borderless
-          emit-value
-          map-options
-          options-dense
-          :options="statusOptions"
-          :disable="updating"
-          dropdown-icon="none"
-          class="pp-app-order-line-row__select pp-app-order-line-row__select--center"
-          @update:model-value="onStatusChange"
-        />
-      </div>
-
       <div class="pp-app-order-line-row__cell pp-app-order-line-row__cell--actions">
         <TfBtn
           variant="icon"
@@ -232,14 +267,13 @@ import {
   openPpOrderLineUrl,
   ppOrderLineHostLabel,
 } from '../../utils/ppOrderLineUrl';
-import { PP_ORDER_LINE_PLACEMENT_OPTIONS } from '../../utils/ppOrderLinePlacement';
-import { ppPlacementCellClass, ppStatusCellClass } from '../../utils/ppOrderLineSelectTones';
+import { PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS } from '../../utils/ppOrderLinePlacement';
+import { ppPlacementCellClass } from '../../utils/ppOrderLineSelectTones';
 import { buildPpStaffOrderLineUpdate } from '../../utils/ppStaffOrderLineUpdate';
 import type { PpShipmentSelectOption } from '../../types/ppShipment';
 import type {
   PpOrderLine,
   PpOrderLinePlacementStatus,
-  PpOrderLineStatus,
   PpStaffOrderLineUpdatePayload,
 } from '../../types/ppPurchaseRequest';
 
@@ -261,20 +295,16 @@ const emit = defineEmits<{
   'toggle-select': [lineId: number, selected: boolean];
 }>();
 
-const placementOptions = PP_ORDER_LINE_PLACEMENT_OPTIONS;
+const placementOptions = PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS;
 
-const statusOptions = [
-  { label: 'Draft', value: 'draft' as const },
-  { label: 'Requested', value: 'requested' as const },
-  { label: 'Processing', value: 'processing' as const },
-  { label: 'Done', value: 'done' as const },
-  { label: 'Cancelled', value: 'cancelled' as const },
-];
+const placementSelectValue = computed((): PpOrderLinePlacementStatus =>
+  props.line.placement_status === 'none' ? 'requested' : props.line.placement_status,
+);
 
 const placementCellClass = computed(() => ppPlacementCellClass(props.line.placement_status));
-const statusCellClass = computed(() => ppStatusCellClass(props.line.status));
 
 const hostLabel = computed(() => ppOrderLineHostLabel(props.line.url));
+const storeLabel = computed(() => hostLabel.value);
 
 const titleLabel = computed(() => {
   const name = props.line.product_name?.trim();
@@ -312,9 +342,17 @@ const requestInstructions = computed(
 
 const neededQtyDraft = ref<number>(props.line.needed_qty);
 const placedQtyDraft = ref<number | null>(props.line.placed_qty);
+const receivedQtyDraft = ref<number | null>(props.line.received_qty);
+const trackingUrlDraft = ref(props.line.tracking_url?.trim() ?? '');
+
+const trackingUrlOpenable = computed(() => trackingUrlDraft.value.trim().length > 0);
 
 const placedQtyDisplay = computed(() =>
   placedQtyDraft.value == null ? '' : placedQtyDraft.value,
+);
+
+const receivedQtyDisplay = computed(() =>
+  receivedQtyDraft.value == null ? '' : receivedQtyDraft.value,
 );
 
 watch(
@@ -328,6 +366,20 @@ watch(
   () => props.line.placed_qty,
   (value) => {
     placedQtyDraft.value = value;
+  },
+);
+
+watch(
+  () => props.line.received_qty,
+  (value) => {
+    receivedQtyDraft.value = value;
+  },
+);
+
+watch(
+  () => props.line.tracking_url,
+  (value) => {
+    trackingUrlDraft.value = value?.trim() ?? '';
   },
 );
 
@@ -345,6 +397,10 @@ const onNeededQtyInput = (value: string | number | null) => {
 
 const onPlacedQtyInput = (value: string | number | null) => {
   placedQtyDraft.value = parseOptionalQty(value);
+};
+
+const onReceivedQtyInput = (value: string | number | null) => {
+  receivedQtyDraft.value = parseOptionalQty(value);
 };
 
 const saveNeededQty = () => {
@@ -367,14 +423,36 @@ const savePlacedQty = () => {
   emit('patch', buildPpStaffOrderLineUpdate(props.line, { placed_qty: next }));
 };
 
-const onPlacementChange = (value: PpOrderLinePlacementStatus) => {
-  if (value === props.line.placement_status) return;
-  emit('patch', buildPpStaffOrderLineUpdate(props.line, { placement_status: value }));
+const saveReceivedQty = () => {
+  const next = receivedQtyDraft.value;
+  if (next != null && (!Number.isFinite(next) || next < 0)) {
+    receivedQtyDraft.value = props.line.received_qty;
+    return;
+  }
+  if (next === props.line.received_qty) return;
+  emit('patch', buildPpStaffOrderLineUpdate(props.line, { received_qty: next }));
 };
 
-const onStatusChange = (value: PpOrderLineStatus) => {
-  if (value === props.line.status) return;
-  emit('patch', buildPpStaffOrderLineUpdate(props.line, { status: value }));
+const onTrackingUrlInput = (value: string | number | null) => {
+  trackingUrlDraft.value = value == null ? '' : String(value);
+};
+
+const normalizeTrackingUrl = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const saveTrackingUrl = () => {
+  const next = normalizeTrackingUrl(trackingUrlDraft.value);
+  const prev = props.line.tracking_url?.trim() || null;
+  if (next === prev) return;
+  trackingUrlDraft.value = next ?? '';
+  emit('patch', buildPpStaffOrderLineUpdate(props.line, { tracking_url: next }));
+};
+
+const onPlacementChange = (value: PpOrderLinePlacementStatus) => {
+  if (value === placementSelectValue.value) return;
+  emit('patch', buildPpStaffOrderLineUpdate(props.line, { placement_status: value }));
 };
 
 const onSupplierChange = (value: number | null) => {
@@ -402,14 +480,14 @@ const onShipmentChange = (value: number | null) => {
     2.5rem
     minmax(15rem, 2.4fr)
     minmax(11rem, 1.2fr)
-    minmax(6.75rem, 0.65fr)
-    minmax(5.75rem, 0.55fr)
+    minmax(6.5rem, 0.65fr)
+    minmax(11rem, 1.25fr)
     4.25rem
-    minmax(5.5rem, 0.6fr)
+    minmax(6.5rem, 0.72fr)
+    minmax(8.5rem, 0.85fr)
     minmax(6.75rem, 0.75fr)
     minmax(6.5rem, 0.72fr)
     minmax(11rem, 1.15fr)
-    minmax(6.5rem, 0.72fr)
     2.75rem;
   align-items: stretch;
   min-width: 0;
@@ -446,9 +524,8 @@ const onShipmentChange = (value: number | null) => {
   border-right: none;
 }
 
-.pp-app-order-line-row__cell--qty,
-.pp-app-order-line-row__cell--price,
-.pp-app-order-line-row__cell--placed {
+.pp-app-order-line-row__cell--quantities,
+.pp-app-order-line-row__cell--price {
   font-weight: 600;
 }
 
@@ -584,6 +661,34 @@ const onShipmentChange = (value: number | null) => {
   word-break: break-word;
 }
 
+.pp-app-order-line-row__cell--quantities {
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  gap: 3px;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.pp-app-order-line-row__qty-tier {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pp-app-order-line-row__qty-tier-label {
+  flex: 0 0 4.5rem;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--tf-neutral-muted);
+  text-align: left;
+  line-height: 1.2;
+}
+
 .pp-app-order-line-row__customer-text {
   width: 100%;
   white-space: normal;
@@ -592,21 +697,71 @@ const onShipmentChange = (value: number | null) => {
   line-height: 1.35;
 }
 
-.pp-app-order-line-row__cell--placement,
-.pp-app-order-line-row__cell--status {
+.pp-app-order-line-row__cell--customer {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pp-app-order-line-row__cell--store {
+  align-items: flex-start;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.pp-app-order-line-row__store-text {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.pp-app-order-line-row__cell--tracking {
+  align-items: center;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.pp-app-order-line-row__tracking-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+}
+
+.pp-app-order-line-row__tracking-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pp-app-order-line-row__tracking-input :deep(.q-field__control) {
+  min-height: 28px !important;
+  height: auto !important;
+  padding: 0 2px !important;
+}
+
+.pp-app-order-line-row__tracking-input :deep(.excel-cell-input-native) {
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pp-app-order-line-row__cell--placement {
   transition: background-color 0.15s ease, color 0.15s ease;
   font-weight: 700;
 }
 
-.pp-app-order-line-row__cell--placement :deep(.q-field__control),
-.pp-app-order-line-row__cell--status :deep(.q-field__control) {
+.pp-app-order-line-row__cell--placement :deep(.q-field__control) {
   background: transparent !important;
 }
 
 .pp-app-order-line-row__cell--placement :deep(.q-field__native),
-.pp-app-order-line-row__cell--status :deep(.q-field__native),
-.pp-app-order-line-row__cell--placement :deep(.q-field__append),
-.pp-app-order-line-row__cell--status :deep(.q-field__append) {
+.pp-app-order-line-row__cell--placement :deep(.q-field__append) {
   color: inherit;
   font-weight: 700;
 }
@@ -703,61 +858,61 @@ const onShipmentChange = (value: number | null) => {
   min-height: 36px;
 }
 
-.pp-app-order-line-row__cell--qty,
-.pp-app-order-line-row__cell--placed {
+.pp-app-order-line-row__cell--quantities {
   padding-left: 0.2rem;
   padding-right: 0.2rem;
 }
 
-.pp-app-order-line-row__qty-input {
+.pp-app-order-line-row__qty-tier .pp-app-order-line-row__qty-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.pp-app-order-line-row__qty-tier :deep(.q-field) {
   width: 100%;
 }
 
-.pp-app-order-line-row__cell--qty :deep(.q-field),
-.pp-app-order-line-row__cell--placed :deep(.q-field) {
-  width: 100%;
-}
-
-.pp-app-order-line-row__cell--qty :deep(.q-field__control),
-.pp-app-order-line-row__cell--placed :deep(.q-field__control) {
+.pp-app-order-line-row__cell--quantities :deep(.q-field__control),
+.pp-app-order-line-row__cell--quantities :deep(.q-field__control) {
   min-height: 28px !important;
   height: 28px !important;
   padding: 0 4px !important;
   border-radius: 6px;
 }
 
-.pp-app-order-line-row__cell--qty :deep(.excel-cell-input .q-field__control),
-.pp-app-order-line-row__cell--placed :deep(.excel-cell-input .q-field__control) {
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input .q-field__control),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input .q-field__control) {
   border: none !important;
   background-color: transparent !important;
   transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
 }
 
-.pp-app-order-line-row__cell--qty :deep(.excel-cell-input .q-field__control:before),
-.pp-app-order-line-row__cell--qty :deep(.excel-cell-input .q-field__control:after),
-.pp-app-order-line-row__cell--placed :deep(.excel-cell-input .q-field__control:before),
-.pp-app-order-line-row__cell--placed :deep(.excel-cell-input .q-field__control:after) {
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input .q-field__control:before),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input .q-field__control:after),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input .q-field__control:before),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input .q-field__control:after) {
   border: none !important;
 }
 
-.pp-app-order-line-row__cell--qty :deep(.excel-cell-input--qty-tint .q-field__control),
-.pp-app-order-line-row__cell--placed :deep(.excel-cell-input--qty-tint .q-field__control) {
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input--qty-tint .q-field__control),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input--qty-tint .q-field__control) {
   background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 42%, var(--tf-neutral-surface)) !important;
 }
 
-.pp-app-order-line-row__cell--qty :deep(.excel-cell-input--qty-tint:hover .q-field__control),
-.pp-app-order-line-row__cell--placed :deep(.excel-cell-input--qty-tint:hover .q-field__control) {
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input--qty-tint:hover .q-field__control),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input--qty-tint:hover .q-field__control) {
   background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 55%, var(--tf-neutral-surface)) !important;
 }
 
-.pp-app-order-line-row__cell--qty :deep(.excel-cell-input--qty-tint.q-field--focused .q-field__control),
-.pp-app-order-line-row__cell--placed :deep(.excel-cell-input--qty-tint.q-field--focused .q-field__control) {
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input--qty-tint.q-field--focused .q-field__control),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input--qty-tint.q-field--focused .q-field__control) {
   background-color: color-mix(in srgb, var(--tf-ops-hue-qty) 55%, var(--tf-neutral-surface)) !important;
   border: 1.5px solid var(--tf-ops-accent-qty) !important;
 }
 
-.pp-app-order-line-row__cell--qty :deep(.excel-cell-input-native),
-.pp-app-order-line-row__cell--placed :deep(.excel-cell-input-native) {
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input-native),
+.pp-app-order-line-row__cell--quantities :deep(.excel-cell-input-native) {
   font-size: 12px;
   font-weight: 700;
   padding: 0 !important;
@@ -769,6 +924,26 @@ const onShipmentChange = (value: number | null) => {
 .pp-order-line-tone--placement-none {
   background: #e2e8f0;
   color: #334155;
+}
+
+.pp-order-line-tone--placement-draft {
+  background: #cbd5e1;
+  color: #1e293b;
+}
+
+.pp-order-line-tone--placement-requested {
+  background: #fdba74;
+  color: #9a3412;
+}
+
+.pp-order-line-tone--placement-processing {
+  background: #93c5fd;
+  color: #1d4ed8;
+}
+
+.pp-order-line-tone--placement-cancelled {
+  background: #fca5a5;
+  color: #991b1b;
 }
 
 .pp-order-line-tone--placement-added_to_cart {
@@ -804,30 +979,5 @@ const onShipmentChange = (value: number | null) => {
 .pp-order-line-tone--placement-lost {
   background: #fca5a5;
   color: #7f1d1d;
-}
-
-.pp-order-line-tone--status-draft {
-  background: #cbd5e1;
-  color: #1e293b;
-}
-
-.pp-order-line-tone--status-requested {
-  background: #fdba74;
-  color: #9a3412;
-}
-
-.pp-order-line-tone--status-processing {
-  background: #93c5fd;
-  color: #1d4ed8;
-}
-
-.pp-order-line-tone--status-done {
-  background: #86efac;
-  color: #166534;
-}
-
-.pp-order-line-tone--status-cancelled {
-  background: #fca5a5;
-  color: #991b1b;
 }
 </style>

@@ -1797,14 +1797,14 @@ isOneToOne: false
                   ]
                 },"pp_order_lines": {
                   Row: {
-                    "added_to_cart_at": string | null,"created_at": string,"deleted_at": string | null,"description": string | null,"id": number,"image_url": string | null,"is_added_to_cart": boolean,"needed_qty": number,"placed_qty": number | null,"placement_status": string,"pp_customer_group_id": number,"pp_supplier_group_id": number | null,"product_name": string | null,"purchase_request_id": number,"shipment_id": number | null,"status": string,"tenant_id": number,"unit_price": number | null,"updated_at": string,"url": string
+                    "added_to_cart_at": string | null,"created_at": string,"deleted_at": string | null,"description": string | null,"id": number,"image_url": string | null,"is_added_to_cart": boolean,"needed_qty": number,"placed_qty": number | null,"placement_status": string,"pp_customer_group_id": number,"pp_supplier_group_id": number | null,"product_name": string | null,"purchase_request_id": number,"received_qty": number | null,"shipment_id": number | null,"status": string,"tenant_id": number,"tracking_url": string | null,"unit_price": number | null,"updated_at": string,"url": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "added_to_cart_at"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"image_url"?: string | null,"is_added_to_cart"?: boolean,"needed_qty": number,"placed_qty"?: number | null,"placement_status"?: string,"pp_customer_group_id": number,"pp_supplier_group_id"?: number | null,"product_name"?: string | null,"purchase_request_id": number,"shipment_id"?: number | null,"status"?: string,"tenant_id": number,"unit_price"?: number | null,"updated_at"?: string,"url": string
+                    "added_to_cart_at"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"image_url"?: string | null,"is_added_to_cart"?: boolean,"needed_qty": number,"placed_qty"?: number | null,"placement_status"?: string,"pp_customer_group_id": number,"pp_supplier_group_id"?: number | null,"product_name"?: string | null,"purchase_request_id": number,"received_qty"?: number | null,"shipment_id"?: number | null,"status"?: string,"tenant_id": number,"tracking_url"?: string | null,"unit_price"?: number | null,"updated_at"?: string,"url": string
                   }
                   Update: {
-                    "added_to_cart_at"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"image_url"?: string | null,"is_added_to_cart"?: boolean,"needed_qty"?: number,"placed_qty"?: number | null,"placement_status"?: string,"pp_customer_group_id"?: number,"pp_supplier_group_id"?: number | null,"product_name"?: string | null,"purchase_request_id"?: number,"shipment_id"?: number | null,"status"?: string,"tenant_id"?: number,"unit_price"?: number | null,"updated_at"?: string,"url"?: string
+                    "added_to_cart_at"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"description"?: string | null,"id"?: number,"image_url"?: string | null,"is_added_to_cart"?: boolean,"needed_qty"?: number,"placed_qty"?: number | null,"placement_status"?: string,"pp_customer_group_id"?: number,"pp_supplier_group_id"?: number | null,"product_name"?: string | null,"purchase_request_id"?: number,"received_qty"?: number | null,"shipment_id"?: number | null,"status"?: string,"tenant_id"?: number,"tracking_url"?: string | null,"unit_price"?: number | null,"updated_at"?: string,"url"?: string
                   }
                   Relationships: [
                     {
@@ -8972,7 +8972,7 @@ isOneToOne: false
 { Args: { "p_description"?: string,"p_line_id": number,"p_needed_qty": number,"p_request_id": number,"p_tenant_id": number,"p_url": string }; Returns: Json
                            },
 "update_pp_order_line_staff":
-{ Args: { "p_description"?: string,"p_image_url"?: string,"p_is_added_to_cart"?: boolean,"p_line_id": number,"p_needed_qty": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_pp_supplier_group_id"?: number,"p_product_name"?: string,"p_shipment_id"?: number,"p_status"?: string,"p_tenant_id": number,"p_unit_price"?: number,"p_url": string }; Returns: Json
+{ Args: { "p_description"?: string,"p_image_url"?: string,"p_is_added_to_cart"?: boolean,"p_line_id": number,"p_needed_qty": number,"p_placed_qty"?: number,"p_placement_status"?: string,"p_pp_supplier_group_id"?: number,"p_product_name"?: string,"p_received_qty"?: number,"p_shipment_id"?: number,"p_tenant_id": number,"p_tracking_url"?: string,"p_unit_price"?: number,"p_url": string }; Returns: Json
                            },
 "update_pp_purchase_request_instructions":
 { Args: { "p_bucket_description": string,"p_request_id": number,"p_tenant_id": number }; Returns: Json

@@ -5,6 +5,10 @@ export type PpOrderLineStatus = 'draft' | 'requested' | 'processing' | 'done' | 
 /** Stored as `placement_status`; staff UI labels this Fulfillment. */
 export type PpOrderLinePlacementStatus =
   | 'none'
+  | 'draft'
+  | 'requested'
+  | 'processing'
+  | 'cancelled'
   | 'added_to_cart'
   | 'order_placed'
   | 'cargo_warehouse'
@@ -44,6 +48,7 @@ export interface PpOrderLine {
   purchase_request_id: number;
   pp_customer_group_id: number;
   url: string;
+  tracking_url: string | null;
   needed_qty: number;
   description: string | null;
   product_name: string | null;
@@ -56,6 +61,7 @@ export interface PpOrderLine {
   added_to_cart_at: string | null;
   placement_status: PpOrderLinePlacementStatus;
   placed_qty: number | null;
+  received_qty: number | null;
   status: PpOrderLineStatus;
   created_at: string;
   customer_group_name?: string | null;
@@ -67,6 +73,7 @@ export interface PpOrderLine {
 export type PpStaffOrderLineUpdatePayload = {
   lineId: number;
   url: string;
+  tracking_url?: string | null;
   needed_qty: number;
   description?: string | null;
   product_name?: string | null;
@@ -77,5 +84,6 @@ export type PpStaffOrderLineUpdatePayload = {
   is_added_to_cart: boolean;
   placement_status: PpOrderLinePlacementStatus;
   placed_qty?: number | null;
+  received_qty?: number | null;
   status: PpOrderLineStatus;
 };

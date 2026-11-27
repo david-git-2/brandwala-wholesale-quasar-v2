@@ -1,7 +1,14 @@
-import type { PpOrderLinePlacementStatus } from '../types/ppPurchaseRequest';
+import type {
+  PpOrderLinePlacementStatus,
+  PpOrderLineStatus,
+} from '../types/ppPurchaseRequest';
 
 export const PP_ORDER_LINE_PLACEMENT_STATUSES = [
   'none',
+  'draft',
+  'requested',
+  'processing',
+  'cancelled',
   'added_to_cart',
   'order_placed',
   'cargo_warehouse',
@@ -11,8 +18,17 @@ export const PP_ORDER_LINE_PLACEMENT_STATUSES = [
   'lost',
 ] as const satisfies readonly PpOrderLinePlacementStatus[];
 
+/** Staff fulfillment dropdown (legacy `none` omitted). */
+export const PP_ORDER_LINE_STAFF_PLACEMENT_STATUSES = PP_ORDER_LINE_PLACEMENT_STATUSES.filter(
+  (value) => value !== 'none',
+);
+
 export const PP_ORDER_LINE_PLACEMENT_LABELS: Record<PpOrderLinePlacementStatus, string> = {
   none: 'None',
+  draft: 'Draft',
+  requested: 'Requested',
+  processing: 'Processing',
+  cancelled: 'Cancelled',
   added_to_cart: 'Added to cart',
   order_placed: 'Order placed',
   cargo_warehouse: 'Cargo warehouse',
@@ -27,7 +43,22 @@ export const PP_ORDER_LINE_PLACEMENT_OPTIONS = PP_ORDER_LINE_PLACEMENT_STATUSES.
   value,
 }));
 
+export const PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS = PP_ORDER_LINE_STAFF_PLACEMENT_STATUSES.map(
+  (value) => ({
+    label: PP_ORDER_LINE_PLACEMENT_LABELS[value],
+    value,
+  }),
+);
+
 const PLACEMENT_SET = new Set<string>(PP_ORDER_LINE_PLACEMENT_STATUSES);
+
+const PLACEMENT_NOT_IN_CART = new Set<string>([
+  'none',
+  'draft',
+  'requested',
+  'processing',
+  'cancelled',
+]);
 
 export function normalizePpOrderLinePlacementStatus(value: unknown): PpOrderLinePlacementStatus {
   if (typeof value === 'string' && PLACEMENT_SET.has(value)) {
@@ -37,5 +68,31 @@ export function normalizePpOrderLinePlacementStatus(value: unknown): PpOrderLine
 }
 
 export function ppPlacementImpliesAddedToCart(status: PpOrderLinePlacementStatus): boolean {
-  return status !== 'none';
+  return !PLACEMENT_NOT_IN_CART.has(status);
+}
+
+export function derivePpLineStatusFromPlacement(
+  placement: PpOrderLinePlacementStatus,
+): PpOrderLineStatus {
+  switch (placement) {
+    case 'draft':
+      return 'draft';
+    case 'requested':
+    case 'none':
+      return 'requested';
+    case 'processing':
+    case 'added_to_cart':
+    case 'order_placed':
+    case 'cargo_warehouse':
+    case 'in_flight':
+    case 'local_warehouse':
+    case 'lost':
+      return 'processing';
+    case 'delivered':
+      return 'done';
+    case 'cancelled':
+      return 'cancelled';
+    default:
+      return 'requested';
+  }
 }

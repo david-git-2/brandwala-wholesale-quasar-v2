@@ -109,7 +109,7 @@ GRANT ALL ON FUNCTION "public"."_pp_order_line_to_json"("public"."pp_order_lines
 GRANT ALL ON FUNCTION "public"."add_pp_order_line"(bigint, bigint, text, numeric, text) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."update_pp_order_line"(bigint, bigint, bigint, text, numeric, text) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."delete_pp_order_line"(bigint, bigint, bigint) TO "anon", "authenticated", "service_role";
-GRANT ALL ON FUNCTION "public"."update_pp_order_line_staff"(bigint, bigint, text, numeric, text, text, text, numeric, bigint, bigint, boolean, text, numeric, text) TO "anon", "authenticated", "service_role";
+GRANT ALL ON FUNCTION "public"."update_pp_order_line_staff"(bigint, bigint, text, text, numeric, text, text, text, numeric, bigint, bigint, boolean, text, numeric, numeric) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."delete_pp_order_line_staff"(bigint, bigint) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."update_pp_purchase_request_instructions"(bigint, bigint, text) TO "anon", "authenticated", "service_role";
 GRANT ALL ON FUNCTION "public"."post_pp_purchase_request"(bigint, bigint) TO "anon", "authenticated", "service_role";

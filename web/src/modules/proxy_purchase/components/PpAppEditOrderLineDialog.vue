@@ -28,6 +28,32 @@
         </template>
       </q-input>
       <q-input
+        :model-value="storeLabel"
+        outlined
+        dense
+        hide-bottom-space
+        readonly
+        label="Store"
+      />
+      <q-input
+        v-model="trackingUrl"
+        outlined
+        dense
+        hide-bottom-space
+        clearable
+        label="Tracking URL"
+        type="url"
+      >
+        <template #append>
+          <q-icon
+            v-if="trackingUrl.trim()"
+            name="ph ph-arrow-square-out"
+            class="cursor-pointer"
+            @click.stop="openTrackingUrl"
+          />
+        </template>
+      </q-input>
+      <q-input
         v-model.number="neededQty"
         outlined
         dense
@@ -119,16 +145,18 @@
         min="0"
         step="1"
         clearable
-        label="Placed quantity"
+        label="Ordered quantity"
       />
-      <q-select
-        v-model="status"
+      <q-input
+        v-model.number="receivedQty"
         outlined
         dense
-        emit-value
-        map-options
-        label="Line status"
-        :options="statusOptions"
+        hide-bottom-space
+        type="number"
+        min="0"
+        step="1"
+        clearable
+        label="Received quantity"
       />
     </div>
     <template #footer>
@@ -156,15 +184,12 @@ import { usePpShipmentsQuery } from '../composables/usePpShipmentsQuery';
 import type {
   PpOrderLine,
   PpOrderLinePlacementStatus,
-  PpOrderLineStatus,
   PpStaffOrderLineUpdatePayload,
 } from '../types/ppPurchaseRequest';
 import { buildPpShipmentSelectOptions } from '../types/ppShipment';
-import {
-  PP_ORDER_LINE_PLACEMENT_OPTIONS,
-  ppPlacementImpliesAddedToCart,
-} from '../utils/ppOrderLinePlacement';
-import { openPpOrderLineUrl } from '../utils/ppOrderLineUrl';
+import { PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS } from '../utils/ppOrderLinePlacement';
+import { buildPpStaffOrderLineUpdate } from '../utils/ppStaffOrderLineUpdate';
+import { openPpOrderLineUrl, ppOrderLineHostLabel } from '../utils/ppOrderLineUrl';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -182,6 +207,7 @@ const supplierGroupsQuery = usePpPeopleGroupsQuery(supplierType);
 const shipmentsQuery = usePpShipmentsQuery();
 
 const url = ref('');
+const trackingUrl = ref('');
 const neededQty = ref<number | null>(null);
 const description = ref('');
 const productName = ref('');
@@ -189,19 +215,11 @@ const imageUrl = ref('');
 const unitPrice = ref<number | null>(null);
 const supplierGroupId = ref<number | null>(null);
 const shipmentId = ref<number | null>(null);
-const placementStatus = ref<PpOrderLinePlacementStatus>('none');
+const placementStatus = ref<PpOrderLinePlacementStatus>('requested');
 const placedQty = ref<number | null>(null);
-const status = ref<PpOrderLineStatus>('requested');
+const receivedQty = ref<number | null>(null);
 
-const placementOptions = PP_ORDER_LINE_PLACEMENT_OPTIONS;
-
-const statusOptions = [
-  { label: 'Draft', value: 'draft' as const },
-  { label: 'Requested', value: 'requested' as const },
-  { label: 'Processing', value: 'processing' as const },
-  { label: 'Done', value: 'done' as const },
-  { label: 'Cancelled', value: 'cancelled' as const },
-];
+const placementOptions = PP_ORDER_LINE_STAFF_PLACEMENT_OPTIONS;
 
 const supplierOptions = computed(() =>
   (supplierGroupsQuery.data.value ?? []).map((g) => ({
@@ -214,10 +232,13 @@ const shipmentOptions = computed(() =>
   buildPpShipmentSelectOptions(shipmentsQuery.data.value ?? []),
 );
 
+const storeLabel = computed(() => ppOrderLineHostLabel(url.value));
+
 const populateFromEdit = () => {
   const line = props.editLine;
   if (!line) return;
   url.value = line.url;
+  trackingUrl.value = line.tracking_url?.trim() ?? '';
   neededQty.value = Number(line.needed_qty);
   description.value = line.description?.trim() ?? '';
   productName.value = line.product_name?.trim() ?? '';
@@ -225,9 +246,9 @@ const populateFromEdit = () => {
   unitPrice.value = line.unit_price == null ? null : Number(line.unit_price);
   supplierGroupId.value = line.pp_supplier_group_id;
   shipmentId.value = line.shipment_id;
-  placementStatus.value = line.placement_status;
+  placementStatus.value = line.placement_status === 'none' ? 'requested' : line.placement_status;
   placedQty.value = line.placed_qty == null ? null : Number(line.placed_qty);
-  status.value = line.status;
+  receivedQty.value = line.received_qty == null ? null : Number(line.received_qty);
 };
 
 watch(
@@ -246,24 +267,30 @@ const openUrl = () => {
   openPpOrderLineUrl(url.value);
 };
 
+const openTrackingUrl = () => {
+  openPpOrderLineUrl(trackingUrl.value);
+};
+
 const submit = () => {
   const line = props.editLine;
   if (!canSubmit.value || neededQty.value == null || !line) return;
-  emit('submit', {
-    lineId: line.id,
-    url: url.value.trim(),
-    needed_qty: neededQty.value,
-    description: description.value.trim() || null,
-    product_name: productName.value.trim() || null,
-    image_url: imageUrl.value.trim() || null,
-    unit_price: unitPrice.value,
-    pp_supplier_group_id: supplierGroupId.value,
-    shipment_id: shipmentId.value,
-    placement_status: placementStatus.value,
-    is_added_to_cart: ppPlacementImpliesAddedToCart(placementStatus.value),
-    placed_qty: placedQty.value,
-    status: status.value,
-  });
+  emit(
+    'submit',
+    buildPpStaffOrderLineUpdate(line, {
+      url: url.value.trim(),
+      tracking_url: trackingUrl.value.trim() || null,
+      needed_qty: neededQty.value,
+      description: description.value.trim() || null,
+      product_name: productName.value.trim() || null,
+      image_url: imageUrl.value.trim() || null,
+      unit_price: unitPrice.value,
+      pp_supplier_group_id: supplierGroupId.value,
+      shipment_id: shipmentId.value,
+      placement_status: placementStatus.value,
+      placed_qty: placedQty.value,
+      received_qty: receivedQty.value,
+    }),
+  );
 };
 </script>
 

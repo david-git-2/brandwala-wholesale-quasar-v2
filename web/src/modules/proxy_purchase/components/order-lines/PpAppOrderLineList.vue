@@ -32,14 +32,14 @@
             </span>
             <span class="pp-app-order-line-table__head-product">Product</span>
             <span class="pp-app-order-line-table__head-text">Description</span>
-            <span class="text-center">Customer quantity</span>
-            <span class="text-center">Placed quantity</span>
+            <span class="text-center">Store</span>
+            <span class="text-center">Quantity</span>
             <span class="text-center">Price</span>
             <span class="text-center">Customer</span>
+            <span class="text-center">Tracking</span>
             <span class="text-center">Fulfillment</span>
             <span class="text-center">Supplier</span>
             <span class="text-center">Shipment</span>
-            <span class="text-center">Status</span>
             <span class="text-center">Edit</span>
           </div>
           <div
@@ -195,7 +195,7 @@ defineExpose({ clearSelection: () => { selectedIds.value = []; } });
 }
 
 .pp-app-order-line-table__sheet {
-  min-width: 1440px;
+  min-width: 1680px;
 }
 
 .pp-app-order-line-table__scroll-footer {
@@ -209,14 +209,14 @@ defineExpose({ clearSelection: () => { selectedIds.value = []; } });
     2.5rem
     minmax(15rem, 2.4fr)
     minmax(11rem, 1.2fr)
-    minmax(6.75rem, 0.65fr)
-    minmax(5.75rem, 0.55fr)
+    minmax(6.5rem, 0.65fr)
+    minmax(11rem, 1.25fr)
     4.25rem
-    minmax(5.5rem, 0.6fr)
+    minmax(6.5rem, 0.72fr)
+    minmax(8.5rem, 0.85fr)
     minmax(6.75rem, 0.75fr)
     minmax(6.5rem, 0.72fr)
     minmax(11rem, 1.15fr)
-    minmax(6.5rem, 0.72fr)
     2.75rem;
   align-items: stretch;
 }

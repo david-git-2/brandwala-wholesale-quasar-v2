@@ -730,6 +730,7 @@ CREATE OR REPLACE FUNCTION "public"."_pp_order_line_to_json"(
     'purchase_request_id', l.purchase_request_id,
     'pp_customer_group_id', l.pp_customer_group_id,
     'url', l.url,
+    'tracking_url', l.tracking_url,
     'needed_qty', l.needed_qty,
     'description', l.description,
     'product_name', l.product_name,
@@ -742,6 +743,7 @@ CREATE OR REPLACE FUNCTION "public"."_pp_order_line_to_json"(
     'added_to_cart_at', l.added_to_cart_at,
     'placement_status', l.placement_status,
     'placed_qty', l.placed_qty,
+    'received_qty', l.received_qty,
     'status', l.status,
     'created_at', l.created_at
   );
@@ -1006,10 +1008,34 @@ $$;
 
 ALTER FUNCTION "public"."delete_pp_order_line"("p_tenant_id" bigint, "p_request_id" bigint, "p_line_id" bigint) OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."pp_derive_order_line_status_from_placement"("p_placement" "text") RETURNS "text"
+    LANGUAGE "sql"
+    IMMUTABLE
+    AS $$
+  SELECT CASE lower(trim(coalesce(p_placement, '')))
+    WHEN 'draft' THEN 'draft'
+    WHEN 'requested' THEN 'requested'
+    WHEN 'none' THEN 'requested'
+    WHEN 'processing' THEN 'processing'
+    WHEN 'cancelled' THEN 'cancelled'
+    WHEN 'delivered' THEN 'done'
+    WHEN 'added_to_cart' THEN 'processing'
+    WHEN 'order_placed' THEN 'processing'
+    WHEN 'cargo_warehouse' THEN 'processing'
+    WHEN 'in_flight' THEN 'processing'
+    WHEN 'local_warehouse' THEN 'processing'
+    WHEN 'lost' THEN 'processing'
+    ELSE 'requested'
+  END;
+$$;
+
+ALTER FUNCTION "public"."pp_derive_order_line_status_from_placement"("p_placement" "text") OWNER TO "postgres";
+
 CREATE OR REPLACE FUNCTION "public"."update_pp_order_line_staff"(
     "p_tenant_id" bigint,
     "p_line_id" bigint,
     "p_url" "text",
+    "p_tracking_url" "text" DEFAULT NULL::"text",
     "p_needed_qty" numeric,
     "p_description" "text" DEFAULT NULL::"text",
     "p_product_name" "text" DEFAULT NULL::"text",
@@ -1020,7 +1046,7 @@ CREATE OR REPLACE FUNCTION "public"."update_pp_order_line_staff"(
     "p_is_added_to_cart" boolean DEFAULT NULL::boolean,
     "p_placement_status" "text" DEFAULT NULL::"text",
     "p_placed_qty" numeric DEFAULT NULL::numeric,
-    "p_status" "text" DEFAULT NULL::"text"
+    "p_received_qty" numeric DEFAULT NULL::numeric
 ) RETURNS "jsonb"
     LANGUAGE "plpgsql"
     SECURITY DEFINER
@@ -1028,6 +1054,7 @@ CREATE OR REPLACE FUNCTION "public"."update_pp_order_line_staff"(
     AS $$
 DECLARE
   v_url text := trim(coalesce(p_url, ''));
+  v_tracking text := nullif(trim(coalesce(p_tracking_url, '')), '');
   v_desc text := nullif(trim(coalesce(p_description, '')), '');
   v_product_name text := nullif(trim(coalesce(p_product_name, '')), '');
   v_image_url text := nullif(trim(coalesce(p_image_url, '')), '');
@@ -1035,7 +1062,8 @@ DECLARE
   v_row public.pp_order_lines%ROWTYPE;
   v_shipment_status text;
   v_placement text := lower(trim(coalesce(p_placement_status, '')));
-  v_status text := lower(trim(coalesce(p_status, '')));
+  v_final_placement text;
+  v_not_in_cart boolean;
 BEGIN
   IF NOT "public"."has_active_tenant_membership"("p_tenant_id") THEN
     RAISE EXCEPTION 'Not allowed for tenant %', "p_tenant_id" USING ERRCODE = '42501';
@@ -1049,15 +1077,16 @@ BEGIN
     RAISE EXCEPTION 'Quantity must be positive' USING ERRCODE = '22023';
   END IF;
 
+  IF p_received_qty IS NOT NULL AND p_received_qty < 0 THEN
+    RAISE EXCEPTION 'Received quantity cannot be negative' USING ERRCODE = '22023';
+  END IF;
+
   IF v_placement <> '' AND v_placement NOT IN (
-    'none', 'added_to_cart', 'order_placed', 'cargo_warehouse',
+    'none', 'draft', 'requested', 'processing', 'cancelled',
+    'added_to_cart', 'order_placed', 'cargo_warehouse',
     'in_flight', 'local_warehouse', 'delivered', 'lost'
   ) THEN
     RAISE EXCEPTION 'Invalid placement status: %', p_placement_status USING ERRCODE = '22023';
-  END IF;
-
-  IF v_status <> '' AND v_status NOT IN ('draft', 'requested', 'processing', 'done', 'cancelled') THEN
-    RAISE EXCEPTION 'Invalid line status: %', p_status USING ERRCODE = '22023';
   END IF;
 
   IF p_pp_supplier_group_id IS NOT NULL THEN
@@ -1083,8 +1112,25 @@ BEGIN
     END IF;
   END IF;
 
+  SELECT CASE WHEN v_placement = '' THEN l.placement_status ELSE v_placement END
+  INTO v_final_placement
+  FROM public.pp_order_lines l
+  WHERE l.id = p_line_id
+    AND l.tenant_id = p_tenant_id
+    AND l.deleted_at IS NULL;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order line not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  v_not_in_cart := v_final_placement IN ('none', 'draft', 'requested', 'processing', 'cancelled');
+
   UPDATE public.pp_order_lines l
   SET url = v_url,
+      tracking_url = CASE
+        WHEN p_tracking_url IS NULL THEN l.tracking_url
+        ELSE v_tracking
+      END,
       needed_qty = v_qty,
       description = v_desc,
       product_name = v_product_name,
@@ -1092,21 +1138,22 @@ BEGIN
       unit_price = p_unit_price,
       pp_supplier_group_id = p_pp_supplier_group_id,
       shipment_id = p_shipment_id,
-      placement_status = CASE WHEN v_placement = '' THEN l.placement_status ELSE v_placement END,
+      placement_status = v_final_placement,
       is_added_to_cart = CASE
-        WHEN v_placement <> '' THEN v_placement <> 'none'
+        WHEN v_placement <> '' THEN NOT v_not_in_cart
         ELSE coalesce(p_is_added_to_cart, l.is_added_to_cart)
       END,
       added_to_cart_at = CASE
-        WHEN v_placement = 'none' THEN NULL
-        WHEN v_placement <> '' AND v_placement <> 'none' AND NOT l.is_added_to_cart THEN now()
-        WHEN v_placement <> '' AND v_placement <> 'none' THEN l.added_to_cart_at
+        WHEN v_not_in_cart THEN NULL
+        WHEN v_placement <> '' AND NOT v_not_in_cart AND NOT l.is_added_to_cart THEN now()
+        WHEN v_placement <> '' AND NOT v_not_in_cart THEN l.added_to_cart_at
         WHEN p_is_added_to_cart IS TRUE AND NOT l.is_added_to_cart THEN now()
         WHEN p_is_added_to_cart IS FALSE THEN NULL
         ELSE l.added_to_cart_at
       END,
       placed_qty = p_placed_qty,
-      status = CASE WHEN v_status = '' THEN l.status ELSE v_status END,
+      received_qty = p_received_qty,
+      status = public.pp_derive_order_line_status_from_placement(v_final_placement),
       updated_at = now()
   WHERE l.id = p_line_id
     AND l.tenant_id = p_tenant_id
@@ -1126,7 +1173,7 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION "public"."update_pp_order_line_staff"("p_tenant_id" bigint, "p_line_id" bigint, "p_url" "text", "p_needed_qty" numeric, "p_description" "text", "p_product_name" "text", "p_image_url" "text", "p_unit_price" numeric, "p_pp_supplier_group_id" bigint, "p_shipment_id" bigint, "p_is_added_to_cart" boolean, "p_placement_status" "text", "p_placed_qty" numeric, "p_status" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."update_pp_order_line_staff"("p_tenant_id" bigint, "p_line_id" bigint, "p_url" "text", "p_tracking_url" "text", "p_needed_qty" numeric, "p_description" "text", "p_product_name" "text", "p_image_url" "text", "p_unit_price" numeric, "p_pp_supplier_group_id" bigint, "p_shipment_id" bigint, "p_is_added_to_cart" boolean, "p_placement_status" "text", "p_placed_qty" numeric, "p_received_qty" numeric) OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."delete_pp_order_line_staff"(
     "p_tenant_id" bigint,
