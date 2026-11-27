@@ -1795,6 +1795,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pp_people_group": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"id": number,"name": string,"tenant_id": number,"type": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name": string,"tenant_id": number,"type": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: number,"name"?: string,"tenant_id"?: number,"type"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_people_group_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pp_people_group_member": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"email": string,"id": number,"is_active": boolean,"name": string,"people_group_id": number,"role": string,"tenant_id": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"deleted_at"?: string | null,"email": string,"id"?: number,"is_active"?: boolean,"name": string,"people_group_id": number,"role": string,"tenant_id": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"email"?: string,"id"?: number,"is_active"?: boolean,"name"?: string,"people_group_id"?: number,"role"?: string,"tenant_id"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pp_people_group_member_people_group_id_fkey"
+      columns: ["people_group_id"]
+isOneToOne: false
+      referencedRelation: "pp_people_group"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pp_people_group_member_tenant_id_fkey"
+      columns: ["tenant_id"]
+isOneToOne: false
+      referencedRelation: "tenants"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"preorder_demand": {
                   Row: {
                     "confirmed_quantity": number,"created_at": string,"delivered_quantity": number,"id": number,"notes": string | null,"open_quantity": number,"placed_quantity": number,"profile_id": number | null,"source_id": number,"source_type": Database["public"]['Enums']["preorder_demand_source_type"],"stock_picks": NonNullable<Json>,"tenant_id": number,"updated_at": string,"updated_by_user_id": string | null,"vendor_id": number | null,"vendor_placements": NonNullable<Json>
@@ -5716,6 +5762,12 @@ isOneToOne: false
 "create_or_update_courier_remittance_batch":
 { Args: { "p_bank_trx_id"?: string,"p_batch_id"?: number,"p_batch_no"?: string,"p_courier_charges_amount"?: number,"p_courier_service_id"?: string,"p_gross_cod_amount"?: number,"p_items"?: Json,"p_net_deposited_amount"?: number,"p_note"?: string,"p_payment_date"?: string,"p_tenant_id"?: number }; Returns: Json
                            },
+"create_pp_people_group":
+{ Args: { "p_name": string,"p_tenant_id": number,"p_type": string }; Returns: Json
+                           },
+"create_pp_people_group_member":
+{ Args: { "p_email": string,"p_name": string,"p_people_group_id": number,"p_role": string,"p_tenant_id": number }; Returns: Json
+                           },
 "create_sales_invoice":
 { Args: { "p_due_date"?: string,"p_invoice_date"?: string,"p_invoice_no"?: string,"p_invoice_type"?: Database["public"]['Enums']["global_invoice_type"],"p_note"?: string,"p_profile_id"?: number,"p_recipient_address"?: string,"p_recipient_name"?: string,"p_recipient_phone"?: string,"p_recipient_profile_id"?: number,"p_retail_billing_mode"?: Database["public"]['Enums']["retail_billing_mode"],"p_tenant_id": number }; Returns: {
               "ap_kind": string | null,
@@ -7192,6 +7244,12 @@ isOneToOne: false
                            },
 "list_pays_for_source":
 { Args: { "p_source_id": string,"p_source_type": string,"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_people_group_members":
+{ Args: { "p_people_group_id": number,"p_tenant_id": number }; Returns: Json
+                           },
+"list_pp_people_groups":
+{ Args: { "p_tenant_id": number,"p_type": string }; Returns: Json
                            },
 "list_procurement_demand_buy_documents":
 { Args: { "p_child_tenant_id"?: number,"p_limit"?: number,"p_offset"?: number,"p_search"?: string,"p_tenant_id": number }; Returns: Json

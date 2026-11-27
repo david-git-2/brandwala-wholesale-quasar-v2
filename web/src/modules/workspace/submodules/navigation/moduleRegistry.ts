@@ -62,7 +62,8 @@ export type ModuleKey =
   | 'billing_profile'
   | 'recipient_profile'
   | 'cashbook'
-  | 'people';
+  | 'people'
+  | 'proxy_purchase';
 
 export type ModuleAction =
   | 'view'
@@ -608,6 +609,23 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Issue, void, and print bills',
         icon: 'ph ph-receipt',
         routeSegment: 'bills',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'proxy_purchase',
+    name: 'Proxy Purchase',
+    description:
+      'Customer purchase requests, staff triage, supplier placement, shipments, and billing links.',
+    navIcon: 'ph ph-shopping-bag-open',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Proxy Purchase',
+        caption: 'Purchase requests and line operations',
+        icon: 'ph ph-shopping-bag-open',
+        routeSegment: 'proxy-purchase',
         requiredAction: 'view',
       },
     ],

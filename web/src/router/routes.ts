@@ -22,6 +22,7 @@ import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/tenant/submodules/access_control/routes';
 import customerRoutes from 'src/modules/people/submodules/customer/routes';
 import peopleRoutes from 'src/modules/people/routes';
+import proxyPurchaseRoutes from 'src/modules/proxy_purchase/routes';
 import landingRoutes from 'src/modules/workspace/submodules/landing/routes';
 import helpRoutes from 'src/modules/docs/submodules/help/routes';
 import docsRoutes from 'src/modules/docs/routes';
@@ -169,6 +170,7 @@ const routes: RouteRecordRaw[] = [
   ...accessControlRoutes,
   ...customerRoutes,
   ...peopleRoutes,
+  ...proxyPurchaseRoutes,
 
   ...(import.meta.env.DEV ? devRoutes : []),
 
